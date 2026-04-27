@@ -1,4 +1,6 @@
 export * from './authResDto';
+export * from './badgeReqDto';
+export * from './badgeResDto';
 export * from './commentReqDto';
 export * from './commentResDto';
 export * from './communityReqDto';

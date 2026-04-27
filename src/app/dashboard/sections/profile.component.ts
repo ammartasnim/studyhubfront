@@ -1,9 +1,12 @@
 import { Component, computed, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { UserContextService } from '../../user-context.service';
+import { BadgesDisplayComponent } from '../components/badges-display.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
+  imports: [CommonModule, BadgesDisplayComponent],
   styles: [`
     @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap');
 
@@ -276,6 +279,10 @@ import { UserContextService } from '../../user-context.service';
           <div class="xp-fill" [style.width]="xpPercent() + '%'"></div>
         </div>
 
+        <!-- Badges -->
+        <div class="gradient-rule"></div>
+        <app-badges-display [badges]="badges()" />
+
       </div>
     </article>
   `
@@ -295,6 +302,7 @@ export class ProfileComponent {
   readonly level     = computed(() => this.user()?.level ?? 1);
   readonly pfp       = computed(() => this.user()?.pfp ?? undefined);
   readonly xp        = computed(() => this.user()?.xpPts ?? 0);
+  readonly badges    = computed(() => this.user()?.badges ?? []);
 
   /** Clamp XP to a 0–100 % fill for the bar (adjust 5000 to your XP-per-level cap) */
   readonly xpPercent = computed(() => Math.min(100, (this.xp() % 5000) / 50));

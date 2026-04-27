@@ -8,6 +8,7 @@
  * Do not edit the class manually.
  */
 
+import { BadgeResDto } from './badgeResDto';
 
 export interface UserResDto { 
     id?: number;
@@ -21,6 +22,7 @@ export interface UserResDto {
     xpPts?: number;
     level?: number;
     banned?: boolean;
+    badges?: Array<BadgeResDto>;
 }
 export namespace UserResDto {
     export const RoleEnum = {
