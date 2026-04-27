@@ -1,0 +1,66 @@
+<section class="min-h-dvh bg-slate-200 px-4 py-6 font-sans text-slate-900">
+  <div class="mx-auto w-full max-w-[460px] rounded-2xl border border-slate-300 bg-slate-50 p-5 shadow-[0_14px_28px_rgba(15,23,42,0.12)] sm:p-7">
+    <div class="mb-5 flex items-center gap-3">
+      <div class="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-indigo-600 to-fuchsia-600">
+        <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3.2L13.7 8.3L18.8 10L13.7 11.7L12 16.8L10.3 11.7L5.2 10L10.3 8.3L12 3.2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M18.8 4.4L19.3 6L20.9 6.5L19.3 7L18.8 8.6L18.3 7L16.7 6.5L18.3 6L18.8 4.4Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
+      <p class="text-xl font-bold tracking-tight">Academic Platform</p>
+    </div>
+
+    <header class="text-center">
+      <h1 class="text-3xl font-bold tracking-tight">Welcome Back</h1>
+      <p class="mt-2 text-base text-slate-600">Sign in to continue your learning journey</p>
+    </header>
+
+    <form class="mt-6 grid gap-2.5" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+      <label class="text-sm font-semibold text-slate-800" for="username">Username or Email</label>
+      <div class="relative">
+        <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 7.5C4 6.67 4.67 6 5.5 6H18.5C19.33 6 20 6.67 20 7.5V16.5C20 17.33 19.33 18 18.5 18H5.5C4.67 18 4 17.33 4 16.5V7.5Z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M4.8 7L11.2 12C11.66 12.36 12.3 12.36 12.8 12L19.2 7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <input id="username" type="text" formControlName="username" placeholder="you@example.com" class="w-full rounded-xl border border-slate-300 bg-slate-100 px-11 py-3 text-base text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-3 focus:ring-indigo-100" />
+      </div>
+      @if ((usernameControl.touched || submitted()) && usernameControl.invalid) {
+        <p class="text-xs text-rose-700">Email or username is required.</p>
+      }
+
+      <label class="mt-1 text-sm font-semibold text-slate-800" for="password">Password</label>
+      <div class="relative">
+        <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7 11V8.7C7 6.37 8.85 4.5 11.15 4.5H12.85C15.15 4.5 17 6.37 17 8.7V11" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M6 11H18C18.55 11 19 11.45 19 12V18C19 18.55 18.55 19 18 19H6C5.45 19 5 18.55 5 18V12C5 11.45 5.45 11 6 11Z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <input id="password" type="password" formControlName="password" placeholder="••••••••" class="w-full rounded-xl border border-slate-300 bg-slate-100 px-11 py-3 text-base text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-3 focus:ring-indigo-100" />
+      </div>
+      @if ((passwordControl.touched || submitted()) && passwordControl.invalid) {
+        <p class="text-xs text-rose-700">Password is required and must be at least 6 characters.</p>
+      }
+
+      <div class="mt-1 flex items-center justify-between gap-3">
+        <label class="inline-flex items-center gap-2 text-sm text-slate-700" for="rememberMe">
+          <input id="rememberMe" type="checkbox" class="h-4 w-4 rounded border border-slate-300 accent-slate-900" />
+          <span>Remember me</span>
+        </label>
+        <a href="#" class="text-sm font-semibold text-indigo-600 hover:underline">Forgot password?</a>
+      </div>
+
+      @if (submitError()) {
+        <p class="text-xs font-semibold text-rose-700">{{ submitError() }}</p>
+      }
+
+      <button type="submit" [disabled]="!this.form.valid" class="mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-4 py-3 text-base font-semibold text-white shadow-md transition hover:-translate-y-0.5 enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60">
+        {{ isSubmitting() ? 'Signing In...' : 'Sign In' }}
+      </button>
+    </form>
+
+    <p class="mt-4 text-center text-sm text-slate-600">
+      Don't have an account?
+      <a routerLink="/auth/register" class="font-semibold text-indigo-600 hover:underline">Create Account</a>
+    </p>
+    <p class="mt-2 text-center text-xs text-slate-500">Academic Platform &copy; {{ currentYear }}</p>
+  </div>
+</section>

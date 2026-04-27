@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/@openapitools/openapi-generator-cli/config.schema.json",
+  "spaces": 2,
+  "generator-cli": {
+    "version": "7.21.0"
+  },
+  "generator": "typescript-angular",
+  "generatorName": "typescript-angular",
+  "inputSpec": "http://localhost:8080/v3/api-docs",
+  "outputDir": "src/app/api-generated",
+  "additionalProperties": {
+    "ngVersion": "20",
+    "apiModulePrefix": "Api",
+    "skipFormModel": true,
+    "withInterfaces": true,
+    "providedInRoot": true
+  }
+}

@@ -1,5 +1,7 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+
+import { UserContextService } from './user-context.service';
 
 @Component({
   selector: 'app-root',
@@ -8,5 +10,9 @@ import { RouterOutlet } from '@angular/router';
   styleUrl: './app.css'
 })
 export class App {
-  protected readonly title = signal('studyHubFront');
+  private readonly userContext = inject(UserContextService);
+
+  constructor() {
+    void this.userContext.initializeFromStoredToken();
+  }
 }

@@ -1,3 +1,45 @@
 import { Routes } from '@angular/router';
 
-export const routes: Routes = [];
+import { privateGuard } from './guards/private.guard';
+import { publicGuard } from './guards/public.guard';
+import { roleGuard } from './guards/role.guard';
+import { UserResDto } from './api-generated/model/userResDto';
+
+export const routes: Routes = [
+  {
+    path: '',
+    pathMatch: 'full',
+    canActivate: [publicGuard],
+    loadComponent: () => import('./home/home.component').then((m) => m.HomeComponent)
+  },
+  {
+    path: 'auth/login',
+    canActivate: [publicGuard],
+    loadComponent: () => import('./auth/components/login/login.component').then((m) => m.LoginComponent)
+  },
+  {
+    path: 'auth/register',
+    canActivate: [publicGuard],
+    loadComponent: () =>
+      import('./auth/components/register/register.component').then((m) => m.RegisterComponent)
+  },
+  {
+    path: 'dashboard',
+    canActivate: [privateGuard],
+    loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent)
+  },
+  {
+    path: 'dashboard/admin',
+    canActivate: [privateGuard, roleGuard([UserResDto.RoleEnum.Admin])],
+    loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent)
+  },
+  {
+    path: 'dashboard/client',
+    canActivate: [privateGuard, roleGuard([UserResDto.RoleEnum.Client])],
+    loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent)
+  },
+  {
+    path: '**',
+    redirectTo: 'auth/login'
+  }
+];
