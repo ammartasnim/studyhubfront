@@ -1,10 +1,12 @@
 import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MyCommunitiesComponent } from './my-communities.component';
+import { MyCreatedCommunitiesComponent } from './my-created-communities.component';
 
 @Component({
   selector: 'app-dashboard-sidebar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MyCommunitiesComponent, MyCreatedCommunitiesComponent],
   template: `
     <aside class="hidden lg:flex flex-col gap-6 sticky top-6 h-fit">
       <!-- Profile Card -->
@@ -32,13 +34,22 @@ import { CommonModule } from '@angular/common';
       <!-- Navigation -->
       <nav class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
         <button
-          (click)="navigateTo('dashboard')"
+          (click)="navigateTo('feed')"
           class="w-full flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-indigo-50 transition-colors border-b border-slate-200 last:border-0"
         >
           <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          <span class="font-medium">Dashboard</span>
+          <span class="font-medium">Feed</span>
+        </button>
+        <button
+          (click)="navigateTo('profile')"
+          class="w-full flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-indigo-50 transition-colors border-b border-slate-200 last:border-0"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14a4 4 0 100-8 4 4 0 000 8zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z" />
+          </svg>
+          <span class="font-medium">My Profile</span>
         </button>
         <button
           (click)="navigateTo('communities')"
@@ -48,15 +59,6 @@ import { CommonModule } from '@angular/common';
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 12H9m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
           </svg>
           <span class="font-medium">My Communities</span>
-        </button>
-        <button
-          (click)="navigateTo('tasks')"
-          class="w-full flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-indigo-50 transition-colors border-b border-slate-200 last:border-0"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          <span class="font-medium">Task Manager</span>
         </button>
         <button
           (click)="navigateTo('focus')"
@@ -94,6 +96,12 @@ import { CommonModule } from '@angular/common';
         </nav>
       </div>
 
+      <!-- My Communities Component -->
+      <app-my-communities></app-my-communities>
+
+      <!-- My Created Communities Component -->
+      <app-my-created-communities></app-my-created-communities>
+
       <!-- Settings & Support -->
       <nav class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
         <button
@@ -128,6 +136,10 @@ export class DashboardSidebarComponent {
 
   readonly navigate = output<string>();
 
+  constructor() {
+    console.log('[DashboardSidebarComponent] Constructor called - initializing component');
+  }
+
   xpPercentage = () => Math.min((this.xp() / 1000) * 100, 100);
 
   getInitials(): string {
@@ -143,7 +155,7 @@ export class DashboardSidebarComponent {
   }
 
   navigateTo(section: string): void {
-    console.log('[Sidebar] Navigate to:', section);
+    console.log('[DashboardSidebarComponent] navigateTo called with section:', section);
     this.navigate.emit(section);
   }
 }

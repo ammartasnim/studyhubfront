@@ -26,17 +26,86 @@ export const routes: Routes = [
   {
     path: 'dashboard',
     canActivate: [privateGuard],
-    loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent)
+    loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'feed'
+      },
+      {
+        path: 'feed',
+        loadComponent: () => import('./dashboard/sections/feed.component').then((m) => m.FeedComponent)
+      },
+      {
+        path: 'profile',
+        loadComponent: () => import('./dashboard/sections/profile.component').then((m) => m.ProfileComponent)
+      },
+      {
+        path: 'communities',
+        loadComponent: () => import('./dashboard/sections/my-communities.component').then((m) => m.MyCommunitiesComponent)
+      },
+      {
+        path: 'focus-room',
+        loadComponent: () => import('./dashboard/sections/focus-room.component').then((m) => m.FocusRoomComponent)
+      }
+    ]
   },
   {
     path: 'dashboard/admin',
     canActivate: [privateGuard, roleGuard([UserResDto.RoleEnum.Admin])],
-    loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent)
+    loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'feed'
+      },
+      {
+        path: 'feed',
+        loadComponent: () => import('./dashboard/sections/feed.component').then((m) => m.FeedComponent)
+      },
+      {
+        path: 'profile',
+        loadComponent: () => import('./dashboard/sections/profile.component').then((m) => m.ProfileComponent)
+      },
+      {
+        path: 'communities',
+        loadComponent: () => import('./dashboard/sections/my-communities.component').then((m) => m.MyCommunitiesComponent)
+      },
+      {
+        path: 'focus-room',
+        loadComponent: () => import('./dashboard/sections/focus-room.component').then((m) => m.FocusRoomComponent)
+      }
+    ]
   },
   {
     path: 'dashboard/client',
     canActivate: [privateGuard, roleGuard([UserResDto.RoleEnum.Client])],
-    loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent)
+    loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'feed'
+      },
+      {
+        path: 'feed',
+        loadComponent: () => import('./dashboard/sections/feed.component').then((m) => m.FeedComponent)
+      },
+      {
+        path: 'profile',
+        loadComponent: () => import('./dashboard/sections/profile.component').then((m) => m.ProfileComponent)
+      },
+      {
+        path: 'communities',
+        loadComponent: () => import('./dashboard/sections/my-communities.component').then((m) => m.MyCommunitiesComponent)
+      },
+      {
+        path: 'focus-room',
+        loadComponent: () => import('./dashboard/sections/focus-room.component').then((m) => m.FocusRoomComponent)
+      }
+    ]
   },
   {
     path: '**',
