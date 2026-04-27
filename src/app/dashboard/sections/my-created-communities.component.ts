@@ -1,10 +1,10 @@
-import { Component, inject, effect, signal } from '@angular/core';
+import { Component, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CommunityService } from '../../services/community.service';
 import { CommunityResDto } from '../../api-generated/model/communityResDto';
 
 @Component({
-  selector: 'app-my-communities',
+  selector: 'app-my-created-communities',
   standalone: true,
   imports: [CommonModule],
   template: `
@@ -21,20 +21,30 @@ import { CommunityResDto } from '../../api-generated/model/communityResDto';
               type="text"
               aria-label="Search communities"
               class="w-full pl-12 pr-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              placeholder="Search your communities..."
+              placeholder="Search your created communities..."
             />
           </div>
         </div>
+
+        <!-- Create New Community Button -->
+        <button
+          class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 font-semibold text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          New Community
+        </button>
       </div>
 
       <!-- Communities Grid -->
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div class="border-b border-slate-200 px-6 py-4 bg-slate-50">
-          <h2 class="text-xl font-bold text-slate-900">My Communities</h2>
+          <h2 class="text-xl font-bold text-slate-900">My Created Communities</h2>
         </div>
 
         <!-- Loading State -->
-        @if (communityService.myJoinedCommunitiesLoading()) {
+        @if (communityService.myCreatedCommunitiesLoading()) {
           <div class="px-6 py-10 flex justify-center">
             <div class="flex flex-col items-center gap-4">
               <div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
@@ -44,20 +54,20 @@ import { CommunityResDto } from '../../api-generated/model/communityResDto';
         }
 
         <!-- Empty State -->
-        @if (!communityService.myJoinedCommunitiesLoading() && communityService.isMyJoinedCommunitiesEmpty()) {
+        @if (!communityService.myCreatedCommunitiesLoading() && communityService.isMyCreatedCommunitiesEmpty()) {
           <div class="px-6 py-10 text-center text-slate-500">
             <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 12H9m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            <p class="text-lg font-medium text-slate-700">No communities yet</p>
-            <p class="mt-2">Join a community to see it here</p>
+            <p class="text-lg font-medium text-slate-700">No communities created yet</p>
+            <p class="mt-2">Create your first community to get started</p>
           </div>
         }
 
         <!-- Communities List -->
-        @if (!communityService.myJoinedCommunitiesLoading() && !communityService.isMyJoinedCommunitiesEmpty()) {
+        @if (!communityService.myCreatedCommunitiesLoading() && !communityService.isMyCreatedCommunitiesEmpty()) {
           <div class="divide-y divide-slate-200">
-            @for (community of communityService.myJoinedCommunities(); track community.id) {
+            @for (community of communityService.myCreatedCommunities(); track community.id) {
               <div class="px-6 py-4 hover:bg-slate-50 transition-colors cursor-pointer">
                 <div class="flex items-start gap-4">
                   <!-- Community Avatar -->
@@ -76,10 +86,15 @@ import { CommunityResDto } from '../../api-generated/model/communityResDto';
                     </div>
                   </div>
 
-                  <!-- Action Button -->
-                  <button class="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium transition-colors flex-shrink-0 whitespace-nowrap">
-                    View
-                  </button>
+                  <!-- Action Buttons -->
+                  <div class="flex gap-2 flex-shrink-0">
+                    <button class="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium transition-colors whitespace-nowrap">
+                      Manage
+                    </button>
+                    <button class="px-4 py-2 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100 font-medium transition-colors whitespace-nowrap">
+                      Edit
+                    </button>
+                  </div>
                 </div>
               </div>
             }
@@ -87,10 +102,10 @@ import { CommunityResDto } from '../../api-generated/model/communityResDto';
         }
 
         <!-- Error State -->
-        @if (communityService.myJoinedCommunitiesError()) {
+        @if (communityService.myCreatedCommunitiesError()) {
           <div class="px-6 py-10 text-center text-red-600">
             <p class="text-lg font-medium">Failed to load communities</p>
-            <p class="mt-2 text-sm">{{ communityService.myJoinedCommunitiesError() }}</p>
+            <p class="mt-2 text-sm">{{ communityService.myCreatedCommunitiesError() }}</p>
             <button 
               (click)="retryLoad()"
               class="mt-4 px-4 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-medium transition-colors"
@@ -103,19 +118,19 @@ import { CommunityResDto } from '../../api-generated/model/communityResDto';
     </div>
   `
 })
-export class MyCommunitiesComponent {
+export class MyCreatedCommunitiesComponent {
   readonly communityService = inject(CommunityService);
 
   constructor() {
-    console.log('[MyCommunitiesComponent] Section component initialized');
+    console.log('[MyCreatedCommunitiesComponent] Section component initialized');
     effect(() => {
-      console.log('[MyCommunitiesComponent] Communities loaded:', this.communityService.myJoinedCommunities().length);
+      console.log('[MyCreatedCommunitiesComponent] Created communities loaded:', this.communityService.myCreatedCommunities().length);
     });
   }
 
   ngOnInit() {
-    console.log('[MyCommunitiesComponent] Loading joined communities...');
-    this.communityService.loadMyJoinedCommunities();
+    console.log('[MyCreatedCommunitiesComponent] Loading created communities...');
+    this.communityService.loadMyCreatedCommunities();
   }
 
   getInitials(name: string): string {
@@ -127,7 +142,8 @@ export class MyCommunitiesComponent {
   }
 
   retryLoad(): void {
-    console.log('[MyCommunitiesComponent] Retrying load...');
-    this.communityService.loadMyJoinedCommunities();
+    console.log('[MyCreatedCommunitiesComponent] Retrying load...');
+    this.communityService.loadMyCreatedCommunities();
   }
 }
+

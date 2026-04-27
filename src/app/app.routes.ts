@@ -46,6 +46,10 @@ export const routes: Routes = [
         loadComponent: () => import('./dashboard/sections/my-communities.component').then((m) => m.MyCommunitiesComponent)
       },
       {
+        path: 'my-created',
+        loadComponent: () => import('./dashboard/sections/my-created-communities.component').then((m) => m.MyCreatedCommunitiesComponent)
+      },
+      {
         path: 'focus-room',
         loadComponent: () => import('./dashboard/sections/focus-room.component').then((m) => m.FocusRoomComponent)
       }
@@ -74,6 +78,10 @@ export const routes: Routes = [
         loadComponent: () => import('./dashboard/sections/my-communities.component').then((m) => m.MyCommunitiesComponent)
       },
       {
+        path: 'my-created',
+        loadComponent: () => import('./dashboard/sections/my-created-communities.component').then((m) => m.MyCreatedCommunitiesComponent)
+      },
+      {
         path: 'focus-room',
         loadComponent: () => import('./dashboard/sections/focus-room.component').then((m) => m.FocusRoomComponent)
       }
@@ -97,18 +105,22 @@ export const routes: Routes = [
         path: 'profile',
         loadComponent: () => import('./dashboard/sections/profile.component').then((m) => m.ProfileComponent)
       },
-      {
-        path: 'communities',
-        loadComponent: () => import('./dashboard/sections/my-communities.component').then((m) => m.MyCommunitiesComponent)
-      },
-      {
-        path: 'focus-room',
-        loadComponent: () => import('./dashboard/sections/focus-room.component').then((m) => m.FocusRoomComponent)
-      }
-    ]
-  },
-  {
-    path: '**',
-    redirectTo: 'auth/login'
-  }
+       {
+         path: 'communities',
+         loadComponent: () => import('./dashboard/sections/my-communities.component').then((m) => m.MyCommunitiesComponent)
+       },
+       {
+         path: 'my-created',
+         loadComponent: () => import('./dashboard/sections/my-created-communities.component').then((m) => m.MyCreatedCommunitiesComponent)
+       },
+       {
+         path: 'focus-room',
+         loadComponent: () => import('./dashboard/sections/focus-room.component').then((m) => m.FocusRoomComponent)
+       }
+     ]
+   },
+   {
+     path: '**',
+     redirectTo: 'auth/login'
+   }
 ];

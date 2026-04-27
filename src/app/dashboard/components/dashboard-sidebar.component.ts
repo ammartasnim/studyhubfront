@@ -1,12 +1,10 @@
 import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MyCommunitiesComponent } from './my-communities.component';
-import { MyCreatedCommunitiesComponent } from './my-created-communities.component';
 
 @Component({
   selector: 'app-dashboard-sidebar',
   standalone: true,
-  imports: [CommonModule, MyCommunitiesComponent, MyCreatedCommunitiesComponent],
+  imports: [CommonModule],
   template: `
     <aside class="hidden lg:flex flex-col gap-6 sticky top-6 h-fit">
       <!-- Profile Card -->
@@ -61,6 +59,15 @@ import { MyCreatedCommunitiesComponent } from './my-created-communities.componen
           <span class="font-medium">My Communities</span>
         </button>
         <button
+          (click)="navigateTo('my-created')"
+          class="w-full flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-indigo-50 transition-colors border-b border-slate-200 last:border-0"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span class="font-medium">Create</span>
+        </button>
+        <button
           (click)="navigateTo('focus')"
           class="w-full flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-indigo-50 transition-colors border-b border-slate-200 last:border-0"
         >
@@ -95,12 +102,6 @@ import { MyCreatedCommunitiesComponent } from './my-created-communities.componen
           </button>
         </nav>
       </div>
-
-      <!-- My Communities Component -->
-      <app-my-communities></app-my-communities>
-
-      <!-- My Created Communities Component -->
-      <app-my-created-communities></app-my-created-communities>
 
       <!-- Settings & Support -->
       <nav class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
