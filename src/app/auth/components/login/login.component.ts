@@ -1,14 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
-import { AuthControllerService } from '../../../api-generated/api/authController.service';
-import { AuthResDto } from '../../../api-generated/model/authResDto';
+import { AuthFacadeService } from '../../../api/facades';
 import { UserContextService } from '../../../user-context.service';
-
-const AUTH_TOKEN_KEY = 'token';
 
 @Component({
   selector: 'app-login',
@@ -18,7 +14,7 @@ const AUTH_TOKEN_KEY = 'token';
 })
 export class LoginComponent {
   private readonly fb = inject(FormBuilder);
-  private readonly authApi = inject(AuthControllerService);
+  private readonly authFacade = inject(AuthFacadeService);
   private readonly router = inject(Router);
   private readonly userContext = inject(UserContextService);
 
@@ -53,37 +49,25 @@ export class LoginComponent {
     };
 
     console.log('[Login] Submitting login form for user:', payload.username);
-    this.authApi.login(payload).subscribe({
+    this.authFacade.login(payload).subscribe({
       next: (response) => this.handleAuthSuccess(response),
-      error: (err: HttpErrorResponse) => {
+      error: (err: any) => {
         this.isSubmitting.set(false);
         this.handleLoginError(err);
       }
     });
   }
 
-  private handleAuthSuccess(response: AuthResDto | Blob): void {
+  private handleAuthSuccess(response: any): void {
     console.log('[Login] Login successful, handling response');
-    if (response instanceof Blob) {
-      response
-        .text()
-        .then((rawText) => {
-          this.finalizeAuthSuccess(this.parseAuthResponse(rawText));
-        })
-        .catch(() => {
-          this.finalizeAuthSuccess({});
-        });
-      return;
-    }
-
     this.finalizeAuthSuccess(response);
   }
 
-  private async finalizeAuthSuccess(response: AuthResDto): Promise<void> {
-    const token = response.token?.trim();
+  private async finalizeAuthSuccess(response: any): Promise<void> {
+    const token = response?.token?.trim();
     if (!token) {
       console.error('[Login] No token in auth response');
-      localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem('token');
       this.userContext.clear();
       this.submitError.set('Login failed. Missing authentication token.');
       this.isSubmitting.set(false);
@@ -91,19 +75,19 @@ export class LoginComponent {
     }
 
     console.log('[Login] Token received, storing in localStorage');
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
+    localStorage.setItem('token', token);
     
     // Set user context with auth response data
-    if (response.userId !== undefined && response.username && response.role) {
+    if (response.user?.id !== undefined && response.user?.email && response.user?.role) {
       console.log('[Login] Setting initial user data:', {
-        id: response.userId,
-        username: response.username,
-        role: response.role
+        id: response.user.id,
+        email: response.user.email,
+        role: response.user.role
       });
       this.userContext.setUser({
-        id: response.userId,
-        username: response.username,
-        role: response.role
+        id: response.user.id,
+        email: response.user.email,
+        role: response.user.role
       } as any);
     }
     
@@ -117,33 +101,20 @@ export class LoginComponent {
     await this.router.navigateByUrl(targetRoute);
   }
 
-  private parseAuthResponse(rawText: string): AuthResDto {
-    try {
-      return JSON.parse(rawText) as AuthResDto;
-    } catch {
-      return {} as AuthResDto;
-    }
-  }
-
-  private handleLoginError(err: HttpErrorResponse): void {
+  private handleLoginError(err: any): void {
     console.error('[Login] Login error:', err);
-    if (err.error instanceof Blob) {
-      err.error
-        .text()
-        .then((rawText) => {
-          try {
-            const parsed = JSON.parse(rawText) as { message?: string };
-            this.submitError.set(parsed.message || 'Login failed. Please check your credentials and try again.');
-          } catch {
-            this.submitError.set('Login failed. Please check your credentials and try again.');
-          }
-        })
-        .catch(() => {
-          this.submitError.set('Login failed. Please check your credentials and try again.');
-        });
-      return;
+    
+    // Handle new error object format
+    if (err?.type === 'BACKEND_UNREACHABLE') {
+      this.submitError.set(
+        `Cannot connect to backend server. Make sure it's running on http://localhost:8081`
+      );
+    } else if (err?.message) {
+      this.submitError.set(err.message);
+    } else if (err instanceof Error) {
+      this.submitError.set(err.message || 'Login failed. Please try again.');
+    } else {
+      this.submitError.set('Login failed. Please check your credentials and try again.');
     }
-
-    this.submitError.set(err.error?.message || 'Login failed. Please check your credentials and try again.');
   }
 }

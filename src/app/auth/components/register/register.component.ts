@@ -1,15 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
-import { AuthControllerService } from '../../../api-generated/api/authController.service';
-import { AuthResDto } from '../../../api-generated/model/authResDto';
-import { RegisterReqDto } from '../../../api-generated/model/registerReqDto';
+import { AuthFacadeService } from '../../../api/facades';
 import { UserContextService } from '../../../user-context.service';
-
-const AUTH_TOKEN_KEY = 'token';
 
 @Component({
   selector: 'app-register',
@@ -19,7 +14,7 @@ const AUTH_TOKEN_KEY = 'token';
 })
 export class RegisterComponent {
   private readonly fb = inject(FormBuilder);
-  private readonly authApi = inject(AuthControllerService);
+  private readonly authFacade = inject(AuthFacadeService);
   private readonly router = inject(Router);
   private readonly userContext = inject(UserContextService);
 
@@ -32,10 +27,7 @@ export class RegisterComponent {
     firstName: ['', [Validators.required, Validators.minLength(2)]],
     lastName: ['', [Validators.required, Validators.minLength(2)]],
     email: ['', [Validators.required, Validators.email]],
-    username: ['', [Validators.required, Validators.minLength(3)]],
     password: ['', [Validators.required, Validators.minLength(6)]],
-    phone: [''],
-    pfp: [''],
     confirmPassword: ['', [Validators.required, Validators.minLength(6)]],
     acceptTerms: [false, [Validators.requiredTrue]]
   }, { validators: this.passwordMatchValidator() });
@@ -53,46 +45,32 @@ export class RegisterComponent {
     this.isSubmitting.set(true);
     const rawValue = this.form.getRawValue();
 
-    const payload: RegisterReqDto = {
+    const payload = {
       firstName: rawValue.firstName,
       lastName: rawValue.lastName,
       email: rawValue.email,
-      username: rawValue.username,
       password: rawValue.password,
-      phone: rawValue.phone || undefined,
-      pfp: rawValue.pfp || undefined
+      username: rawValue.email.split('@')[0]
     };
-    this.authApi.register(payload).subscribe({
+    this.authFacade.register(payload).subscribe({
       next: (response) => {
         this.handleAuthSuccess(response);
       },
-      error: (err: HttpErrorResponse) => {
+      error: (err: Error) => {
         this.isSubmitting.set(false);
         this.handleRegisterError(err);
       }
     });
   }
 
-  private handleAuthSuccess(response: AuthResDto | Blob): void {
-    if (response instanceof Blob) {
-      response
-        .text()
-        .then((rawText) => {
-          this.finalizeAuthSuccess(this.parseAuthResponse(rawText));
-        })
-        .catch(() => {
-          this.finalizeAuthSuccess({});
-        });
-      return;
-    }
-
+  private handleAuthSuccess(response: any): void {
     this.finalizeAuthSuccess(response);
   }
 
-  private async finalizeAuthSuccess(response: AuthResDto): Promise<void> {
-    const token = response.token?.trim();
+  private async finalizeAuthSuccess(response: any): Promise<void> {
+    const token = response?.token?.trim();
     if (!token) {
-      localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem('token');
       this.userContext.clear();
       this.submitError.set('Registration succeeded, but authentication token is missing. Please sign in.');
       this.isSubmitting.set(false);
@@ -100,14 +78,14 @@ export class RegisterComponent {
       return;
     }
 
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
+    localStorage.setItem('token', token);
     
     // Set user context with auth response data
-    if (response.userId !== undefined && response.username && response.role) {
+    if (response.user?.id !== undefined && response.user?.email && response.user?.role) {
       this.userContext.setUser({
-        id: response.userId,
-        username: response.username,
-        role: response.role
+        id: response.user.id,
+        email: response.user.email,
+        role: response.user.role
       } as any);
     }
     
@@ -119,45 +97,20 @@ export class RegisterComponent {
      await this.router.navigateByUrl(targetRoute);
    }
 
-  private handleRegisterError(err: HttpErrorResponse): void {
-    if (err.error instanceof Blob) {
-      err.error
-        .text()
-        .then((rawText) => {
-          try {
-            const parsed = JSON.parse(rawText) as { message?: string };
-            this.submitError.set(parsed.message || 'An error occurred during registration. Please try again.');
-          } catch {
-            this.submitError.set('An error occurred during registration. Please try again.');
-          }
-        })
-        .catch(() => {
-          this.submitError.set('An error occurred during registration. Please try again.');
-        });
-      return;
-    }
-
-    this.submitError.set(err.error?.message || 'An error occurred during registration. Please try again.');
+  private handleRegisterError(err: Error): void {
+    this.submitError.set(err.message || 'An error occurred during registration. Please try again.');
   }
 
-  private parseAuthResponse(rawText: string): AuthResDto {
-    try {
-      return JSON.parse(rawText) as AuthResDto;
-    } catch {
-      return {} as AuthResDto;
-    }
-  }
+   private passwordMatchValidator(): ValidatorFn {
+     return (control: AbstractControl): ValidationErrors | null => {
+       const password = control.get('password')?.value;
+       const confirmPassword = control.get('confirmPassword')?.value;
 
-  private passwordMatchValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const password = control.get('password')?.value;
-      const confirmPassword = control.get('confirmPassword')?.value;
+       if (!password || !confirmPassword) {
+         return null;
+       }
 
-      if (!password || !confirmPassword) {
-        return null;
-      }
-
-      return password === confirmPassword ? null : { passwordMismatch: true };
-    };
-  }
+       return password === confirmPassword ? null : { passwordMismatch: true };
+     };
+   }
 }
