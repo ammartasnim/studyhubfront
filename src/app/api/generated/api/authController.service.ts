@@ -83,6 +83,9 @@ export class AuthControllerService extends BaseService {
                 responseType_ = 'text';
             } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
                 responseType_ = 'json';
+            } else if (localVarHttpHeaderAcceptSelected === '*/*') {
+                // For wildcard Accept header, default to json for auth endpoints
+                responseType_ = 'json';
             } else {
                 responseType_ = 'blob';
             }
@@ -147,6 +150,9 @@ export class AuthControllerService extends BaseService {
             if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
                 responseType_ = 'text';
             } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else if (localVarHttpHeaderAcceptSelected === '*/*') {
+                // For wildcard Accept header, default to json for auth endpoints
                 responseType_ = 'json';
             } else {
                 responseType_ = 'blob';

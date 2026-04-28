@@ -41,8 +41,26 @@ export class AuthFacadeService {
     };
 
     return this.authController.login(loginReq).pipe(
-      tap(dto => this.storeToken(dto.token)),
-      map(dto => this.mapToUI(dto)),
+      tap(dto => {
+        console.log('[AuthFacade] Login response received:', {
+          responseType: typeof dto,
+          isBlob: dto instanceof Blob,
+          hasToken: !!dto?.token,
+          userId: dto?.userId,
+          username: dto?.username,
+          role: dto?.role,
+          rawResponse: dto
+        });
+        this.storeToken(dto?.token);
+      }),
+      map(dto => {
+        // Handle Blob responses that might contain JSON string
+        if (dto instanceof Blob) {
+          console.error('[AuthFacade] Received Blob response instead of JSON object');
+          throw new Error('Backend returned Blob instead of JSON - serialization issue');
+        }
+        return this.mapToUI(dto);
+      }),
       catchError(err => this.handleError(err, 'Login failed'))
     );
   }
@@ -66,7 +84,15 @@ export class AuthFacadeService {
     };
 
     return this.authController.register(registerReq).pipe(
-      tap(dto => this.storeToken(dto.token)),
+      tap(dto => {
+        console.log('[AuthFacade] Register response received:', {
+          hasToken: !!dto?.token,
+          userId: dto?.userId,
+          username: dto?.username,
+          role: dto?.role
+        });
+        this.storeToken(dto?.token);
+      }),
       map(dto => this.mapToUI(dto)),
       catchError(err => this.handleError(err, 'Registration failed'))
     );

@@ -64,14 +64,21 @@ export class LoginComponent {
   }
 
   private async finalizeAuthSuccess(response: any): Promise<void> {
-    const token = response?.token?.trim();
+    // Try to get token from response first, then fallback to localStorage
+    let token = response?.token?.trim();
+    
     if (!token) {
-      console.error('[Login] No token in auth response');
-      localStorage.removeItem('token');
-      this.userContext.clear();
-      this.submitError.set('Login failed. Missing authentication token.');
-      this.isSubmitting.set(false);
-      return;
+      // Fallback: check if token was stored by the auth facade
+      token = localStorage.getItem('token') || '';
+      if (!token) {
+        console.error('[Login] No token in auth response or localStorage');
+        localStorage.removeItem('token');
+        this.userContext.clear();
+        this.submitError.set('Login failed. Missing authentication token.');
+        this.isSubmitting.set(false);
+        return;
+      }
+      console.warn('[Login] Token not in response, using token from localStorage');
     }
 
     console.log('[Login] Token received, storing in localStorage');
