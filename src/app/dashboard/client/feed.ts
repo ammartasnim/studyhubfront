@@ -1,7 +1,7 @@
-import { Component, inject, output, ViewChild, signal } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
+import { CreatePostModalComponent } from './create-post';
+import { CreateCommunityModalComponent } from './create-community';
 import { CommonModule } from '@angular/common';
-import { CreatePostModalComponent } from './create-post-modal.component';
-import { CreateCommunityModalComponent } from './create-community-modal.component';
 
 @Component({
   selector: 'app-academic-feed',
@@ -75,8 +75,8 @@ import { CreateCommunityModalComponent } from './create-community-modal.componen
     </div>
   `
 })
-export class AcademicFeedComponent {
-  @ViewChild('createPostModal') createPostModal!: CreatePostModalComponent;
+export class FeedComponent {
+    @ViewChild('createPostModal') createPostModal!: CreatePostModalComponent;
   @ViewChild('createCommunityModal') createCommunityModal!: CreateCommunityModalComponent;
 
   openCreatePost(): void {

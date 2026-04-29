@@ -18,6 +18,15 @@ import { StatsSectionComponent } from './sections/stats-section.component';
     HowItWorksSectionComponent,
     CtaSectionComponent
   ],
-  templateUrl: './home.component.html'
+  template: `
+  <main class="min-h-dvh bg-[#e9ecf5] text-slate-900">
+  <app-public-navbar></app-public-navbar>
+  <app-hero-section></app-hero-section>
+  <app-features-section></app-features-section>
+  <app-stats-section></app-stats-section>
+  <app-how-it-works-section></app-how-it-works-section>
+  <app-cta-section></app-cta-section>
+</main>
+  `
 })
 export class HomeComponent {}

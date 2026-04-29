@@ -2,9 +2,10 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { AuthFacadeService } from '../../api/facades';
+import { UserContextService } from '../../user-context.service';
 
-import { AuthFacadeService } from '../../../api/facades';
-import { UserContextService } from '../../../user-context.service';
+
 
 @Component({
   selector: 'app-login',
@@ -72,25 +73,18 @@ export class LoginComponent {
       
       token = localStorage.getItem('token') || '';
       if (!token) {
-        console.error('[Login] No token in auth response or localStorage');
+      
         localStorage.removeItem('token');
         this.userContext.clear();
         this.submitError.set('Login failed. Missing authentication token.');
         this.isSubmitting.set(false);
         return;
       }
-      console.warn('[Login] Token not in response, using token from localStorage');
+     
     }
-
-    console.log('[Login] Token received, storing in localStorage');
     localStorage.setItem('token', token);
     
     if (response.user?.id !== undefined && response.user?.email && response.user?.role) {
-      console.log('[Login] Setting initial user data:', {
-        id: response.user.id,
-        email: response.user.email,
-        role: response.user.role
-      });
       this.userContext.setUser({
         id: response.user.id,
         email: response.user.email,
@@ -110,7 +104,6 @@ export class LoginComponent {
   private handleLoginError(err: any): void {
     console.error('[Login] Login error:', err);
     
-    // Handle new error object format
     if (err?.type === 'BACKEND_UNREACHABLE') {
       this.submitError.set(
         `Cannot connect to backend server. Make sure it's running on http://localhost:8081`

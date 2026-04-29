@@ -10,7 +10,6 @@ export class UserService {
    * Get current user profile
    */
   getMe(): Observable<UserUI> {
-    console.log('[UserService] getMe() called');
     return this.userFacade.getMe();
   }
 
@@ -25,14 +24,7 @@ export class UserService {
     page: number = 0,
     size: number = 10
   ): Observable<any> {
-    console.log('[UserService] getAllClients() called', {
-      firstName,
-      lastName,
-      email,
-      banned,
-      page,
-      size
-    });
+  
     return this.userFacade.getAll({
       page,
       size,
@@ -47,7 +39,6 @@ export class UserService {
    * Get client by ID (admin only)
    */
   getClientById(id: number): Observable<UserUI> {
-    console.log('[UserService] getClientById() called with id:', id);
     return this.userFacade.getById(id);
   }
 }

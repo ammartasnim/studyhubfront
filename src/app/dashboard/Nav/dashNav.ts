@@ -1,9 +1,9 @@
 import { Component, computed, inject } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 
-import { DashboardSidebarComponent } from './components/dashboard-sidebar.component';
-import { DashboardRightSidebarComponent } from './components/dashboard-right-sidebar.component';
-import { UserContextService } from '../user-context.service';
+import { DashboardSidebarComponent } from './dashboard-sidebar';
+import { DashboardRightSidebarComponent } from './promodoro_sidebar';
+import { UserContextService } from '../../user-context.service';
 import { CommonModule } from '@angular/common';
 
 const AUTH_TOKEN_KEY = 'token';
@@ -67,25 +67,26 @@ export class DashboardComponent {
   }
 
   handleLogout(): void {
-    console.log('[Dashboard] Logout triggered');
     localStorage.removeItem(AUTH_TOKEN_KEY);
     this.userContext.clear();
     this.router.navigateByUrl('/login');
   }
 
-  handleSidebarNavigation(section: string): void {
-    console.log('[Dashboard] Sidebar navigation to:', section);
-    const target =
-      section === 'dashboard'
-        ? '/dashboard/feed'
-        : section === 'communities'
-          ? '/dashboard/communities'
-          : section === 'tasks' || section === 'focus'
-            ? '/dashboard/focus-room'
-            : section === 'profile'
-              ? '/dashboard/profile'
-              : '/dashboard/feed';
+handleSidebarNavigation(section: string): void {
+  const routes: Record<string, string> = {
+    'dashboard':   '/dashboard/feed',
+    'feed':        '/dashboard/feed',
+    'communities': '/dashboard/communities',
+    'my-created':  '/dashboard/my-created',
+    'focus':       '/dashboard/focus-room',
+    'profile':     '/dashboard/profile',
+    'settings':    '/dashboard/settings',
+    'support':     '/dashboard/support',
+    'followed':    '/dashboard/followed',
+    'bookmarks':   '/dashboard/bookmarks',
+  };
 
-    this.router.navigateByUrl(target);
-  }
+  const target = routes[section] ?? '/dashboard/feed';
+  this.router.navigateByUrl(target);
+}
 }

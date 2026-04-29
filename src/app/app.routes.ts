@@ -3,6 +3,9 @@ import { Routes } from '@angular/router';
 import { privateGuard } from './guards/private.guard';
 import { publicGuard } from './guards/public.guard';
 import { roleGuard } from './guards/role.guard';
+import { LoginComponent } from './auth/login/login.component';
+import { RegisterComponent } from './auth/register/register.component';
+import { FocusTimerComponent } from './dashboard/client/focus-timer.component';
 
 export const routes: Routes = [
   {
@@ -14,18 +17,18 @@ export const routes: Routes = [
   {
     path: 'auth/login',
     canActivate: [publicGuard],
-    loadComponent: () => import('./auth/components/login/login.component').then((m) => m.LoginComponent)
+    component:LoginComponent
   },
   {
     path: 'auth/register',
     canActivate: [publicGuard],
-    loadComponent: () =>
-      import('./auth/components/register/register.component').then((m) => m.RegisterComponent)
+    component:RegisterComponent
+    
   },
   {
     path: 'dashboard',
     canActivate: [privateGuard],
-    loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent),
+    loadComponent: () => import('./dashboard/Nav/dashNav').then((m) => m.DashboardComponent),
     children: [
       {
         path: '',
@@ -34,30 +37,30 @@ export const routes: Routes = [
       },
       {
         path: 'feed',
-        loadComponent: () => import('./dashboard/sections/feed.component').then((m) => m.FeedComponent)
+        loadComponent: () => import('./dashboard/client/feed').then((m) => m.FeedComponent)
       },
       {
         path: 'profile',
-        loadComponent: () => import('./dashboard/sections/profile.component').then((m) => m.ProfileComponent)
+        loadComponent: () => import('./dashboard/client/profile').then((m) => m.ProfileComponent)
       },
       {
         path: 'communities',
-        loadComponent: () => import('./dashboard/sections/my-communities.component').then((m) => m.MyCommunitiesComponent)
+        loadComponent: () => import('./dashboard/client/my-communities').then((m) => m.MyCommunitiesComponent)
       },
-      {
-        path: 'my-created',
-        loadComponent: () => import('./dashboard/sections/my-created-communities.component').then((m) => m.MyCreatedCommunitiesComponent)
-      },
+        {
+          path: 'my-created',
+          loadComponent: () => import('./dashboard/client/my-created-communities').then((m) => m.MyCreatedCommunitiesComponent)
+        },
       {
         path: 'focus-room',
-        loadComponent: () => import('./dashboard/sections/focus-room.component').then((m) => m.FocusRoomComponent)
+        component:FocusTimerComponent
       }
     ]
   },
   {
     path: 'dashboard/admin',
     canActivate: [privateGuard, roleGuard(['Admin'])],
-    loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent),
+    loadComponent: () => import('./dashboard/Nav/dashNav').then((m) => m.DashboardComponent),
     children: [
       {
         path: '',
@@ -66,30 +69,30 @@ export const routes: Routes = [
       },
       {
         path: 'feed',
-        loadComponent: () => import('./dashboard/sections/feed.component').then((m) => m.FeedComponent)
+        loadComponent: () => import('./dashboard/client/feed').then((m) => m.FeedComponent)
       },
       {
         path: 'profile',
-        loadComponent: () => import('./dashboard/sections/profile.component').then((m) => m.ProfileComponent)
+        loadComponent: () => import('./dashboard/client/profile').then((m) => m.ProfileComponent)
       },
       {
         path: 'communities',
-        loadComponent: () => import('./dashboard/sections/my-communities.component').then((m) => m.MyCommunitiesComponent)
+        loadComponent: () => import('./dashboard/client/my-communities').then((m) => m.MyCommunitiesComponent)
       },
       {
         path: 'my-created',
-        loadComponent: () => import('./dashboard/sections/my-created-communities.component').then((m) => m.MyCreatedCommunitiesComponent)
+        loadComponent: () => import('./dashboard/client/my-created-communities').then((m) => m.MyCreatedCommunitiesComponent)
       },
       {
         path: 'focus-room',
-        loadComponent: () => import('./dashboard/sections/focus-room.component').then((m) => m.FocusRoomComponent)
+        component:FocusTimerComponent
       }
     ]
   },
   {
     path: 'dashboard/client',
     canActivate: [privateGuard, roleGuard(['Client'])],
-    loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent),
+    loadComponent: () => import('./dashboard/Nav/dashNav').then((m) => m.DashboardComponent),
     children: [
       {
         path: '',
@@ -98,23 +101,23 @@ export const routes: Routes = [
       },
       {
         path: 'feed',
-        loadComponent: () => import('./dashboard/sections/feed.component').then((m) => m.FeedComponent)
+        loadComponent: () => import('./dashboard/client/feed').then((m) => m.FeedComponent)
       },
       {
         path: 'profile',
-        loadComponent: () => import('./dashboard/sections/profile.component').then((m) => m.ProfileComponent)
+        loadComponent: () => import('./dashboard/client/profile').then((m) => m.ProfileComponent)
       },
        {
          path: 'communities',
-         loadComponent: () => import('./dashboard/sections/my-communities.component').then((m) => m.MyCommunitiesComponent)
+         loadComponent: () => import('./dashboard/client/my-communities').then((m) => m.MyCommunitiesComponent)
        },
        {
          path: 'my-created',
-         loadComponent: () => import('./dashboard/sections/my-created-communities.component').then((m) => m.MyCreatedCommunitiesComponent)
+         loadComponent: () => import('./dashboard/client/my-created-communities').then((m) => m.MyCreatedCommunitiesComponent)
        },
        {
          path: 'focus-room',
-         loadComponent: () => import('./dashboard/sections/focus-room.component').then((m) => m.FocusRoomComponent)
+         component:FocusTimerComponent
        }
      ]
    },

@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { UserContextService } from '../../user-context.service';
-import { BadgesDisplayComponent } from '../components/badges-display.component';
+import { BadgesDisplayComponent } from '../Nav/badges-display.';
 
 @Component({
   selector: 'app-profile',

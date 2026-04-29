@@ -138,7 +138,7 @@ export class DashboardSidebarComponent {
   readonly navigate = output<string>();
 
   constructor() {
-    console.log('[DashboardSidebarComponent] Constructor called - initializing component');
+    
   }
 
   xpPercentage = () => Math.min((this.xp() / 1000) * 100, 100);
@@ -156,7 +156,7 @@ export class DashboardSidebarComponent {
   }
 
   navigateTo(section: string): void {
-    console.log('[DashboardSidebarComponent] navigateTo called with section:', section);
+
     this.navigate.emit(section);
   }
 }

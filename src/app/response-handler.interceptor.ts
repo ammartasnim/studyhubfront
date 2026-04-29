@@ -19,14 +19,7 @@ export const responseHandlerInterceptor: HttpInterceptorFn = (req, next) => {
         const contentType = event.headers.get('content-type') || '';
         const isJsonResponse = contentType.includes('application/json');
 
-        // Log response details for debugging
-        console.log(`[ResponseHandler] ${req.method} ${req.url}`, {
-          status: event.status,
-          contentType,
-          isJson: isJsonResponse,
-          bodyType: event.body?.constructor?.name,
-          hasBody: !!event.body
-        });
+       
 
         // If response is not JSON, log warning but allow it through
         // (The facade services will handle any parsing issues)
