@@ -54,6 +54,10 @@ export const routes: Routes = [
       {
         path: 'focus-room',
         component:FocusTimerComponent
+      },
+      {
+        path: 'settings',
+        loadComponent: () => import('./dashboard/client/settings').then((m) => m.SettingsComponent)
       }
     ]
   },
@@ -86,6 +90,10 @@ export const routes: Routes = [
       {
         path: 'focus-room',
         component:FocusTimerComponent
+      },
+      {
+        path: 'settings',
+        loadComponent: () => import('./dashboard/client/settings').then((m) => m.SettingsComponent)
       }
     ]
   },
@@ -118,6 +126,10 @@ export const routes: Routes = [
        {
          path: 'focus-room',
          component:FocusTimerComponent
+       },
+       {
+         path: 'settings',
+         loadComponent: () => import('./dashboard/client/settings').then((m) => m.SettingsComponent)
        }
      ]
    },

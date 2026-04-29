@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, tap } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 
 import { UserControllerService } from '../generated/api/userController.service';
@@ -17,11 +17,19 @@ const JSON_ACCEPT = { httpHeaderAccept: 'application/json' } as any;
 })
 export class UserFacadeService {
   private readonly userController = inject(UserControllerService);
+  private readonly TOKEN_KEY = 'token';
 
 
   editMe(dto: UserReqDto): Observable<UserUI> {
     return this.userController.editUser(dto, 'body', false, JSON_ACCEPT).pipe(
-        map(dto => this.mapToUI(dto)),
+        map((response: any) => {
+          const userData = response?.user ?? response;
+          const token = response?.token;
+          if (token) {
+            localStorage.setItem(this.TOKEN_KEY, token);
+          }
+          return this.mapToUI(userData);
+        }),
         catchError(err => this.handleError(err, 'Failed to edit current user profile'))
     );
 }
