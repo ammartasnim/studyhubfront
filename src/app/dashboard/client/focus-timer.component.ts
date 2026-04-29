@@ -227,36 +227,36 @@ const PRESETS = [
   `
 })
 export class FocusTimerComponent implements OnInit, OnDestroy {
+  // Services
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly focusSessionFacade = inject(FocusSessionFacadeService);
+  private readonly userContext = inject(UserContextService);
+  private readonly paginationService = inject(PaginationService);
+
+  // State Signals
+  readonly isLoadingHistory = signal(false);
+  // We alias the service signal to match your template's call: paginationConfig()
+  readonly paginationConfig = this.paginationService.paginationConfig;
+
+  // Timer State
   phase: Phase = 'setup';
   sessionTitle = '';
   selectedSeconds = 25 * 60;
   remainingSeconds = 0;
   totalSeconds = 0;
-  sessionHistory: SessionHistoryItem[] = [];
+  sessionHistory: any[] = [];
   savedMessage = '';
 
+  // Custom Mode State
   customMode = false;
-  customHours: number | null = null;
+  customHours: number | null = 0;
   customMinutes: number | null = 25;
 
   readonly presets = PRESETS;
   readonly circumference = 2 * Math.PI * 100;
-
-  readonly isLoadingHistory = signal(false);
-  readonly paginationConfig = signal({
-    currentPage: 0,
-    pageSize: 10,
-    totalPages: 0,
-    totalElements: 0,
-    hasNext: false,
-    hasPrevious: false,
-  });
-
   private timerSubscription: Subscription | null = null;
-  private readonly cdr = inject(ChangeDetectorRef);
-  private readonly focusSessionFacade = inject(FocusSessionFacadeService);
-  private readonly userContext = inject(UserContextService);
-  private readonly paginationService = inject(PaginationService);
+
+  // --- Computed Getters ---
 
   get phaseLabel(): string {
     return { setup: 'Ready', running: 'Active', paused: 'Paused', done: 'Done' }[this.phase];
@@ -281,8 +281,10 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
     if (!this.customMode) return this.selectedSeconds;
     const h = Number(this.customHours) || 0;
     const m = Number(this.customMinutes) || 0;
-    return h * 3600 + m * 60;
+    return (h * 3600) + (m * 60);
   }
+
+  // --- Lifecycle ---
 
   ngOnInit(): void {
     this.loadSessionHistory();
@@ -292,6 +294,50 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
     this.timerSubscription?.unsubscribe();
   }
 
+  // --- History & Pagination ---
+
+  loadSessionHistory(): void {
+    const userId = this.userContext.user()?.id;
+    if (!userId) return;
+
+    this.isLoadingHistory.set(true);
+    const { page, size } = this.paginationService.getParams();
+
+    this.focusSessionFacade.getMySessions(page, size).subscribe({
+      next: (res) => {
+        this.sessionHistory = res.items;
+        
+        // Sync the service so paginationConfig() updates automatically
+        this.paginationService.updateFromResponse({
+          totalPages: res.totalPages,
+          totalElements: res.totalItems,
+          last: page >= res.totalPages - 1,
+          first: page === 0
+        });
+
+        this.isLoadingHistory.set(false);
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('History load error:', err);
+        this.isLoadingHistory.set(false);
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  onPageChange(page: number): void {
+    this.paginationService.setCurrentPage(page);
+    this.loadSessionHistory();
+  }
+
+  onPageSizeChange(size: number): void {
+    this.paginationService.setPageSize(size);
+    this.loadSessionHistory();
+  }
+
+  // --- Timer Actions ---
+
   selectPreset(seconds: number): void {
     this.customMode = false;
     this.selectedSeconds = seconds;
@@ -299,10 +345,6 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
 
   toggleCustom(): void {
     this.customMode = !this.customMode;
-    if (this.customMode) {
-      this.customHours = 0;
-      this.customMinutes = 25;
-    }
   }
 
   formatSeconds(s: number): string {
@@ -313,6 +355,7 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
   }
 
   startSession(): void {
+    if (this.effectiveSeconds < 60) return;
     this.totalSeconds = this.effectiveSeconds;
     this.remainingSeconds = this.totalSeconds;
     this.phase = 'running';
@@ -338,63 +381,16 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
     this.timerSubscription?.unsubscribe();
     this.phase = 'setup';
     this.remainingSeconds = 0;
-  }
-
-  private loadSessionHistory(): void {
-    const userId = this.userContext.user()?.id;
-    if (!userId) {
-      console.warn('No userId available for loading session history');
-      return;
-    }
-
-    this.isLoadingHistory.set(true);
-
-    // Using facade service - cleaner API
-    this.focusSessionFacade.getByUser(userId).subscribe({
-      next: (sessions) => {
-        this.sessionHistory = sessions.map(session => ({
-          title: session.title ?? '',
-          timer: session.timer ?? '00:00:00' // Use timer field
-        }));
-
-        // Synthesise pagination config
-        this.paginationConfig.set({
-          currentPage: 0,
-          pageSize: sessions.length,
-          totalPages: 1,
-          totalElements: sessions.length,
-          hasNext: false,
-          hasPrevious: false,
-        });
-
-        this.isLoadingHistory.set(false);
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('Failed to load session history:', err);
-        this.sessionHistory = [];
-        this.isLoadingHistory.set(false);
-        this.cdr.detectChanges();
-      }
-    });
-  }
-
-  onPageChange(page: number): void {
-    this.paginationService.setCurrentPage(page);
-    this.loadSessionHistory();
-  }
-
-  onPageSizeChange(size: number): void {
-    this.paginationService.setPageSize(size);
-    this.loadSessionHistory();
+    this.sessionTitle = ''; // Optional: clear title for new session
   }
 
   private tick(): void {
     this.timerSubscription?.unsubscribe();
     this.timerSubscription = interval(1000).subscribe(() => {
-      this.remainingSeconds--;
-      this.cdr.detectChanges();
-      if (this.remainingSeconds <= 0) {
+      if (this.remainingSeconds > 0) {
+        this.remainingSeconds--;
+        this.cdr.detectChanges();
+      } else {
         this.timerSubscription?.unsubscribe();
         this.save(this.totalSeconds);
       }
@@ -402,33 +398,30 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
   }
 
   private save(elapsedSeconds: number): void {
-    const timer = new Date(elapsedSeconds * 1000).toISOString().substring(11, 19);
+    const displayTimer = new Date(elapsedSeconds * 1000).toISOString().substring(11, 19);
     const userId = this.userContext.user()?.id;
 
     const sessionData = {
-      duration: elapsedSeconds / 60, // Convert to minutes
+      duration: Math.max(1, Math.floor(elapsedSeconds / 60)),
       title: this.sessionTitle || 'Focus Session'
     };
 
-    this.savedMessage = `${this.sessionTitle} · ${timer}`;
+    this.savedMessage = `${sessionData.title} · ${displayTimer}`;
     this.phase = 'done';
 
     if (userId) {
-      // Using facade service
       this.focusSessionFacade.create(sessionData).subscribe({
         next: () => this.loadSessionHistory(),
-        error: () => this.addToLocalHistory(sessionData, timer),
+        error: () => this.addToLocalHistory(sessionData, displayTimer)
       });
     } else {
-      this.addToLocalHistory(sessionData, timer);
+      this.addToLocalHistory(sessionData, displayTimer);
     }
   }
 
   private addToLocalHistory(sessionData: any, timer: string): void {
-    this.sessionHistory = [
-      { title: sessionData.title, timer: timer },
-      ...this.sessionHistory,
-    ];
+    // Local fallback if user is guest or API fails
+    this.sessionHistory = [{ title: sessionData.title, timer: timer }, ...this.sessionHistory];
     this.cdr.detectChanges();
   }
 }
