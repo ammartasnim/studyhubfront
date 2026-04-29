@@ -6,5 +6,8 @@ export interface FocusSessionUI {
   userId: number;
   title: string;
   timer: string; // formatted time like "00:25:00"
+  status: 'ACTIVE' | 'PAUSED' | 'COMPLETED'; // Match your Java Enum
+  remainingSeconds: number; // Changed from 'integer' to 'number'
+  lastUpdated?: string; // ISO string from LocalDateTime
   displayDuration?: string; // same as timer
 }

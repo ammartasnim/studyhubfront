@@ -17,17 +17,18 @@ export class FocusSessionFacadeService {
   /**
    * Start a new focus session
    */
-  start(data: { title: string; timer: string }): Observable<FocusSessionUI> {
+  start(data: { title: string; timer: string; remainingSeconds: number }): Observable<FocusSessionUI> {
     if (!data?.title?.trim()) {
       return throwError(() => new Error('Title is required'));
     }
-    // if (!data?.duration || data.duration <= 0) {
-    //   return throwError(() => new Error('Duration must be greater than 0'));
-    // }
+    if (!data?.remainingSeconds || data.remainingSeconds <= 0) {
+      return throwError(() => new Error('Remaining seconds must be greater than 0'));
+    }
 
     const req: FocusSessionReqDto = {
       title: data.title.trim(),
-      timer: data.timer
+      timer: data.timer,
+      remainingSeconds: data.remainingSeconds
     };
 
     return this.focusSessionController.start(req).pipe(
@@ -185,6 +186,9 @@ export class FocusSessionFacadeService {
       userId: dto.userId ?? 0,
       title: dto.title ?? 'Focus Session',
       timer: dto.timer ?? '00:00:00',
+      status: (dto.status as 'ACTIVE' | 'PAUSED' | 'COMPLETED') ?? 'ACTIVE',
+      remainingSeconds: dto.remainingSeconds ?? 0,
+      lastUpdated: dto.lastUpdated, // Optional field
       displayDuration: dto.timer ?? '00:00:00'
     };
   }

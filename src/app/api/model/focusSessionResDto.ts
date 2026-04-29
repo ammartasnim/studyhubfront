@@ -13,6 +13,9 @@ export interface FocusSessionResDto {
     id?: number;
     title?: string;
     timer?: string;
+    remainingSeconds?: number;
+    status?: string;
+    lastUpdated?: string;
     userId?: number;
 }
 

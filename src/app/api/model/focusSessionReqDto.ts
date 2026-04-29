@@ -12,6 +12,7 @@
 export interface FocusSessionReqDto { 
     title: string;
     timer?: string;
+    remainingSeconds: number;
     userId?: number;
 }
 
