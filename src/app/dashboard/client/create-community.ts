@@ -171,10 +171,15 @@ export class CreateCommunityModalComponent {
       this.communityCreated.emit();
       this.close();
     } catch (error: any) {
-      console.error('[CreateCommunityModal] Error creating community:', error);
-      this.submitError.set(
-        error.message || 'Failed to create community. Please try again.'
-      );
+      console.error('[CreateCommunityModal] Error creating community:', error.error);
+      const errorMessage = 
+    error.error?.message ||          
+    error.error ||                  
+    error.message ||                
+    'An unexpected error occurred';  
+
+ 
+  this.submitError.set(errorMessage);
     } finally {
       this.isSubmitting.set(false);
     }

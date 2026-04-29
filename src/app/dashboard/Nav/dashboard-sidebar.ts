@@ -1,5 +1,8 @@
-import { Component, input, output } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Token } from '@angular/compiler';
+import { UserContextService } from '../../user-context.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-dashboard-sidebar',
@@ -79,7 +82,7 @@ import { CommonModule } from '@angular/common';
       </nav>
 
       <!-- Quick Access -->
-      <div>
+      <!-- <div>
         <p class="text-xs font-semibold uppercase text-slate-500 px-4 mb-2">Quick Access</p>
         <nav class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
           <button
@@ -101,7 +104,7 @@ import { CommonModule } from '@angular/common';
             <span class="font-medium">Bookmarked Resources</span>
           </button>
         </nav>
-      </div>
+      </div> -->
 
       <!-- Settings & Support -->
       <nav class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
@@ -116,13 +119,14 @@ import { CommonModule } from '@angular/common';
           <span class="font-medium">Settings</span>
         </button>
         <button
-          (click)="navigateTo('support')"
+          (click)="handleLogout()"
           class="w-full flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-indigo-50 transition-colors border-b border-slate-200 last:border-0"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5-4a2 2 0 11-4 0 2 2 0 014 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
           </svg>
-          <span class="font-medium">Support</span>
+          <span class="font-medium">Logout</span>
+
         </button>
       </nav>
     </aside>
@@ -136,6 +140,8 @@ export class DashboardSidebarComponent {
   readonly pfp = input<string | undefined>(undefined);
 
   readonly navigate = output<string>();
+  userContext: UserContextService=inject(UserContextService);
+  router=inject(Router);
 
   constructor() {
     
@@ -158,5 +164,10 @@ export class DashboardSidebarComponent {
   navigateTo(section: string): void {
 
     this.navigate.emit(section);
+  }
+    handleLogout(): void {
+    localStorage.removeItem('token');
+    this.userContext.clear();
+    this.router.navigateByUrl('/login');
   }
 }

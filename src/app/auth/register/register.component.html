@@ -50,7 +50,17 @@
        @if ((form.controls.email.touched || submitted()) && form.controls.email.invalid) {
          <p class="text-xs text-rose-700">Please enter a valid email address.</p>
        }
-
+        <label class="mt-1 text-sm font-semibold text-slate-800" for="userName">User Name</label>
+          <div class="relative">
+        <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 12.3C14.18 12.3 15.95 10.53 15.95 8.35C15.95 6.17 14.18 4.4 12 4.4C9.82 4.4 8.05 6.17 8.05 8.35C8.05 10.53 9.82 12.3 12 12.3Z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M4.9 18.7C5.62 16.17 8.14 14.5 11.99 14.5C15.84 14.5 18.36 16.17 19.08 18.7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <input id="userName" type="text" formControlName="userName" placeholder="Student" class="w-full rounded-xl border border-slate-300 bg-slate-100 px-11 py-3 text-base text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-3 focus:ring-indigo-100" />
+      </div>
+      @if ((form.controls.userName.touched || submitted()) && form.controls.userName.invalid) {
+        <p class="text-xs text-rose-700">Username is required (min 3 chars).</p>
+      }
        <label class="mt-1 text-sm font-semibold text-slate-800" for="password">Password</label>
       <div class="relative">
         <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">

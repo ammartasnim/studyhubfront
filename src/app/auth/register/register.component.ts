@@ -28,10 +28,13 @@ export class RegisterComponent {
   readonly form = this.fb.nonNullable.group({
     firstName: ['', [Validators.required, Validators.minLength(2)]],
     lastName: ['', [Validators.required, Validators.minLength(2)]],
+    userName: ['', [Validators.required, Validators.minLength(3)]],
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
     confirmPassword: ['', [Validators.required, Validators.minLength(6)]],
-    acceptTerms: [false, [Validators.requiredTrue]]
+    phonenumber: [''],
+    acceptTerms: [false, [Validators.requiredTrue]],
+    pfp: [''],
   }, { validators: this.passwordMatchValidator() });
 
 
@@ -52,15 +55,24 @@ export class RegisterComponent {
       lastName: rawValue.lastName,
       email: rawValue.email,
       password: rawValue.password,
-      username: rawValue.email.split('@')[0]
+      username: rawValue.userName,
+      pfp: rawValue.pfp || undefined,
+      phoneNumber: rawValue.phonenumber || undefined
     };
+    console.log('Registering user with payload:', payload);
     this.authFacade.register(payload).subscribe({
       next: (response) => {
         this.handleAuthSuccess(response);
       },
-      error: (err: Error) => {
+      error: (err) => {
+        console.error('Registration error:', err.error?.message || err.message || err);
         this.isSubmitting.set(false);
-        this.handleRegisterError(err);
+          const errorMessage =    err.error?.message ||          
+    err.error ||                  
+    err.message ||                
+    'An unexpected error occurred';  
+
+        this.submitError.set(errorMessage || 'An error occurred during registration. Please try again.');
       }
     });
   }
@@ -99,9 +111,7 @@ export class RegisterComponent {
      await this.router.navigateByUrl(targetRoute);
    }
 
-  private handleRegisterError(err: Error): void {
-    this.submitError.set(err.message || 'An error occurred during registration. Please try again.');
-  }
+
 
    private passwordMatchValidator(): ValidatorFn {
      return (control: AbstractControl): ValidationErrors | null => {
