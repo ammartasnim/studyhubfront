@@ -1,318 +1,280 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { UserContextService } from '../../user-context.service';
 import { BadgesDisplayComponent } from '../Nav/badges-display.';
+import { UserFacadeService } from '../../api/facades/user.facade';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
   imports: [CommonModule, BadgesDisplayComponent],
-  styles: [`
-    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap');
-
-    .profile-card {
-      font-family: 'DM Sans', sans-serif;
-      position: relative;
-      border-radius: 2rem;
-      overflow: hidden;
-      background: #fff;
-      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07), 0 0 0 1px rgb(99 102 241 / 0.08);
-    }
-
-    /* ── Banner ── */
-    .banner {
-      position: relative;
-      height: 11rem;
-      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #c026d3 100%);
-      overflow: hidden;
-    }
-    .banner::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(ellipse 80% 60% at 20% 50%, rgb(255 255 255 / 0.12) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 80% at 80% 20%, rgb(255 255 255 / 0.08) 0%, transparent 55%);
-    }
-    /* Shimmer sweep */
-    .banner::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.15) 50%, transparent 60%);
-      background-size: 200% 100%;
-      animation: shimmer 3.5s ease-in-out infinite;
-    }
-    @keyframes shimmer {
-      0%   { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-
-    /* Floating orbs */
-    .orb {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(40px);
-      opacity: 0.35;
-      animation: drift 8s ease-in-out infinite alternate;
-    }
-    .orb-1 { width: 160px; height: 160px; background: #818cf8; top: -40px; left: -30px; animation-delay: 0s; }
-    .orb-2 { width: 120px; height: 120px; background: #e879f9; top: 10px; right: 40px; animation-delay: -3s; }
-    .orb-3 { width: 80px; height: 80px; background: #a78bfa; bottom: -10px; left: 45%; animation-delay: -5s; }
-    @keyframes drift {
-      from { transform: translate(0, 0) scale(1); }
-      to   { transform: translate(12px, 8px) scale(1.08); }
-    }
-
-    /* ── Avatar ── */
-    .avatar-ring {
-      position: relative;
-      width: 7.5rem;
-      height: 7.5rem;
-      flex-shrink: 0;
-    }
-    .avatar-ring::before {
-      content: '';
-      position: absolute;
-      inset: -3px;
-      border-radius: 1.6rem;
-      background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
-      z-index: 0;
-    }
-    .avatar-ring::after {
-      content: '';
-      position: absolute;
-      inset: -3px;
-      border-radius: 1.6rem;
-      background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
-      filter: blur(12px);
-      opacity: 0.5;
-      z-index: -1;
-      animation: pulse-glow 3s ease-in-out infinite;
-    }
-    @keyframes pulse-glow {
-      0%, 100% { opacity: 0.4; filter: blur(12px); }
-      50%       { opacity: 0.7; filter: blur(18px); }
-    }
-    .avatar-inner {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      height: 100%;
-      border-radius: 1.4rem;
-      overflow: hidden;
-      background: #e0e7ff;
-    }
-
-    /* ── Monogram fallback ── */
-    .monogram {
-      display: grid;
-      place-items: center;
-      height: 100%;
-      background: linear-gradient(135deg, #6366f1, #a855f7);
-    }
-    .monogram span {
-      font-family: 'Syne', sans-serif;
-      font-size: 2.25rem;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: -0.02em;
-    }
-
-    /* ── Body ── */
-    .body {
-      padding: 0 2rem 2rem;
-    }
-    .meta-row {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      margin-top: -2.75rem;
-    }
-    @media (min-width: 768px) {
-      .meta-row { flex-direction: row; align-items: flex-end; justify-content: space-between; }
-    }
-
-    .eyebrow {
-      font-size: 0.65rem;
-      font-weight: 600;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      background: linear-gradient(90deg, #6366f1, #a855f7);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin: 0 0 0.35rem;
-    }
-
-    .display-name {
-      font-family: 'Syne', sans-serif;
-      font-size: 2rem;
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      line-height: 1.1;
-      color: #0f172a;
-      margin: 0 0 0.75rem;
-    }
-
-    /* ── Chips ── */
-    .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      padding: 0.28rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.78rem;
-      font-weight: 500;
-      transition: transform 0.15s, box-shadow 0.15s;
-    }
-    .chip:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgb(0 0 0 / 0.08); }
-
-    .chip-username {
-      background: #f1f5f9;
-      color: #475569;
-      border: 1px solid #e2e8f0;
-    }
-    .chip-role {
-      background: linear-gradient(135deg, #ede9fe, #fdf4ff);
-      color: #7c3aed;
-      border: 1px solid #ddd6fe;
-    }
-    .chip-level {
-      background: linear-gradient(135deg, #eef2ff, #fdf4ff);
-      color: #4f46e5;
-      border: 1px solid #c7d2fe;
-      font-weight: 600;
-    }
-
-    /* ── Divider line ── */
-    .gradient-rule {
-      height: 1px;
-      background: linear-gradient(90deg, #e0e7ff, #f3e8ff, transparent);
-      margin: 1.4rem 0 1.2rem;
-    }
-
-    /* ── XP bar ── */
-    .xp-label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.72rem;
-      font-weight: 500;
-      color: #94a3b8;
-      margin-bottom: 0.4rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-    .xp-track {
-      height: 6px;
-      border-radius: 999px;
-      background: #f1f5f9;
-      overflow: hidden;
-    }
-    .xp-fill {
-      height: 100%;
-      border-radius: 999px;
-      background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
-      background-size: 200% 100%;
-      animation: flow 2.5s linear infinite;
-    }
-    @keyframes flow {
-      0%   { background-position: 100% 0; }
-      100% { background-position: -100% 0; }
-    }
-  `],
   template: `
-    <article class="profile-card">
+    <article class="relative rounded-3xl overflow-hidden bg-white shadow-sm ring-1 ring-indigo-500/10">
 
       <!-- Banner -->
-      <div class="banner">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="orb orb-3"></div>
+      <div
+        class="relative h-44 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-500 overflow-hidden cursor-pointer group"
+        (click)="openModal()"
+      >
+        <div class="absolute -top-10 -left-8 w-40 h-40 rounded-full bg-indigo-400 blur-3xl opacity-30 animate-pulse"></div>
+        <div class="absolute top-2 right-10 w-28 h-28 rounded-full bg-fuchsia-400 blur-3xl opacity-30 animate-pulse delay-300"></div>
+        <div class="absolute -bottom-4 left-1/2 w-20 h-20 rounded-full bg-purple-400 blur-2xl opacity-30 animate-pulse delay-700"></div>
       </div>
 
       <!-- Body -->
-      <div class="body">
-        <div class="meta-row">
-
-          <!-- Avatar + name block -->
-          <div style="display:flex; flex-direction:column; gap:1rem;">
-            <div style="display:flex; align-items:flex-end; gap:1.25rem;">
+      <div class="px-8 pb-8">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 -mt-11">
+          <div class="flex flex-col gap-4">
+            <div class="flex items-end gap-5">
 
               <!-- Avatar -->
-              <div class=" mt-15  avatar-ring">
-                <div class="avatar-inner">
+              <div
+                class="relative w-28 h-28 flex-shrink-0 cursor-pointer group/avatar"
+                (click)="openModal()"
+              >
+                <div class="absolute -inset-[3px] rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 z-0"></div>
+                <div class="absolute -inset-[3px] rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 blur-md opacity-50 z-[-1]"></div>
+                <div class="relative z-10 w-full h-full rounded-[1.1rem] overflow-hidden bg-indigo-100">
+                  <div class="absolute inset-0 z-20 flex items-center justify-center bg-black/0 group-hover/avatar:bg-black/40 transition-all duration-200 rounded-[1.1rem]">
+                    <span class="text-2xl opacity-0 group-hover/avatar:opacity-100 transition-all duration-200">📷</span>
+                  </div>
                   @if (pfp()) {
-                    <img [src]="pfp()" [alt]="displayName()" style="width:100%;height:100%;object-fit:cover;" />
+                    <img [src]="pfp()" [alt]="displayName()" class="w-full h-full object-cover" />
                   } @else {
-                    <div class="monogram">
-                      <span>{{ initials() }}</span>
+                    <div class="flex items-center justify-center h-full bg-gradient-to-br from-indigo-500 to-purple-500">
+                      <span class="text-white text-3xl font-extrabold tracking-tight">{{ initials() }}</span>
                     </div>
                   }
                 </div>
               </div>
 
               <!-- Name + chips -->
-              <div style="padding-bottom:0.15rem;">
-                <p class="eyebrow">Profile</p>
-                <h2 class="display-name">{{ displayName() }}</h2>
-                <div class="chips">
-                  <span class="chip chip-username">&#64;{{ username() }}</span>
-                  <span class="chip chip-role">{{ roleLabel() }}</span>
-                  <span class="chip chip-level">Lv.&nbsp;{{ level() }}</span>
+              <div class="pb-1">
+                <p class="text-[0.65rem] font-semibold tracking-[0.22em] uppercase bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent mb-1">
+                  Profile
+                </p>
+                <h2 class="text-3xl font-extrabold tracking-tighter text-slate-900 leading-tight mb-2">
+                  {{ displayName() }}
+                </h2>
+                <div class="flex flex-wrap gap-1.5">
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500 ring-1 ring-slate-200">
+                    &#64;{{ username() }}
+                  </span>
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-600 ring-1 ring-indigo-200">
+                    Lv.&nbsp;{{ level() }}
+                  </span>
                 </div>
               </div>
 
             </div>
           </div>
-
         </div>
 
         <!-- XP bar -->
-        <div class="gradient-rule"></div>
-        <div class="xp-label">
+        <div class="h-px bg-gradient-to-r from-indigo-100 via-purple-100 to-transparent my-5"></div>
+        <div class="flex justify-between text-[0.7rem] font-medium text-slate-400 uppercase tracking-wider mb-1.5">
           <span>Experience</span>
           <span>{{ xp().toLocaleString() }} XP</span>
         </div>
-        <div class="xp-track">
-          <div class="xp-fill" [style.width]="xpPercent() + '%'"></div>
+        <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+          <div
+            class="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-[length:200%] animate-[flow_2.5s_linear_infinite] transition-all duration-500"
+            [style.width]="xpPercent() + '%'"
+          ></div>
         </div>
 
         <!-- Badges -->
-        <div class="gradient-rule"></div>
+        <div class="h-px bg-gradient-to-r from-indigo-100 via-purple-100 to-transparent my-5"></div>
         <app-badges-display [badges]="badges()" />
-
       </div>
     </article>
-  `
+
+    <!-- Upload Modal -->
+    @if (modalOpen()) {
+      <div
+        class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center animate-[fadeIn_0.15s_ease]"
+        (click)="closeModal()"
+      >
+        <div
+          class="bg-white rounded-2xl p-8 w-[min(420px,90vw)] shadow-2xl animate-[slideUp_0.2s_ease]"
+          (click)="$event.stopPropagation()"
+        >
+          <h3 class="text-xl font-extrabold text-slate-900 mb-1">Upload Profile Picture</h3>
+          <p class="text-sm text-slate-400 mb-6">JPG, PNG or WebP · Max 5MB</p>
+
+          <!-- Error -->
+          @if (errorMsg()) {
+            <div class="mb-4 px-4 py-3 rounded-xl bg-red-50 ring-1 ring-red-200 text-sm text-red-600">
+              {{ errorMsg() }}
+            </div>
+          }
+
+          <!-- Drop zone -->
+          <label
+            class="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-indigo-200 rounded-xl p-8 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-all duration-200 group"
+            for="pfp-input"
+          >
+            <span class="text-4xl group-hover:scale-110 transition-transform duration-200">🖼️</span>
+            <div class="text-center">
+              <p class="text-sm font-semibold text-slate-700">Click to browse</p>
+              <p class="text-xs text-slate-400 mt-0.5">or drag and drop your image here</p>
+            </div>
+            <input
+              id="pfp-input"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              (change)="onFileSelected($event)"
+            />
+          </label>
+
+          <!-- Preview -->
+          @if (previewUrl()) {
+            <div class="mt-5 flex items-center gap-4 p-3 bg-slate-50 rounded-xl ring-1 ring-slate-100">
+              <img [src]="previewUrl()!" class="w-14 h-14 rounded-xl object-cover" alt="Preview" />
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-slate-700 truncate">{{ selectedFile()?.name }}</p>
+                <p class="text-xs text-slate-400">{{ fileSizeLabel() }}</p>
+              </div>
+              <button
+                (click)="clearFile()"
+                class="text-slate-400 hover:text-red-400 transition-colors text-lg leading-none"
+              >✕</button>
+            </div>
+          }
+
+          <!-- Actions -->
+          <div class="flex gap-3 mt-6">
+            <button
+              (click)="closeModal()"
+              class="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              [disabled]="!selectedFile() || uploading()"
+              (click)="uploadPfp()"
+              class="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              @if (uploading()) {
+                <span class="flex items-center justify-center gap-2">
+                  <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  Uploading...
+                </span>
+              } @else {
+                Upload
+              }
+            </button>
+          </div>
+
+        </div>
+      </div>
+    }
+  `,
+  styles: [`
+    @keyframes flow {
+      0%   { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from { transform: translateY(16px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+  `]
 })
 export class ProfileComponent {
   private readonly userContext = inject(UserContextService);
+  private readonly userFacade  = inject(UserFacadeService);
   readonly user = this.userContext.user;
 
+  readonly modalOpen    = signal(false);
+  readonly selectedFile = signal<File | null>(null);
+  readonly previewUrl   = signal<string | null>(null);
+  readonly uploading    = signal(false);
+  readonly errorMsg     = signal<string | null>(null);
+  readonly localPfp     = signal<string | null>(null); // ← overrides after upload
+
+  openModal()  { this.modalOpen.set(true); this.errorMsg.set(null); }
+  closeModal() { this.modalOpen.set(false); this.clearFile(); this.errorMsg.set(null); }
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file  = input.files?.[0];
+    if (!file) return;
+    this.errorMsg.set(null);
+    this.selectedFile.set(file);
+    this.previewUrl.set(URL.createObjectURL(file));
+  }
+
+  clearFile() {
+    this.selectedFile.set(null);
+    this.previewUrl.set(null);
+  }
+
+  fileSizeLabel(): string {
+    const size = this.selectedFile()?.size ?? 0;
+    return size < 1024 * 1024
+      ? (size / 1024).toFixed(1) + ' KB'
+      : (size / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  uploadPfp() {
+    const file = this.selectedFile();
+    if (!file) return;
+    this.uploading.set(true);
+    this.errorMsg.set(null);
+
+    this.userFacade.uploadPfp(file).subscribe({
+      next: (updatedUser) => {
+        this.userContext.setUser(updatedUser);
+        // ← immediately show the new pfp using the blob URL
+        const newPfp = updatedUser.pfp
+          ? `http://localhost:8081/uploads/${updatedUser.pfp}`
+          : null;
+        this.localPfp.set(newPfp);
+        this.uploading.set(false);
+        this.closeModal();
+      },
+      error: (err) => {
+        this.errorMsg.set(err?.message ?? 'Upload failed, please try again.');
+        this.uploading.set(false);
+      }
+    });
+  }
+
+  // ── Computed ──
   readonly displayName = computed(() => {
-    const user = this.user();
-    const fullName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
-    return fullName || user?.username || 'Student';
+    const u = this.user();
+    return `${u?.firstName ?? ''} ${u?.lastName ?? ''}`.trim() || u?.username || 'Student';
   });
 
   readonly username  = computed(() => this.user()?.username ?? '');
   readonly roleLabel = computed(() => this.user()?.role ?? '');
   readonly level     = computed(() => this.user()?.level ?? 1);
-  readonly pfp       = computed(() => this.user()?.pfp ?? undefined);
+
+  // localPfp takes priority over user context pfp
+  readonly pfp = computed(() => {
+    if (this.localPfp()) return this.localPfp()!;
+    const p = this.user()?.pfp;
+    if (!p) return undefined;
+    return `http://localhost:8081/uploads/${p}`;
+  });
+
   readonly xp        = computed(() => this.user()?.xpPts ?? 0);
   readonly badges    = computed(() => this.user()?.badges ?? []);
-
-  /** Clamp XP to a 0–100 % fill for the bar (adjust 5000 to your XP-per-level cap) */
   readonly xpPercent = computed(() => Math.min(100, (this.xp() % 5000) / 50));
 
   initials(): string {
-    const name = this.displayName();
-    if (!name) return '?';
-    const parts = name.trim().split(/\s+/);
+    const parts = this.displayName().trim().split(/\s+/);
     return parts.length >= 2
       ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : name.substring(0, 2).toUpperCase();
+      : this.displayName().substring(0, 2).toUpperCase();
   }
 }

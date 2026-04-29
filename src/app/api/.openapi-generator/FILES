@@ -33,6 +33,7 @@ model/pageable.ts
 model/pageableObject.ts
 model/postReqDto.ts
 model/postResDto.ts
+model/profileUpdateResDto.ts
 model/registerReqDto.ts
 model/sortObject.ts
 model/userReqDto.ts

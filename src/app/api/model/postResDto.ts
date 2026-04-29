@@ -18,5 +18,19 @@ export interface PostResDto {
     userFirstName?: string;
     userLastName?: string;
     communityTitle?: string;
+    status?: PostResDto.StatusEnum;
+    likeCount?: number;
+    commentCount?: number;
+    createdAt?: string;
+    liked?: boolean;
 }
+export namespace PostResDto {
+    export const StatusEnum = {
+        Pending: 'Pending',
+        Approved: 'Approved',
+        Flagged: 'Flagged'
+    } as const;
+    export type StatusEnum = typeof StatusEnum[keyof typeof StatusEnum];
+}
+
 

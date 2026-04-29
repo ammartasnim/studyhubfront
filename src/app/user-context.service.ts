@@ -30,6 +30,7 @@ export class UserContextService {
 
     try {
       const response = await firstValueFrom(this.userService.getMe());
+      console.log('[UserContext] loadMe response:', response);
       const user = await this.normalizeResponse(response);
       this.user.set(user);
       return user;

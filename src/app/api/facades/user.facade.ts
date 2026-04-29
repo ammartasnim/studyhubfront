@@ -3,12 +3,13 @@ import { Observable } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 
-import { UserControllerService } from '../generated/api/userController.service';
+import { UserControllerService } from '../generated';
 import { UserResDto } from '../generated/model/userResDto';
 import { PageUserResDto } from '../generated/model/pageUserResDto';
 
 import { UserUI, PaginatedUsers, Badge } from './models/user.model';
 import { ChangePasswordDto, UserReqDto } from '../model/models';
+import { HttpClient } from '@angular/common/http';
 
 const JSON_ACCEPT = { httpHeaderAccept: 'application/json' } as any;
 
@@ -18,6 +19,7 @@ const JSON_ACCEPT = { httpHeaderAccept: 'application/json' } as any;
 export class UserFacadeService {
   private readonly userController = inject(UserControllerService);
   private readonly TOKEN_KEY = 'token';
+    private readonly http = inject(HttpClient);
 
 
   editMe(dto: UserReqDto): Observable<UserUI> {
@@ -103,6 +105,21 @@ export class UserFacadeService {
       catchError(err => this.handleError(err, `Failed to ban user ${userId}`))
     );
   }
+
+ uploadPfp(file: File): Observable<UserUI> {
+  if (!file) {
+    return throwError(() => new Error('No file provided'));
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return this.http.put('http://localhost:8081/api/clients/me/pfp', formData, ).pipe(
+    map(dto => this.mapToUI(dto as any)),
+    catchError(err => this.handleError(err, 'Failed to upload profile picture'))
+  );
+}
+
 
   unban(userId: number): Observable<string> {
     if (!userId || userId <= 0) {

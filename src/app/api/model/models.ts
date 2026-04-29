@@ -17,6 +17,7 @@ export * from './pageable';
 export * from './pageableObject';
 export * from './postReqDto';
 export * from './postResDto';
+export * from './profileUpdateResDto';
 export * from './registerReqDto';
 export * from './sortObject';
 export * from './userReqDto';
