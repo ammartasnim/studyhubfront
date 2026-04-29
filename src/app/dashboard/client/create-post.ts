@@ -1,4 +1,4 @@
-import { Component, inject, output, signal } from '@angular/core';
+import { Component, inject, output, signal, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PostFacadeService } from '../../api/facades/post.facade';
@@ -125,6 +125,7 @@ export class CreatePostModalComponent {
   readonly communities = signal<CommunityUI[]>([]);
 
   readonly postCreated = output<void>();
+  readonly prefilledCommunityId = input<number | undefined>();
 
   readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.minLength(3)]],
@@ -144,6 +145,15 @@ export class CreatePostModalComponent {
     this.isOpen.set(true);
     this.form.reset();
     this.submitError.set(null);
+    
+    const prefilled = this.prefilledCommunityId();
+    if (prefilled) {
+      this.form.patchValue({ communityId: prefilled.toString() });
+      this.form.get('communityId')?.disable();
+    } else {
+      this.form.get('communityId')?.enable();
+    }
+    
     this.loadCommunities();
   }
 
@@ -170,11 +180,13 @@ export class CreatePostModalComponent {
       const formValue = this.form.getRawValue();
       console.log('[CreatePostModal] Submitting post:', formValue);
 
+      const cId = formValue.communityId || this.prefilledCommunityId();
+
       // Using facade service - clean and simple
       await firstValueFrom(this.postFacade.create({
         title: formValue.title,
         content: formValue.description,
-        communityId: formValue.communityId ? Number(formValue.communityId) : undefined
+        communityId: cId ? Number(cId) : undefined
       }));
 
       console.log('[CreatePostModal] Post created successfully');

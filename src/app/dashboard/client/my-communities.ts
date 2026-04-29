@@ -1,5 +1,6 @@
 import { Component, inject, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { CommunityService } from '../../services/community.service';
 import { CommunityUI } from '../../api/facades';
 
@@ -77,7 +78,7 @@ import { CommunityUI } from '../../api/facades';
                   </div>
 
                   <!-- Action Button -->
-                  <button class="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium transition-colors flex-shrink-0 whitespace-nowrap">
+                  <button (click)="viewCommunity(community.id)" class="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium transition-colors flex-shrink-0 whitespace-nowrap">
                     View
                   </button>
                 </div>
@@ -105,6 +106,7 @@ import { CommunityUI } from '../../api/facades';
 })
 export class MyCommunitiesComponent {
   readonly communityService = inject(CommunityService);
+  private readonly router = inject(Router);
 
   constructor() {
     console.log('[MyCommunitiesComponent] Section component initialized');
@@ -124,6 +126,10 @@ export class MyCommunitiesComponent {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
+  }
+
+  viewCommunity(id: number): void {
+    this.router.navigate(['/dashboard/client/community', id]);
   }
 
   retryLoad(): void {

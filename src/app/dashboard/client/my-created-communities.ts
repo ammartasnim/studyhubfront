@@ -1,13 +1,17 @@
-import { Component, inject, effect } from '@angular/core';
+import { Component, inject, effect, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { CommunityService } from '../../services/community.service';
-import { CommunityUI } from '../../api/facades';
+import { CommunityFacadeService, CommunityUI } from '../../api/facades';
+import { CreateCommunityModalComponent } from './create-community';
 
 @Component({
   selector: 'app-my-created-communities',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CreateCommunityModalComponent],
   template: `
+    <app-create-community-modal #createCommunityModal (communityCreated)="onCommunityCreated()" />
+
     <div class="flex flex-col gap-5">
       <!-- Header with Search -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -28,6 +32,7 @@ import { CommunityUI } from '../../api/facades';
 
         <!-- Create New Community Button -->
         <button
+          (click)="openCreateCommunity()"
           class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 font-semibold text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,11 +93,8 @@ import { CommunityUI } from '../../api/facades';
 
                   <!-- Action Buttons -->
                   <div class="flex gap-2 flex-shrink-0">
-                    <button class="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium transition-colors whitespace-nowrap">
+                    <button (click)="viewCommunity(community.id)" class="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium transition-colors whitespace-nowrap">
                       Manage
-                    </button>
-                    <button class="px-4 py-2 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100 font-medium transition-colors whitespace-nowrap">
-                      Edit
                     </button>
                   </div>
                 </div>
@@ -119,7 +121,11 @@ import { CommunityUI } from '../../api/facades';
   `
 })
 export class MyCreatedCommunitiesComponent {
+  @ViewChild('createCommunityModal') createCommunityModal!: CreateCommunityModalComponent;
+
   readonly communityService = inject(CommunityService);
+  private readonly router = inject(Router);
+  private readonly communityFacade = inject(CommunityFacadeService);
 
   constructor() {
     console.log('[MyCreatedCommunitiesComponent] Section component initialized');
@@ -141,8 +147,20 @@ export class MyCreatedCommunitiesComponent {
     return name.substring(0, 2).toUpperCase();
   }
 
+  viewCommunity(id: number): void {
+    this.router.navigate(['/dashboard/client/community', id]);
+  }
+
   retryLoad(): void {
     console.log('[MyCreatedCommunitiesComponent] Retrying load...');
+    this.communityService.loadMyCreatedCommunities();
+  }
+
+  openCreateCommunity(): void {
+    this.createCommunityModal.open();
+  }
+
+  onCommunityCreated(): void {
     this.communityService.loadMyCreatedCommunities();
   }
 }

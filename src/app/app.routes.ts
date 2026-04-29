@@ -47,8 +47,12 @@ export const routes: Routes = [
         path: 'communities',
         loadComponent: () => import('./dashboard/client/my-communities').then((m) => m.MyCommunitiesComponent)
       },
-        {
-          path: 'my-created',
+      {
+        path: 'community/:id',
+        loadComponent: () => import('./dashboard/client/community-detail').then((m) => m.CommunityDetailComponent)
+      },
+      {
+        path: 'my-created',
           loadComponent: () => import('./dashboard/client/my-created-communities').then((m) => m.MyCreatedCommunitiesComponent)
         },
       {
@@ -82,6 +86,10 @@ export const routes: Routes = [
       {
         path: 'communities',
         loadComponent: () => import('./dashboard/client/my-communities').then((m) => m.MyCommunitiesComponent)
+      },
+      {
+        path: 'community/:id',
+        loadComponent: () => import('./dashboard/client/community-detail').then((m) => m.CommunityDetailComponent)
       },
       {
         path: 'my-created',
@@ -118,6 +126,10 @@ export const routes: Routes = [
        {
          path: 'communities',
          loadComponent: () => import('./dashboard/client/my-communities').then((m) => m.MyCommunitiesComponent)
+       },
+       {
+         path: 'community/:id',
+         loadComponent: () => import('./dashboard/client/community-detail').then((m) => m.CommunityDetailComponent)
        },
        {
          path: 'my-created',
