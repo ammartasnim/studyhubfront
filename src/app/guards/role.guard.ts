@@ -1,12 +1,11 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
-import { UserResDto } from '../api-generated/model/userResDto';
 import { UserContextService } from '../user-context.service';
 
 const AUTH_TOKEN_KEY = 'token';
 
-export const roleGuard = (roles: UserResDto.RoleEnum[]): CanActivateFn => {
+export const roleGuard = (roles: string[]): CanActivateFn => {
   return async () => {
     const userContext = inject(UserContextService);
     const router = inject(Router);

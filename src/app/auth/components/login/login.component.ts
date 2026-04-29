@@ -48,9 +48,11 @@ export class LoginComponent {
       password: this.form.controls.password.value
     };
 
-    console.log('[Login] Submitting login form for user:', payload.username);
+    
     this.authFacade.login(payload).subscribe({
-      next: (response) => this.handleAuthSuccess(response),
+      next: (response) => 
+
+        this.handleAuthSuccess(response),
       error: (err: any) => {
         this.isSubmitting.set(false);
         this.handleLoginError(err);
@@ -64,11 +66,10 @@ export class LoginComponent {
   }
 
   private async finalizeAuthSuccess(response: any): Promise<void> {
-    // Try to get token from response first, then fallback to localStorage
     let token = response?.token?.trim();
     
     if (!token) {
-      // Fallback: check if token was stored by the auth facade
+      
       token = localStorage.getItem('token') || '';
       if (!token) {
         console.error('[Login] No token in auth response or localStorage');
@@ -84,7 +85,6 @@ export class LoginComponent {
     console.log('[Login] Token received, storing in localStorage');
     localStorage.setItem('token', token);
     
-    // Set user context with auth response data
     if (response.user?.id !== undefined && response.user?.email && response.user?.role) {
       console.log('[Login] Setting initial user data:', {
         id: response.user.id,
@@ -97,10 +97,9 @@ export class LoginComponent {
         role: response.user.role
       } as any);
     }
-    
-    // Load full user data and wait for completion
     console.log('[Login] Loading full user profile from API');
-    await this.userContext.loadMe();
+    const user = await this.userContext.loadMe();
+    console.log('[Login] Full user profile loaded:', user);
     
     const targetRoute = this.userContext.getDefaultRouteByRole();
     console.log('[Login] Navigation to:', targetRoute);

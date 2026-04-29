@@ -1,7 +1,7 @@
 import { Component, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CommunityService } from '../../services/community.service';
-import { CommunityResDto } from '../../api-generated/model/communityResDto';
+import { CommunityUI } from '../../api/facades';
 
 @Component({
   selector: 'app-my-created-communities',

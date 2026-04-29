@@ -3,7 +3,6 @@ import { Routes } from '@angular/router';
 import { privateGuard } from './guards/private.guard';
 import { publicGuard } from './guards/public.guard';
 import { roleGuard } from './guards/role.guard';
-import { UserResDto } from './api-generated/model/userResDto';
 
 export const routes: Routes = [
   {
@@ -57,7 +56,7 @@ export const routes: Routes = [
   },
   {
     path: 'dashboard/admin',
-    canActivate: [privateGuard, roleGuard([UserResDto.RoleEnum.Admin])],
+    canActivate: [privateGuard, roleGuard(['Admin'])],
     loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent),
     children: [
       {
@@ -89,7 +88,7 @@ export const routes: Routes = [
   },
   {
     path: 'dashboard/client',
-    canActivate: [privateGuard, roleGuard([UserResDto.RoleEnum.Client])],
+    canActivate: [privateGuard, roleGuard(['Client'])],
     loadComponent: () => import('./dashboard/dashboard.component').then((m) => m.DashboardComponent),
     children: [
       {

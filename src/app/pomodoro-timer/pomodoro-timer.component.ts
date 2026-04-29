@@ -2,9 +2,7 @@ import { ChangeDetectorRef, Component, OnInit, OnDestroy, inject } from '@angula
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription, interval } from 'rxjs';
-import { FocusSessionControllerService } from '../api-generated/api/focusSessionController.service';
-import { FocusSessionReqDto } from '../api-generated/model/focusSessionReqDto';
-import { FocusSessionResDto } from '../api-generated/model/focusSessionResDto';
+import { FocusSessionFacadeService } from '../api/facades/focus-session.facade';
 import { UserContextService } from '../user-context.service';
 import { FormatTimerPipe } from './format-timer.pipe';
 
@@ -55,7 +53,7 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
 
   private timerSubscription: Subscription | null = null;
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly focusSessionService = inject(FocusSessionControllerService);
+  private readonly focusSessionFacade = inject(FocusSessionFacadeService);
   private readonly userContext = inject(UserContextService);
 
   get dashOffset(): number {
@@ -124,27 +122,32 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
 
   loadSessionHistory(): void {
     const userId = this.userContext.user()?.id;
-    if (!userId) { this.sessionHistory = []; return; }
+    if (!userId) { 
+      console.warn('No userId available for loading session history');
+      this.sessionHistory = []; 
+      return; 
+    }
 
-    this.focusSessionService.getUserSessions(userId).subscribe({
-      next: (sessions: FocusSessionResDto[]) => {
-        this.sessionHistory = sessions.map(s => this.mapToHistoryItem(s));
+    // Using facade service - cleaner API
+    this.focusSessionFacade.getByUser(userId).subscribe({
+      next: (sessions) => {
+        this.sessionHistory = sessions.map((s) => this.mapToHistoryItem(s));
         this.cdr.detectChanges();
       },
-      error: () => {
+      error: (err) => {
+        console.error('Failed to load session history:', err);
         this.sessionHistory = [];
         this.cdr.detectChanges();
       },
     });
   }
 
-  private mapToHistoryItem(s: FocusSessionResDto): SessionHistoryItem {
-    const raw = s as FocusSessionResDto & { createdAt?: string };
+  private mapToHistoryItem(s: any): SessionHistoryItem {
     return {
       title: s.title ?? '',
-      timer: s.timer ?? '00:00:00',
+      timer: s.displayDuration ?? '00:00:00', // Already formatted by facade
       userId: s.userId ?? undefined,
-      createdAt: raw.createdAt ? new Date(raw.createdAt) : undefined,
+      createdAt: s.createdAt ? new Date(s.createdAt) : undefined,
     };
   }
 
@@ -164,37 +167,37 @@ private tick(): void {
     const timer = new Date(elapsedSeconds * 1000).toISOString().substring(11, 19);
     const userId = this.userContext.user()?.id;
 
-    const sessionData: FocusSessionReqDto = {
+    const sessionData = {
       title: this.sessionTitle,
-      timer,
-      ...(userId && { userId }),
+      duration: elapsedSeconds / 60 // Convert to minutes
     };
 
     this.savedMessage = `"${this.sessionTitle}" — ${timer}`;
     this.phase = 'done';
 
     if (userId) {
-      this.focusSessionService.createSession(sessionData).subscribe({
+      // Using facade service
+      this.focusSessionFacade.create(sessionData).subscribe({
         next: () => {
           this.loadSessionHistory();
           this.cdr.detectChanges();
         },
         error: (err) => {
-          console.log(err.error);
-          this.addToLocalHistory(sessionData);
+          console.log(err.message);
+          this.addToLocalHistory(sessionData, timer);
           this.cdr.detectChanges();
         },
       });
     } else {
-      this.addToLocalHistory(sessionData);
+      this.addToLocalHistory(sessionData, timer);
       this.cdr.detectChanges();
     }
   }
 
-  private addToLocalHistory(sessionData: FocusSessionReqDto): void {
+  private addToLocalHistory(sessionData: any, timer: string): void {
     const item: SessionHistoryItem = {
       title: sessionData.title,
-      timer: sessionData.timer ?? '00:00:00', // timer is optional on DTO, fallback for safety
+      timer: timer ?? '00:00:00',
       userId: sessionData.userId,
       createdAt: new Date(),
     };

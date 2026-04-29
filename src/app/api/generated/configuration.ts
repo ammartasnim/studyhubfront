@@ -145,6 +145,7 @@ constructor({ accessToken, apiKeys, basePath, credentials, encodeParam, encoder,
         const jsonMime: RegExp = new RegExp('^(application\/json|[^;/ \t]+\/[^;/ \t]+[+]json)[ \t]*(;.*)?$', 'i');
         return mime !== null && (jsonMime.test(mime) || mime.toLowerCase() === 'application/json-patch+json');
     }
+    
 
     public lookupCredential(key: string): string | undefined {
         const value = this.credentials[key];

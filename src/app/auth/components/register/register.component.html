@@ -47,23 +47,11 @@
         </svg>
         <input id="email" type="email" formControlName="email" placeholder="you@example.com" class="w-full rounded-xl border border-slate-300 bg-slate-100 px-11 py-3 text-base text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-3 focus:ring-indigo-100" />
       </div>
-      @if ((form.controls.email.touched || submitted()) && form.controls.email.invalid) {
-        <p class="text-xs text-rose-700">Please enter a valid email address.</p>
-      }
+       @if ((form.controls.email.touched || submitted()) && form.controls.email.invalid) {
+         <p class="text-xs text-rose-700">Please enter a valid email address.</p>
+       }
 
-      <label class="mt-1 text-sm font-semibold text-slate-800" for="username">Username</label>
-      <div class="relative">
-        <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 12.3C14.18 12.3 15.95 10.53 15.95 8.35C15.95 6.17 14.18 4.4 12 4.4C9.82 4.4 8.05 6.17 8.05 8.35C8.05 10.53 9.82 12.3 12 12.3Z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M4.9 18.7C5.62 16.17 8.14 14.5 11.99 14.5C15.84 14.5 18.36 16.17 19.08 18.7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-        <input id="username" type="text" formControlName="username" placeholder="alex.student" class="w-full rounded-xl border border-slate-300 bg-slate-100 px-11 py-3 text-base text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-3 focus:ring-indigo-100" />
-      </div>
-      @if ((form.controls.username.touched || submitted()) && form.controls.username.invalid) {
-        <p class="text-xs text-rose-700">Username is required and must be at least 3 characters.</p>
-      }
-
-      <label class="mt-1 text-sm font-semibold text-slate-800" for="password">Password</label>
+       <label class="mt-1 text-sm font-semibold text-slate-800" for="password">Password</label>
       <div class="relative">
         <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M7 11V8.7C7 6.37 8.85 4.5 11.15 4.5H12.85C15.15 4.5 17 6.37 17 8.7V11" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
@@ -86,17 +74,11 @@
       @if ((form.controls.confirmPassword.touched || submitted()) && form.controls.confirmPassword.invalid) {
         <p class="text-xs text-rose-700">Confirm password is required.</p>
       }
-      @if ((form.controls.confirmPassword.touched || submitted()) && form.errors?.['passwordMismatch']) {
-        <p class="text-xs text-rose-700">Passwords do not match.</p>
-      }
+       @if ((form.controls.confirmPassword.touched || submitted()) && form.errors?.['passwordMismatch']) {
+         <p class="text-xs text-rose-700">Passwords do not match.</p>
+       }
 
-      <label class="mt-1 text-sm font-semibold text-slate-800" for="phone">Phone (optional)</label>
-      <input id="phone" type="text" formControlName="phone" placeholder="+216 12 345 678" class="w-full rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-base text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-3 focus:ring-indigo-100" />
-
-      <label class="mt-1 text-sm font-semibold text-slate-800" for="pfp">Profile Picture URL (optional)</label>
-      <input id="pfp" type="text" formControlName="pfp" placeholder="https://example.com/avatar.jpg" class="w-full rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-base text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-3 focus:ring-indigo-100" />
-
-      <label class="mt-1 inline-flex items-start gap-2.5 text-sm text-slate-700" for="acceptTerms">
+       <label class="mt-1 inline-flex items-start gap-2.5 text-sm text-slate-700" for="acceptTerms">
         <input id="acceptTerms" type="checkbox" formControlName="acceptTerms" class="mt-0.5 h-4 w-4 rounded border border-slate-300 accent-slate-900" />
         <span>
           I agree to the

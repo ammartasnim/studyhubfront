@@ -1,8 +1,7 @@
 import { Component, inject, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { PostControllerService } from '../../api-generated/api/postController.service';
-import { PostReqDto } from '../../api-generated/model/postReqDto';
+import { PostFacadeService } from '../../api/facades/post.facade';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -116,7 +115,7 @@ import { firstValueFrom } from 'rxjs';
 })
 export class CreatePostModalComponent {
   private readonly fb = inject(FormBuilder);
-  private readonly postApi = inject(PostControllerService);
+  private readonly postFacade = inject(PostFacadeService);
 
   readonly isOpen = signal(false);
   readonly isSubmitting = signal(false);
@@ -160,13 +159,12 @@ export class CreatePostModalComponent {
       const formValue = this.form.getRawValue();
       console.log('[CreatePostModal] Submitting post:', formValue);
 
-      const postReq: PostReqDto = {
+      // Using facade service - clean and simple
+      await firstValueFrom(this.postFacade.create({
         title: formValue.title,
         content: formValue.description,
-        ...(formValue.communityId && { communityId: Number(formValue.communityId) })
-      };
-
-      await firstValueFrom(this.postApi.createPost(postReq));
+        communityId: formValue.communityId ? Number(formValue.communityId) : undefined
+      }));
 
       console.log('[CreatePostModal] Post created successfully');
       this.postCreated.emit();
@@ -174,7 +172,7 @@ export class CreatePostModalComponent {
     } catch (error: any) {
       console.error('[CreatePostModal] Error creating post:', error);
       this.submitError.set(
-        error?.error?.message || 'Failed to create post. Please try again.'
+        error.message || 'Failed to create post. Please try again.'
       );
     } finally {
       this.isSubmitting.set(false);

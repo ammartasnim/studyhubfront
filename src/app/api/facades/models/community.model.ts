@@ -1,0 +1,22 @@
+/**
+ * Community UI Model - Clean interface for components
+ * Represents a Community in the UI with properly typed fields
+ */
+export interface CommunityUI {
+  id: number;
+  title: string;
+  description?: string;
+  nbrMembers: number;
+  moderatorId?: number;
+}
+
+/**
+ * Paginated Community Response
+ */
+export interface PaginatedCommunities {
+  items: CommunityUI[];
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}

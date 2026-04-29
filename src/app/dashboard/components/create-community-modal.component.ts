@@ -1,8 +1,7 @@
 import { Component, inject, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { CommunityControllerService } from '../../api-generated/api/communityController.service';
-import { CommunityReqDto } from '../../api-generated/model/communityReqDto';
+import { CommunityFacadeService } from '../../api/facades/community.facade';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -118,7 +117,7 @@ import { firstValueFrom } from 'rxjs';
 })
 export class CreateCommunityModalComponent {
   private readonly fb = inject(FormBuilder);
-  private readonly communityApi = inject(CommunityControllerService);
+  private readonly communityFacade = inject(CommunityFacadeService);
 
   readonly isOpen = signal(false);
   readonly isSubmitting = signal(false);
@@ -162,13 +161,11 @@ export class CreateCommunityModalComponent {
       const formValue = this.form.getRawValue();
       console.log('[CreateCommunityModal] Submitting community:', formValue);
 
-      const communityReq: CommunityReqDto = {
+      // Using facade service - clean and simple
+      await firstValueFrom(this.communityFacade.create({
         title: formValue.name,
         description: formValue.description
-      };
-      console.log('[CreateCommunityModal] Created CommunityReqDto:', communityReq);
-
-      await firstValueFrom(this.communityApi.createCommunity(communityReq));
+      }));
 
       console.log('[CreateCommunityModal] Community created successfully');
       this.communityCreated.emit();
@@ -176,7 +173,7 @@ export class CreateCommunityModalComponent {
     } catch (error: any) {
       console.error('[CreateCommunityModal] Error creating community:', error);
       this.submitError.set(
-        error?.error?.message || 'Failed to create community. Please try again.'
+        error.message || 'Failed to create community. Please try again.'
       );
     } finally {
       this.isSubmitting.set(false);

@@ -1,12 +1,12 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription, interval } from 'rxjs';
-import { FocusSessionControllerService } from '../../api-generated/api/focusSessionController.service';
-import { FocusSessionReqDto } from '../../api-generated/model/focusSessionReqDto';
-import { FocusSessionResDto } from '../../api-generated/model/focusSessionResDto';
+import { FocusSessionFacadeService } from '../../api/facades/focus-session.facade';
 import { UserContextService } from '../../user-context.service';
 import { FormatTimerPipe } from '../../pomodoro-timer/format-timer.pipe';
+import { PaginationComponent } from '../../shared/pagination/pagination.component';
+import { PaginationService } from '../../shared/pagination/pagination.service';
 
 type Phase = 'setup' | 'running' | 'paused' | 'done';
 
@@ -25,7 +25,7 @@ const PRESETS = [
 @Component({
   selector: 'app-focus-timer',
   standalone: true,
-  imports: [CommonModule, FormsModule, FormatTimerPipe],
+  imports: [CommonModule, FormsModule, FormatTimerPipe, PaginationComponent],
   template: `
     <div class="w-[100%] max-w-full p-4 md:p-8">
       <div class="grid grid-cols-1 lg:grid-cols-[1.85fr_0.65fr] gap-6 min-h-[600px]">
@@ -159,31 +159,44 @@ const PRESETS = [
         <aside class="bg-slate-50/50 border border-slate-100 rounded-[32px] p-8 flex flex-col">
           <div class="flex items-center justify-between mb-8">
             <p class="text-[10px] font-bold tracking-[0.2em] uppercase text-slate-400">History</p>
-            @if (sessionHistory.length) {
+            @if (paginationConfig().totalElements > 0) {
               <span class="bg-white border border-slate-200 text-slate-500 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                {{ sessionHistory.length }}
+                {{ paginationConfig().totalElements }}
               </span>
             }
           </div>
 
-          @if (!sessionHistory.length) {
+          <!-- FIX: tie empty state to sessionHistory.length, not totalElements -->
+          @if (sessionHistory.length === 0 && !isLoadingHistory()) {
             <div class="flex-1 flex flex-col items-center justify-center text-slate-300">
               <span class="text-4xl mb-2">◎</span>
               <span class="text-[10px] font-bold tracking-widest uppercase">No sessions</span>
             </div>
+          } @else {
+            <div class="flex flex-col gap-3 flex-1 overflow-y-auto">
+              @for (session of sessionHistory; track $index) {
+                <div class="bg-white border border-slate-100 p-4 rounded-2xl flex items-center justify-between gap-4 hover:border-purple-300 transition-colors group">
+                  <div class="flex items-center gap-3 overflow-hidden">
+                    <div class="w-1.5 h-1.5 rounded-full bg-purple-400 group-hover:scale-125 transition-transform"></div>
+                    <span class="text-sm font-semibold text-slate-700 truncate">{{ session.title }}</span>
+                  </div>
+                  <span class="font-mono text-xs text-slate-400">{{ session.timer | formatTimer }}</span>
+                </div>
+              }
+            </div>
           }
 
-          <div class="flex flex-col gap-3 overflow-y-auto max-h-[600px]">
-            @for (session of visibleHistory; track $index) {
-              <div class="bg-white border border-slate-100 p-4 rounded-2xl flex items-center justify-between gap-4 hover:border-purple-300 transition-colors group">
-                <div class="flex items-center gap-3 overflow-hidden">
-                  <div class="w-1.5 h-1.5 rounded-full bg-purple-400 group-hover:scale-125 transition-transform"></div>
-                  <span class="text-sm font-semibold text-slate-700 truncate">{{ session.title }}</span>
-                </div>
-                <span class="font-mono text-xs text-slate-400">{{ session.timer | formatTimer }}</span>
-              </div>
-            }
-          </div>
+          <!-- Pagination Component -->
+          @if (paginationConfig().totalElements > 0) {
+            <div class="mt-6 pt-6 border-t border-slate-200">
+              <app-pagination 
+                [config]="paginationConfig()"
+                [isLoading]="isLoadingHistory()"
+                (pageChange)="onPageChange($event)"
+                (pageSizeChange)="onPageSizeChange($event)">
+              </app-pagination>
+            </div>
+          }
         </aside>
 
       </div>
@@ -191,7 +204,6 @@ const PRESETS = [
   `
 })
 export class FocusTimerComponent implements OnInit, OnDestroy {
-  // ... (Logic remains identical to your original code)
   phase: Phase = 'setup';
   sessionTitle = '';
   selectedSeconds = 25 * 60;
@@ -207,10 +219,21 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
   readonly presets = PRESETS;
   readonly circumference = 2 * Math.PI * 100;
 
+  readonly isLoadingHistory = signal(false);
+  readonly paginationConfig = signal({
+    currentPage: 0,
+    pageSize: 10,
+    totalPages: 0,
+    totalElements: 0,
+    hasNext: false,
+    hasPrevious: false,
+  });
+
   private timerSubscription: Subscription | null = null;
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly focusSessionService = inject(FocusSessionControllerService);
+  private readonly focusSessionFacade = inject(FocusSessionFacadeService);
   private readonly userContext = inject(UserContextService);
+  private readonly paginationService = inject(PaginationService);
 
   get phaseLabel(): string {
     return { setup: 'Ready', running: 'Active', paused: 'Paused', done: 'Done' }[this.phase];
@@ -236,10 +259,6 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
     const h = Number(this.customHours) || 0;
     const m = Number(this.customMinutes) || 0;
     return h * 3600 + m * 60;
-  }
-
-  get visibleHistory(): SessionHistoryItem[] {
-    return this.sessionHistory.slice(0, 8);
   }
 
   ngOnInit(): void {
@@ -300,19 +319,51 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
 
   private loadSessionHistory(): void {
     const userId = this.userContext.user()?.id;
-    if (!userId) return;
+    if (!userId) {
+      console.warn('No userId available for loading session history');
+      return;
+    }
 
-    this.focusSessionService.getUserSessions(userId).subscribe({
-      next: (sessions: FocusSessionResDto[]) => {
-        this.sessionHistory = sessions.map((session) => ({
+    this.isLoadingHistory.set(true);
+
+    // Using facade service - cleaner API
+    this.focusSessionFacade.getByUser(userId).subscribe({
+      next: (sessions) => {
+        this.sessionHistory = sessions.map(session => ({
           title: session.title ?? '',
-          timer: session.timer ?? '00:00:00',
-          createdAt: (session as any).createdAt ? new Date((session as any).createdAt) : undefined,
+          timer: session.timer ?? '00:00:00' // Use timer field
         }));
+
+        // Synthesise pagination config
+        this.paginationConfig.set({
+          currentPage: 0,
+          pageSize: sessions.length,
+          totalPages: 1,
+          totalElements: sessions.length,
+          hasNext: false,
+          hasPrevious: false,
+        });
+
+        this.isLoadingHistory.set(false);
         this.cdr.detectChanges();
       },
-      error: () => { this.sessionHistory = []; }
+      error: (err) => {
+        console.error('Failed to load session history:', err);
+        this.sessionHistory = [];
+        this.isLoadingHistory.set(false);
+        this.cdr.detectChanges();
+      }
     });
+  }
+
+  onPageChange(page: number): void {
+    this.paginationService.setCurrentPage(page);
+    this.loadSessionHistory();
+  }
+
+  onPageSizeChange(size: number): void {
+    this.paginationService.setPageSize(size);
+    this.loadSessionHistory();
   }
 
   private tick(): void {
@@ -331,28 +382,28 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
     const timer = new Date(elapsedSeconds * 1000).toISOString().substring(11, 19);
     const userId = this.userContext.user()?.id;
 
-    const sessionData: FocusSessionReqDto = {
-      title: this.sessionTitle,
-      timer,
-      ...(userId && { userId }),
+    const sessionData = {
+      duration: elapsedSeconds / 60, // Convert to minutes
+      title: this.sessionTitle || 'Focus Session'
     };
 
     this.savedMessage = `${this.sessionTitle} · ${timer}`;
     this.phase = 'done';
 
     if (userId) {
-      this.focusSessionService.createSession(sessionData).subscribe({
+      // Using facade service
+      this.focusSessionFacade.create(sessionData).subscribe({
         next: () => this.loadSessionHistory(),
-        error: () => this.addToLocalHistory(sessionData),
+        error: () => this.addToLocalHistory(sessionData, timer),
       });
     } else {
-      this.addToLocalHistory(sessionData);
+      this.addToLocalHistory(sessionData, timer);
     }
   }
 
-  private addToLocalHistory(sessionData: FocusSessionReqDto): void {
+  private addToLocalHistory(sessionData: any, timer: string): void {
     this.sessionHistory = [
-      { title: sessionData.title, timer: sessionData.timer ?? '00:00:00', createdAt: new Date() },
+      { title: sessionData.title, timer: timer },
       ...this.sessionHistory,
     ];
     this.cdr.detectChanges();

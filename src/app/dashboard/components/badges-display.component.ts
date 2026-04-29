@@ -1,6 +1,12 @@
 import { Component, input, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { BadgeResDto } from '../../api-generated/model/badgeResDto';
+
+export interface BadgeUI {
+  id?: number;
+  type?: string;
+  name?: string;
+  description?: string;
+}
 
 @Component({
   selector: 'app-badges-display',
@@ -93,7 +99,7 @@ import { BadgeResDto } from '../../api-generated/model/badgeResDto';
   `]
 })
 export class BadgesDisplayComponent {
-  readonly badges = input<BadgeResDto[] | undefined>();
+  readonly badges = input<BadgeUI[] | undefined>();
   readonly hasBadges = computed(() => (this.badges()?.length ?? 0) > 0);
 
   getBadgeEmoji(type: string): string {
