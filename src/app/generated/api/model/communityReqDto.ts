@@ -9,10 +9,9 @@
  */
 
 
-export interface FocusSessionReqDto { 
+export interface CommunityReqDto { 
     title: string;
-    timer?: string;
-    remainingSeconds?: number;
-    userId?: number;
+    description: string;
+    nbrMembers?: number;
 }
 

@@ -104,7 +104,7 @@ const PRESETS = [
 
           <button
             type="button"
-            (click)="startSession()"
+            
             [disabled]="!sessionTitle.trim() || effectiveSeconds < 60"
             class="mt-auto w-full bg-slate-900 py-5 rounded-2xl text-white font-bold text-lg shadow-xl shadow-slate-200 hover:bg-indigo-600 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-20 disabled:grayscale disabled:pointer-events-none transition-all"
           >
@@ -149,9 +149,9 @@ const PRESETS = [
             @if (phase === 'running') {
               <button (click)="pauseSession()" class="flex-1 bg-white border-2 border-slate-200 text-slate-700 py-4 rounded-2xl font-bold hover:bg-slate-50 active:scale-95 transition-all">Pause</button>
             } @else {
-              <button (click)="resumeSession()" class="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 active:scale-95 transition-all">Resume</button>
+              <button  class="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 active:scale-95 transition-all">Resume</button>
             }
-            <button (click)="stopAndSave()" class="flex-1 bg-rose-50 border-2 border-rose-100 text-rose-600 py-4 rounded-2xl font-bold hover:bg-rose-600 hover:text-white hover:border-rose-600 active:scale-95 transition-all">End Session</button>
+            <button  class="flex-1 bg-rose-50 border-2 border-rose-100 text-rose-600 py-4 rounded-2xl font-bold hover:bg-rose-600 hover:text-white hover:border-rose-600 active:scale-95 transition-all">End Session</button>
           </div>
         </div>
       }
@@ -210,7 +210,7 @@ const PRESETS = [
         </div>
       }
 
-      @if (paginationConfig().totalElements > 0) {
+      <!-- @if (paginationConfig().totalElements > 0) {
         <div class="mt-8 pt-6 border-t border-slate-200/60">
           <app-pagination 
             [config]="paginationConfig()"
@@ -219,7 +219,7 @@ const PRESETS = [
             (pageSizeChange)="onPageSizeChange($event)">
           </app-pagination>
         </div>
-      }
+      } -->
     </aside>
 
   </div>
@@ -287,7 +287,7 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
   // --- Lifecycle ---
 
   ngOnInit(): void {
-    this.loadSessionHistory();
+    // this.loadSessionHistory();
   }
 
   ngOnDestroy(): void {
@@ -296,45 +296,11 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
 
   // --- History & Pagination ---
 
-  loadSessionHistory(): void {
-    const userId = this.userContext.user()?.id;
-    if (!userId) return;
+  
 
-    this.isLoadingHistory.set(true);
-    const { page, size } = this.paginationService.getParams();
+ 
 
-    this.focusSessionFacade.getMySessions(page, size).subscribe({
-      next: (res) => {
-        this.sessionHistory = res.items;
-        
-        // Sync the service so paginationConfig() updates automatically
-        this.paginationService.updateFromResponse({
-          totalPages: res.totalPages,
-          totalElements: res.totalItems,
-          last: page >= res.totalPages - 1,
-          first: page === 0
-        });
-
-        this.isLoadingHistory.set(false);
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('History load error:', err);
-        this.isLoadingHistory.set(false);
-        this.cdr.detectChanges();
-      }
-    });
-  }
-
-  onPageChange(page: number): void {
-    this.paginationService.setCurrentPage(page);
-    this.loadSessionHistory();
-  }
-
-  onPageSizeChange(size: number): void {
-    this.paginationService.setPageSize(size);
-    this.loadSessionHistory();
-  }
+ 
 
   // --- Timer Actions ---
 
@@ -354,28 +320,15 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
     return `${m}m`;
   }
 
-  startSession(): void {
-    if (this.effectiveSeconds < 60) return;
-    this.totalSeconds = this.effectiveSeconds;
-    this.remainingSeconds = this.totalSeconds;
-    this.phase = 'running';
-    this.tick();
-  }
+ 
 
   pauseSession(): void {
     this.phase = 'paused';
     this.timerSubscription?.unsubscribe();
   }
 
-  resumeSession(): void {
-    this.phase = 'running';
-    this.tick();
-  }
+ 
 
-  stopAndSave(): void {
-    this.timerSubscription?.unsubscribe();
-    this.save(this.totalSeconds - this.remainingSeconds);
-  }
 
   resetToSetup(): void {
     this.timerSubscription?.unsubscribe();
@@ -384,40 +337,9 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
     this.sessionTitle = ''; // Optional: clear title for new session
   }
 
-  private tick(): void {
-    this.timerSubscription?.unsubscribe();
-    this.timerSubscription = interval(1000).subscribe(() => {
-      if (this.remainingSeconds > 0) {
-        this.remainingSeconds--;
-        this.cdr.detectChanges();
-      } else {
-        this.timerSubscription?.unsubscribe();
-        this.save(this.totalSeconds);
-      }
-    });
-  }
+  
 
-  private save(elapsedSeconds: number): void {
-    const displayTimer = new Date(elapsedSeconds * 1000).toISOString().substring(11, 19);
-    const userId = this.userContext.user()?.id;
-
-    const sessionData = {
-      duration: Math.max(1, Math.floor(elapsedSeconds / 60)),
-      title: this.sessionTitle || 'Focus Session'
-    };
-
-    this.savedMessage = `${sessionData.title} · ${displayTimer}`;
-    this.phase = 'done';
-
-    if (userId) {
-      this.focusSessionFacade.create(sessionData).subscribe({
-        next: () => this.loadSessionHistory(),
-        error: () => this.addToLocalHistory(sessionData, displayTimer)
-      });
-    } else {
-      this.addToLocalHistory(sessionData, displayTimer);
-    }
-  }
+ 
 
   private addToLocalHistory(sessionData: any, timer: string): void {
     // Local fallback if user is guest or API fails

@@ -9,10 +9,9 @@
  */
 
 
-export interface FocusSessionReqDto { 
-    title: string;
-    timer?: string;
-    remainingSeconds?: number;
-    userId?: number;
+export interface Pageable { 
+    page?: number;
+    size?: number;
+    sort?: Array<string>;
 }
 
