@@ -6,59 +6,180 @@ import { throwError } from 'rxjs';
 import { FocusSessionControllerService } from '../generated/api/focusSessionController.service';
 import { FocusSessionReqDto } from '../generated/model/focusSessionReqDto';
 import { FocusSessionResDto } from '../generated/model/focusSessionResDto';
-import { FocusSessionUI } from './models/focus-session.model';
-
-const JSON_ACCEPT = { httpHeaderAccept: 'application/json' } as any;
+import { PageFocusSessionResDto } from '../generated/model/pageFocusSessionResDto';
+import { FocusSessionUI } from './models/focus-session.model'
+import { PaginatedSessions } from './models/PaginatedSessions';
 
 @Injectable({ providedIn: 'root' })
 export class FocusSessionFacadeService {
   private readonly focusSessionController = inject(FocusSessionControllerService);
 
-  create(data: { duration: number; title?: string }): Observable<FocusSessionUI> {
-    if (!data?.duration || data.duration <= 0) {
-      return throwError(() => new Error('Duration must be greater than 0'));
+  /**
+   * Start a new focus session
+   */
+  start(data: { title: string; timer: string }): Observable<FocusSessionUI> {
+    if (!data?.title?.trim()) {
+      return throwError(() => new Error('Title is required'));
     }
+    // if (!data?.duration || data.duration <= 0) {
+    //   return throwError(() => new Error('Duration must be greater than 0'));
+    // }
+
     const req: FocusSessionReqDto = {
-      title: data.title?.trim() || 'Focus Session',
-      timer: this.formatDuration(data.duration)
+      title: data.title.trim(),
+      timer: data.timer
     };
-    return this.focusSessionController.createSession(req, 'body', false, JSON_ACCEPT).pipe(
+
+    return this.focusSessionController.start(req).pipe(
       map(dto => this.mapToUI(dto)),
-      catchError(err => this.handleError(err, 'Failed to create focus session'))
+      catchError(err => this.handleError(err, 'Failed to start focus session'))
     );
   }
 
+  /**
+   * Complete a focus session
+   */
+  complete(id: number, finalTimer: string): Observable<FocusSessionUI> {
+    if (!id || id <= 0) {
+      return throwError(() => new Error('Invalid session ID'));
+    }
+    if (!finalTimer?.trim()) {
+      return throwError(() => new Error('Final timer value is required'));
+    }
+
+    return this.focusSessionController.complete(id, finalTimer).pipe(
+      map(dto => this.mapToUI(dto)),
+      catchError(err => this.handleError(err, `Failed to complete session ${id}`))
+    );
+  }
+
+  /**
+   * Pause a focus session
+   */
+  pause(id: number, remainingSeconds: number): Observable<FocusSessionUI> {
+    if (!id || id <= 0) {
+      return throwError(() => new Error('Invalid session ID'));
+    }
+    if (remainingSeconds == null || remainingSeconds < 0) {
+      return throwError(() => new Error('Remaining seconds must be >= 0'));
+    }
+
+    return this.focusSessionController.pause(id, remainingSeconds).pipe(
+      map(dto => this.mapToUI(dto)),
+      catchError(err => this.handleError(err, `Failed to pause session ${id}`))
+    );
+  }
+
+  /**
+   * Resume a paused focus session
+   */
+  resume(id: number, remainingSeconds: number): Observable<FocusSessionUI> {
+    if (!id || id <= 0) {
+      return throwError(() => new Error('Invalid session ID'));
+    }
+    if (remainingSeconds == null || remainingSeconds < 0) {
+      return throwError(() => new Error('Remaining seconds must be >= 0'));
+    }
+
+    return this.focusSessionController.resume(id, remainingSeconds).pipe(
+      map(dto => this.mapToUI(dto)),
+      catchError(err => this.handleError(err, `Failed to resume session ${id}`))
+    );
+  }
+
+  /**
+   * Delete a focus session
+   */
+  delete(id: number): Observable<void> {
+    if (!id || id <= 0) {
+      return throwError(() => new Error('Invalid session ID'));
+    }
+
+    return this.focusSessionController.deleteSession(id).pipe(
+      catchError(err => this.handleError(err, `Failed to delete session ${id}`))
+    );
+  }
+
+  /**
+   * Get the current user's active session
+   */
+  getActive(): Observable<FocusSessionUI> {
+    return this.focusSessionController.getActive().pipe(
+      map(dto => this.mapToUI(dto)),
+      catchError(err => this.handleError(err, 'Failed to fetch active session'))
+    );
+  }
+
+  /**
+   * Get the current user's sessions (paginated)
+   */
+  getMySessions(filters?: {
+    page?: number;
+    size?: number;
+    sortBy?: string;
+    sortDir?: string;
+  }): Observable<PaginatedSessions> {
+    return this.focusSessionController
+      .getMySessions(
+        filters?.page ?? 0,
+        filters?.size ?? 10,
+        filters?.sortBy,
+        filters?.sortDir
+      )
+      .pipe(
+        map(res => this.mapPagedResponse(res)),
+        catchError(err => this.handleError(err, 'Failed to fetch my sessions'))
+      );
+  }
+
+  /**
+   * Get all sessions for a specific user (flat list)
+   */
   getByUser(userId: number): Observable<FocusSessionUI[]> {
     if (!userId || userId <= 0) {
       return throwError(() => new Error('Invalid user ID'));
     }
-    return this.focusSessionController.getUserSessions(userId, 'body', false, JSON_ACCEPT).pipe(
-      map((dtos: FocusSessionResDto[]) => dtos.map(dto => this.mapToUI(dto))),
+
+    return this.focusSessionController.getUserSessions(userId).pipe(
+      map(dtos => dtos.map(dto => this.mapToUI(dto))),
       catchError(err => this.handleError(err, `Failed to fetch sessions for user ${userId}`))
     );
   }
 
-  getMySessions(page = 0, size = 10): Observable<{ items: FocusSessionUI[]; totalPages: number; totalItems: number }> {
-    return this.focusSessionController.getMySessions(page, size, undefined, undefined, 'body', false, JSON_ACCEPT).pipe(
-      map((res: any) => ({
-        items: (res?.content ?? []).map((dto: FocusSessionResDto) => this.mapToUI(dto)),
-        totalPages: res?.totalPages ?? 0,
-        totalItems: res?.totalElements ?? 0
-      })),
-      catchError(err => this.handleError(err, 'Failed to fetch my sessions'))
-    );
-  }
-
-  deleteSession(sessionId: number): Observable<void> {
-    if (!sessionId || sessionId <= 0) {
-      return throwError(() => new Error('Invalid session ID'));
+  /**
+   * Get sessions for a specific user (paginated)
+   */
+  getByUserPaginated(userId: number, filters?: {
+    page?: number;
+    size?: number;
+    sortBy?: string;
+    sortDir?: string;
+  }): Observable<PaginatedSessions> {
+    if (!userId || userId <= 0) {
+      return throwError(() => new Error('Invalid user ID'));
     }
-    return this.focusSessionController.deleteSession(sessionId, 'body', false, JSON_ACCEPT).pipe(
-      catchError(err => this.handleError(err, `Failed to delete session ${sessionId}`))
-    );
+
+    return this.focusSessionController
+      .getUserSessionsPaginated(
+        userId,
+        filters?.page ?? 0,
+        filters?.size ?? 10,
+        filters?.sortBy,
+        filters?.sortDir
+      )
+      .pipe(
+        map(res => this.mapPagedResponse(res)),
+        catchError(err => this.handleError(err, `Failed to fetch paginated sessions for user ${userId}`))
+      );
   }
 
-  private mapToUI(dto: FocusSessionResDto): FocusSessionUI {
+  // ── Private helpers ──────────────────────────────────────────────────────────
+
+  private mapToUI(dto: FocusSessionResDto | null | undefined): FocusSessionUI {
+    if (!dto) {
+      throw new Error('Session data is null or undefined');
+    }
+
     return {
       id: dto.id ?? 0,
       userId: dto.userId ?? 0,
@@ -68,11 +189,18 @@ export class FocusSessionFacadeService {
     };
   }
 
-  private formatDuration(minutes: number): string {
-    if (!minutes || minutes <= 0) return '00:00:00';
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return [hours, mins, 0].map(v => String(v).padStart(2, '0')).join(':');
+  private mapPagedResponse(response: PageFocusSessionResDto | null | undefined): PaginatedSessions {
+    if (!response) {
+      return { items: [], totalItems: 0, totalPages: 0, currentPage: 0, pageSize: 0 };
+    }
+
+    return {
+      items: (response.content ?? []).map(dto => this.mapToUI(dto)),
+      totalItems: response.totalElements ?? 0,
+      totalPages: response.totalPages ?? 0,
+      currentPage: response.number ?? 0,
+      pageSize: response.size ?? 0
+    };
   }
 
   private handleError(error: any, message: string): Observable<never> {

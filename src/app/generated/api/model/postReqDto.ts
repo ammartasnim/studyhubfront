@@ -9,10 +9,10 @@
  */
 
 
-export interface FocusSessionReqDto { 
-    title: string;
-    timer?: string;
-    remainingSeconds?: number;
-    userId?: number;
+export interface PostReqDto { 
+    title?: string;
+    content?: string;
+    imgs?: Array<string>;
+    communityId?: number;
 }
 

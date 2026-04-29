@@ -123,7 +123,7 @@ const PRESET_DURATIONS = [
         </div>
 
         <button
-          (click)="startSession()"
+          
           [disabled]="!sessionTitle.trim() || selectedSeconds <= 0"
           class="w-full py-3.5 text-sm font-semibold rounded-xl transition-all active:scale-[0.98]
                  bg-purple-600 text-white hover:bg-purple-700
@@ -200,13 +200,13 @@ const PRESET_DURATIONS = [
             </button>
           }
           @if (phase === 'paused') {
-            <button (click)="resumeSession()"
+            <button 
                     class="flex-1 py-3 text-sm font-semibold rounded-xl border transition-all active:scale-95
                            bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100">
               Resume
             </button>
           }
-          <button (click)="stopAndSave()"
+          <button 
                   class="flex-1 py-3 text-sm font-semibold rounded-xl border transition-all active:scale-95
                          bg-white text-red-500 border-red-200 hover:bg-red-50">
             Stop & save
@@ -341,27 +341,13 @@ export class DashboardRightSidebarComponent  implements OnInit, OnDestroy  {
     }
   }
 
-  startSession(): void {
-    this.totalSeconds = this.selectedSeconds;
-    this.remainingSeconds = this.selectedSeconds;
-    this.phase = 'running';
-    this.tick();
-  }
+
 
   pauseSession(): void {
     this.phase = 'paused';
     this.timerSubscription?.unsubscribe();
   }
 
-  resumeSession(): void {
-    this.phase = 'running';
-    this.tick();
-  }
-
-  stopAndSave(): void {
-    this.timerSubscription?.unsubscribe();
-    this.save(this.totalSeconds - this.remainingSeconds);
-  }
 
   resetToSetup(): void {
     this.timerSubscription?.unsubscribe();
@@ -400,48 +386,6 @@ export class DashboardRightSidebarComponent  implements OnInit, OnDestroy  {
     };
   }
 
-private tick(): void {
-  this.timerSubscription = interval(1000).subscribe(() => {
-    this.remainingSeconds--;
-    this.cdr.detectChanges();
-    if (this.remainingSeconds <= 0) {
-      this.timerSubscription?.unsubscribe();
-      this.save(this.totalSeconds);
-    }
-  });
-}
-
-  private save(elapsedSeconds: number): void {
-    // timer is optional on the DTO but we always provide it
-    const timer = new Date(elapsedSeconds * 1000).toISOString().substring(11, 19);
-    const userId = this.userContext.user()?.id;
-
-    const sessionData = {
-      title: this.sessionTitle,
-      duration: elapsedSeconds / 60 // Convert to minutes
-    };
-
-    this.savedMessage = `"${this.sessionTitle}" — ${timer}`;
-    this.phase = 'done';
-
-    if (userId) {
-      // Using facade service
-      this.focusSessionFacade.create(sessionData).subscribe({
-        next: () => {
-          this.loadSessionHistory();
-          this.cdr.detectChanges();
-        },
-        error: (err) => {
-          console.log(err.message);
-          this.addToLocalHistory(sessionData, timer);
-          this.cdr.detectChanges();
-        },
-      });
-    } else {
-      this.addToLocalHistory(sessionData, timer);
-      this.cdr.detectChanges();
-    }
-  }
 
   private addToLocalHistory(sessionData: any, timer: string): void {
     const item: SessionHistoryItem = {

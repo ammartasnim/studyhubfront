@@ -7,12 +7,11 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { UserResDto } from './userResDto';
 
 
-export interface FocusSessionReqDto { 
-    title: string;
-    timer?: string;
-    remainingSeconds?: number;
-    userId?: number;
+export interface ProfileUpdateResDto { 
+    user?: UserResDto;
+    token?: string;
 }
 

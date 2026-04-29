@@ -9,10 +9,13 @@
  */
 
 
-export interface FocusSessionReqDto { 
-    title: string;
-    timer?: string;
-    remainingSeconds?: number;
-    userId?: number;
+export interface RegisterReqDto { 
+    username: string;
+    password: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    pfp?: string;
 }
 
