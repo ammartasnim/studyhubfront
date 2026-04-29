@@ -14,8 +14,8 @@ const AUTH_TOKEN_KEY = 'token';
   imports: [DashboardSidebarComponent, DashboardRightSidebarComponent, RouterOutlet, CommonModule],
   template: `
     <div class="min-h-screen bg-slate-50">
-      <div class="mx-auto px-4 py-6 sm:px-6 lg:px-8" 
-           [ngClass]="isFocusRoom() ? 'w-full max-w-full' : 'max-w-[1600px]'">
+      <div class="w-full px-4 py-6"
+           [ngClass]="isFocusRoom() ? '' : ''">
         
         <div class="grid grid-cols-1 gap-8" 
              [ngClass]="isFocusRoom() 
@@ -31,7 +31,7 @@ const AUTH_TOKEN_KEY = 'token';
             (logout)="handleLogout()"
           />
 
-          <div class="flex flex-col gap-6" [ngClass]="{'w-full': isFocusRoom()}">
+          <div class="flex flex-col gap-4 w-full" [ngClass]="{'w-full': isFocusRoom()}">
             <router-outlet />
           </div>
 
