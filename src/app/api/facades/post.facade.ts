@@ -280,18 +280,5 @@ export class PostFacadeService {
     const errorMsg = error?.message || error?.error?.message || message;
     return throwError(() => new Error(errorMsg));
   }
-  getFeed(filters?: { page?: number; size?: number }): Observable<PaginatedPosts> {
-  const page = filters?.page ?? 0;
-  const size = filters?.size ?? 10;
-
-  const pageable: Pageable = {
-    page: page,
-    size: size
-  };
-
-  return this.postController.getFeed(pageable).pipe(
-    map(response => this.mapPagedResponse(response)),
-    catchError(err => this.handleError(err, 'Failed to fetch feed'))
-  );
-}
+  
 }

@@ -18,18 +18,12 @@ export interface PostResDto {
     userFirstName?: string;
     userLastName?: string;
     communityTitle?: string;
-<<<<<<< HEAD
-    status?: string;
-    likeCount?: number;
-    commentCount?: number;
-    isLiked?: boolean;
-    createdAt?: string;
-=======
     status?: PostResDto.StatusEnum;
     likeCount?: number;
     commentCount?: number;
-    createdAt?: string;
+    isLiked?: boolean;
     liked?: boolean;
+    createdAt?: string;
 }
 export namespace PostResDto {
     export const StatusEnum = {
@@ -38,7 +32,6 @@ export namespace PostResDto {
         Flagged: 'Flagged'
     } as const;
     export type StatusEnum = typeof StatusEnum[keyof typeof StatusEnum];
->>>>>>> 1af2d92ca42d185b72a3e9fd076788fb3d81f5c5
 }
 
 
