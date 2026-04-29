@@ -9,7 +9,7 @@
  */
 
 
-export interface PostResDto { 
+export interface PostResDto {
     id?: number;
     title?: string;
     content?: string;
@@ -18,5 +18,10 @@ export interface PostResDto {
     userFirstName?: string;
     userLastName?: string;
     communityTitle?: string;
+    status?: string;
+    likeCount?: number;
+    commentCount?: number;
+    isLiked?: boolean;
+    createdAt?: string;
 }
 

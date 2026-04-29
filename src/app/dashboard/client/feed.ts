@@ -1,23 +1,20 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, ViewChild, OnInit, inject, signal, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { CreatePostModalComponent } from './create-post';
 import { CreateCommunityModalComponent } from './create-community';
-import { CommonModule } from '@angular/common';
+import { FeedService } from '../../services/feed.service';
 
 @Component({
   selector: 'app-academic-feed',
   standalone: true,
   imports: [CommonModule, CreatePostModalComponent, CreateCommunityModalComponent],
   template: `
-    <!-- Create Post Modal -->
     <app-create-post-modal #createPostModal (postCreated)="onPostCreated()" />
-    
-    <!-- Create Community Modal -->
     <app-create-community-modal #createCommunityModal (communityCreated)="onCommunityCreated()" />
 
     <div class="flex flex-col gap-5">
-      <!-- Header with Search -->
+      <!-- Header -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <!-- Search Bar -->
         <div class="flex-1">
           <div class="relative">
             <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -25,13 +22,15 @@ import { CommonModule } from '@angular/common';
             </svg>
             <input
               type="text"
+              placeholder="Search posts..."
               aria-label="Search feed"
-              class="w-full pl-12 pr-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              [value]="searchQuery()"
+              (input)="searchQuery.set($any($event.target).value)"
+              class="w-full pl-12 pr-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
             />
           </div>
         </div>
 
-        <!-- New Post Button -->
         <div class="flex gap-2">
           <button
             (click)="openCreatePost()"
@@ -42,42 +41,240 @@ import { CommonModule } from '@angular/common';
             </svg>
             New Post
           </button>
-
-          <!-- Trending Filter -->
-          <button class="hidden sm:flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition-colors">
+          <button
+            (click)="openCreateCommunity()"
+            class="hidden sm:inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
+          >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7H5v12h8V7z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span>Trending</span>
+            New Community
           </button>
         </div>
       </div>
 
+      <!-- Feed Section -->
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div class="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-slate-50">
           <h2 class="text-xl font-bold text-slate-900">Academic Feed</h2>
-          <button
-            (click)="openCreateCommunity()"
-            class="text-sm font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-2"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Create Community
-          </button>
+          @if (!feedService.isLoading() && filteredPosts().length > 0) {
+            <span class="text-sm text-slate-500">{{ filteredPosts().length }} post{{ filteredPosts().length === 1 ? '' : 's' }}</span>
+          }
         </div>
 
-        <div class="px-6 py-10 text-center text-slate-500">
-          <p class="text-lg font-medium text-slate-700">No posts yet</p>
-          <p class="mt-2">Create the first post to start the feed.</p>
-        </div>
+        <!-- Loading skeleton -->
+        @if (feedService.isLoading()) {
+          <div class="p-6 flex flex-col gap-4">
+            @for (i of [1, 2, 3]; track i) {
+              <div class="animate-pulse rounded-xl border border-slate-100 p-5">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-10 h-10 rounded-full bg-slate-200"></div>
+                  <div class="flex-1">
+                    <div class="h-4 bg-slate-200 rounded w-32 mb-2"></div>
+                    <div class="h-3 bg-slate-100 rounded w-24"></div>
+                  </div>
+                </div>
+                <div class="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+                <div class="h-3 bg-slate-100 rounded w-full mb-1"></div>
+                <div class="h-3 bg-slate-100 rounded w-5/6"></div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Error state -->
+        @else if (feedService.error()) {
+          <div class="px-6 py-10 text-center">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
+              <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <p class="font-medium text-slate-700">Failed to load feed</p>
+            <p class="text-sm text-slate-500 mt-1">{{ feedService.error() }}</p>
+            <button
+              (click)="feedService.loadFeed()"
+              class="mt-4 px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+            >
+              Try again
+            </button>
+          </div>
+        }
+
+        <!-- Empty state -->
+        @else if (filteredPosts().length === 0) {
+          <div class="px-6 py-10 text-center text-slate-500">
+            @if (searchQuery()) {
+              <p class="text-lg font-medium text-slate-700">No results for "{{ searchQuery() }}"</p>
+              <p class="mt-2 text-sm">Try a different search term.</p>
+            } @else {
+              <p class="text-lg font-medium text-slate-700">Nothing in your feed yet</p>
+              <p class="mt-2 text-sm">Join communities to see posts here, or be the first to share something!</p>
+              <button
+                (click)="openCreatePost()"
+                class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Create First Post
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Posts list -->
+        @else {
+          <div class="divide-y divide-slate-100">
+            @for (post of filteredPosts(); track post.id) {
+              <article class="bg-white transition-colors hover:bg-slate-50/40">
+                <!-- Post header -->
+                <div class="flex items-start gap-3 px-6 pt-5 pb-3">
+                  <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0 select-none">
+                    {{ getInitials(post.authorFullName) }}
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-start justify-between gap-2">
+                      <p class="font-semibold text-slate-900 text-sm">{{ post.authorFullName }}</p>
+                      <span class="text-xs text-slate-400 flex-shrink-0 pt-0.5">{{ getTimeAgo(post.createdAt) }}</span>
+                    </div>
+                    <div class="flex items-center gap-1 mt-0.5">
+                      <span class="text-xs text-slate-400">in</span>
+                      <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                        {{ post.communityTitle }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Post content -->
+                <div class="px-6 pb-4">
+                  <h3 class="font-bold text-slate-900 mb-1">{{ post.title }}</h3>
+                  <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{{ post.content }}</p>
+                </div>
+
+                <!-- Post actions -->
+                <div class="px-6 pb-4 flex items-center gap-2">
+                  <button
+                    (click)="feedService.toggleLike(post.id)"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                    [class.text-rose-600]="post.isLiked"
+                    [class.bg-rose-50]="post.isLiked"
+                    [class.text-slate-600]="!post.isLiked"
+                    [class.hover:bg-slate-100]="!post.isLiked"
+                  >
+                    <svg class="w-4 h-4" [attr.fill]="post.isLiked ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    {{ post.likeCount }}
+                  </button>
+
+                  <button
+                    (click)="toggleComments(post.id)"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                    [class.text-indigo-600]="expandedPosts().has(post.id)"
+                    [class.bg-indigo-50]="expandedPosts().has(post.id)"
+                    [class.text-slate-600]="!expandedPosts().has(post.id)"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    {{ post.commentCount }}
+                  </button>
+                </div>
+
+                <!-- Comments section -->
+                @if (expandedPosts().has(post.id)) {
+                  <div class="border-t border-slate-100 bg-slate-50/80 px-6 py-4">
+                    @if (feedService.commentsLoading().has(post.id)) {
+                      <div class="flex items-center gap-2 text-sm text-slate-500 py-2">
+                        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        Loading comments...
+                      </div>
+                    } @else {
+                      @let postComments = feedService.comments().get(post.id) ?? [];
+
+                      @if (postComments.length === 0) {
+                        <p class="text-sm text-slate-400 text-center py-2 mb-3">No comments yet. Be the first!</p>
+                      }
+
+                      @for (comment of postComments; track comment.id) {
+                        <div class="flex items-start gap-2 mb-3">
+                          <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold flex-shrink-0 select-none">
+                            {{ getInitials(comment.authorFullName ?? comment.authorUsername ?? '?') }}
+                          </div>
+                          <div class="flex-1 bg-white rounded-xl px-3 py-2 text-sm border border-slate-100 shadow-sm">
+                            <p class="font-semibold text-slate-800 text-xs mb-0.5">{{ comment.authorFullName }}</p>
+                            <p class="text-slate-700">{{ comment.content }}</p>
+                          </div>
+                        </div>
+                      }
+
+                      <!-- Add comment -->
+                      <div class="flex items-center gap-2 mt-3">
+                        <input
+                          type="text"
+                          placeholder="Write a comment..."
+                          [value]="getCommentInput(post.id)"
+                          (input)="setCommentInput(post.id, $any($event.target).value)"
+                          (keyup.enter)="submitComment(post.id)"
+                          class="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                        />
+                        <button
+                          (click)="submitComment(post.id)"
+                          [disabled]="!getCommentInput(post.id).trim() || submittingComments().has(post.id)"
+                          class="px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 transition-colors flex items-center justify-center min-w-[52px]"
+                        >
+                          @if (submittingComments().has(post.id)) {
+                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                          } @else {
+                            Post
+                          }
+                        </button>
+                      </div>
+                    }
+                  </div>
+                }
+              </article>
+            }
+          </div>
+        }
       </section>
     </div>
   `
 })
-export class FeedComponent {
-    @ViewChild('createPostModal') createPostModal!: CreatePostModalComponent;
+export class FeedComponent implements OnInit {
+  @ViewChild('createPostModal') createPostModal!: CreatePostModalComponent;
   @ViewChild('createCommunityModal') createCommunityModal!: CreateCommunityModalComponent;
+
+  readonly feedService = inject(FeedService);
+
+  readonly searchQuery = signal('');
+  readonly expandedPosts = signal<Set<number>>(new Set());
+  readonly commentInputs = signal<Map<number, string>>(new Map());
+  readonly submittingComments = signal<Set<number>>(new Set());
+
+  readonly filteredPosts = computed(() => {
+    const q = this.searchQuery().toLowerCase().trim();
+    const posts = this.feedService.posts();
+    if (!q) return posts;
+    return posts.filter(p =>
+      p.title.toLowerCase().includes(q) ||
+      p.content.toLowerCase().includes(q) ||
+      p.authorFullName.toLowerCase().includes(q) ||
+      p.communityTitle.toLowerCase().includes(q)
+    );
+  });
+
+  ngOnInit(): void {
+    this.feedService.loadFeed();
+  }
 
   openCreatePost(): void {
     this.createPostModal.open();
@@ -88,12 +285,60 @@ export class FeedComponent {
   }
 
   onPostCreated(): void {
-    console.log('[AcademicFeed] Post created successfully');
-    // Reload posts if needed
+    this.feedService.loadFeed();
   }
 
-  onCommunityCreated(): void {
-    console.log('[AcademicFeed] Community created successfully');
-    // Reload communities if needed
+  onCommunityCreated(): void {}
+
+  toggleComments(postId: number): void {
+    this.expandedPosts.update(set => {
+      const next = new Set(set);
+      if (next.has(postId)) {
+        next.delete(postId);
+      } else {
+        next.add(postId);
+        if (!this.feedService.comments().has(postId)) {
+          this.feedService.loadComments(postId);
+        }
+      }
+      return next;
+    });
+  }
+
+  getCommentInput(postId: number): string {
+    return this.commentInputs().get(postId) ?? '';
+  }
+
+  setCommentInput(postId: number, value: string): void {
+    this.commentInputs.update(m => new Map(m).set(postId, value));
+  }
+
+  async submitComment(postId: number): Promise<void> {
+    const content = this.getCommentInput(postId).trim();
+    if (!content) return;
+
+    this.submittingComments.update(s => new Set(s).add(postId));
+    try {
+      await this.feedService.addComment(postId, content);
+      this.commentInputs.update(m => { const n = new Map(m); n.delete(postId); return n; });
+    } finally {
+      this.submittingComments.update(s => { const n = new Set(s); n.delete(postId); return n; });
+    }
+  }
+
+  getTimeAgo(date: Date | null): string {
+    if (!date) return '';
+    const diff = Date.now() - date.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  }
+
+  getInitials(name: string): string {
+    if (!name?.trim()) return '?';
+    return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
   }
 }

@@ -2,6 +2,7 @@ import { Component, inject, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PostFacadeService } from '../../api/facades/post.facade';
+import { CommunityFacadeService, CommunityUI } from '../../api/facades';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -67,9 +68,9 @@ import { firstValueFrom } from 'rxjs';
                 class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="">Select a community...</option>
-                <option value="1">Computer Science</option>
-                <option value="2">Web Development</option>
-                <option value="3">Data Science</option>
+                @for (community of communities(); track community.id) {
+                  <option [value]="community.id">{{ community.title }}</option>
+                }
               </select>
             </div>
 
@@ -116,10 +117,12 @@ import { firstValueFrom } from 'rxjs';
 export class CreatePostModalComponent {
   private readonly fb = inject(FormBuilder);
   private readonly postFacade = inject(PostFacadeService);
+  private readonly communityFacade = inject(CommunityFacadeService);
 
   readonly isOpen = signal(false);
   readonly isSubmitting = signal(false);
   readonly submitError = signal<string | null>(null);
+  readonly communities = signal<CommunityUI[]>([]);
 
   readonly postCreated = output<void>();
 
@@ -138,14 +141,22 @@ export class CreatePostModalComponent {
   }
 
   open(): void {
-    console.log('[CreatePostModal] Opening modal');
     this.isOpen.set(true);
     this.form.reset();
     this.submitError.set(null);
+    this.loadCommunities();
+  }
+
+  private async loadCommunities(): Promise<void> {
+    try {
+      const result = await firstValueFrom(this.communityFacade.getMy({ size: 100 }));
+      this.communities.set(result.items);
+    } catch {
+      this.communities.set([]);
+    }
   }
 
   close(): void {
-    console.log('[CreatePostModal] Closing modal');
     this.isOpen.set(false);
   }
 

@@ -179,6 +179,21 @@ export class PostFacadeService {
    }
 
   /**
+   * Get the feed: posts from communities the current user is a member of
+   */
+  getFeed(filters?: { page?: number; size?: number }): Observable<PaginatedPosts> {
+    const pageable: Pageable = {
+      page: filters?.page ?? 0,
+      size: filters?.size ?? 20
+    };
+
+    return this.postController.getFeed(pageable).pipe(
+      map(response => this.mapPagedResponse(response)),
+      catchError(err => this.handleError(err, 'Failed to fetch feed'))
+    );
+  }
+
+  /**
    * Toggle like on a post
    */
   toggleLike(postId: number): Observable<void> {
@@ -215,7 +230,12 @@ export class PostFacadeService {
       communityTitle: dto.communityTitle ?? 'General',
       authorFullName: fullName,
       previewText: this.truncate(dto.content ?? '', 100),
-      imageCount: images.length
+      imageCount: images.length,
+      likeCount: dto.likeCount ?? 0,
+      commentCount: dto.commentCount ?? 0,
+      isLiked: dto.isLiked ?? false,
+      createdAt: dto.createdAt ? new Date(dto.createdAt) : null,
+      status: dto.status ?? ''
     };
   }
 

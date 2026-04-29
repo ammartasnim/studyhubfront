@@ -7,4 +7,6 @@ export interface CommentUI {
   postId: number;
   userId: number;
   previewText: string;
+  authorUsername?: string;
+  authorFullName?: string;
 }

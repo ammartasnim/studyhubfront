@@ -14,6 +14,12 @@ export interface PostUI {
   authorFullName: string;
   previewText: string;
   imageCount: number;
+  // Engagement fields
+  likeCount: number;
+  commentCount: number;
+  isLiked: boolean;
+  createdAt: Date | null;
+  status: string;
 }
 
 /**
