@@ -8,6 +8,7 @@ import { UserResDto } from '../generated/model/userResDto';
 import { PageUserResDto } from '../generated/model/pageUserResDto';
 
 import { UserUI, PaginatedUsers, Badge } from './models/user.model';
+import { ChangePasswordDto, UserReqDto } from '../model/models';
 
 const JSON_ACCEPT = { httpHeaderAccept: 'application/json' } as any;
 
@@ -16,6 +17,29 @@ const JSON_ACCEPT = { httpHeaderAccept: 'application/json' } as any;
 })
 export class UserFacadeService {
   private readonly userController = inject(UserControllerService);
+
+
+  editMe(dto: UserReqDto): Observable<UserUI> {
+    return this.userController.editUser(dto, 'body', false, JSON_ACCEPT).pipe(
+        map(dto => this.mapToUI(dto)),
+        catchError(err => this.handleError(err, 'Failed to edit current user profile'))
+    );
+}
+  editPassword(oldPassword: string, newPassword: string, confirmPassword: string): Observable<void> {
+    if (!oldPassword || !newPassword) {
+        return throwError(() => new Error('All password fields are required'));
+    }
+
+    const dto: ChangePasswordDto = {
+        currentPassword: oldPassword,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword
+    };
+
+    return this.userController.changePassword(dto, 'body', false, JSON_ACCEPT).pipe(
+        catchError(err => this.handleError(err, 'Failed to change password'))
+    );
+}
 
   getMe(): Observable<UserUI> {
     return this.userController.getMe('body', false, JSON_ACCEPT).pipe(
