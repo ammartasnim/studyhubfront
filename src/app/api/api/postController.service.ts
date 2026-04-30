@@ -42,6 +42,61 @@ export class PostControllerService extends BaseService {
     }
 
     /**
+     * @endpoint patch /api/posts/{id}/approve
+     * @param id 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public approvePost(id: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<PostResDto>;
+    public approvePost(id: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PostResDto>>;
+    public approvePost(id: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PostResDto>>;
+    public approvePost(id: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling approvePost.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            '*/*'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/posts/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: "int64"})}/approve`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<PostResDto>('patch', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * @endpoint post /api/posts
      * @param postReqDto 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -148,6 +203,61 @@ export class PostControllerService extends BaseService {
         let localVarPath = `/api/posts/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: "int64"})}`;
         const { basePath, withCredentials } = this.configuration;
         return this.httpClient.request<any>('delete', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * @endpoint patch /api/posts/{id}/flag
+     * @param id 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public flagPost(id: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<PostResDto>;
+    public flagPost(id: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PostResDto>>;
+    public flagPost(id: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PostResDto>>;
+    public flagPost(id: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling flagPost.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            '*/*'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/posts/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: "int64"})}/flag`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<PostResDto>('patch', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,

@@ -1,3 +1,5 @@
+export * from './aiController.service';
+import { AiControllerService } from './aiController.service';
 export * from './authController.service';
 import { AuthControllerService } from './authController.service';
 export * from './commentController.service';
@@ -10,4 +12,4 @@ export * from './postController.service';
 import { PostControllerService } from './postController.service';
 export * from './userController.service';
 import { UserControllerService } from './userController.service';
-export const APIS = [AuthControllerService, CommentControllerService, CommunityControllerService, FocusSessionControllerService, PostControllerService, UserControllerService];
+export const APIS = [AiControllerService, AuthControllerService, CommentControllerService, CommunityControllerService, FocusSessionControllerService, PostControllerService, UserControllerService];
