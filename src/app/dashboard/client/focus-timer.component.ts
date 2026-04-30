@@ -1,224 +1,252 @@
-import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormatTimerPipe } from '../../pipes/format-timer.pipe';
 import { FormsModule } from '@angular/forms';
-import { interval, Subscription } from 'rxjs';
-import { FocusSessionFacadeService } from '../../api/facades';
+import { Subscription, interval } from 'rxjs';
+import { FocusSessionFacadeService } from '../../api/facades/focus-session.facade';
 import { UserContextService } from '../../user-context.service';
+import { FormatTimerPipe } from '../../pipes/format-timer.pipe';
 
 type Phase = 'setup' | 'running' | 'paused' | 'done';
 
 interface SessionHistoryItem {
   title: string;
   timer: string;
-  userId?: number;
   createdAt?: Date;
 }
 
 const PRESET_DURATIONS = [
-  { label: '25 min', seconds: 25 * 60 },
-  { label: '45 min', seconds: 45 * 60 },
-  { label: '60 min', seconds: 60 * 60 },
-  { label: '90 min', seconds: 90 * 60 },
+  { label: '25m', seconds: 25 * 60 },
+  { label: '45m', seconds: 45 * 60 },
+  { label: '60m', seconds: 60 * 60 },
 ];
 
-// How often (in ticks) to sync remaining time to the DB while running.
-// 30 means every 30 seconds. This prevents data loss if the tab crashes.
 const SYNC_INTERVAL_TICKS = 30;
 
 @Component({
-  selector: 'app-dashboard-right-sidebar',
+  selector: 'app-focus-timer',
   standalone: true,
   imports: [CommonModule, FormsModule, FormatTimerPipe],
-  styles: [`
-    .ring-progress {
-      stroke: #3b82f6;
-      stroke-linecap: round;
-      transition: stroke-dashoffset 1s linear;
-    }
-    .ring-progress.paused { stroke: #f59e0b; }
-  `],
   template: `
-  <div class="min-h-screen bg-purple-50 flex items-start justify-center px-4 py-10">
-  <div class="w-full max-w-sm">
+<div class="w-full max-w-7xl mx-auto p-4 md:p-10 antialiased text-slate-900">
+  <div class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
 
-    <div class="flex items-center gap-2.5 mb-8">
-      <div class="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="8" r="6" stroke="white" stroke-width="1.5"/>
-          <path d="M8 5v3.5l2 1.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-      </div>
-      <span class="text-sm font-semibold text-purple-900 tracking-wide">Focus timer</span>
-    </div>
+    <!-- MAIN TIMER CARD -->
+    <section class="bg-white border border-slate-200/60 rounded-[40px] p-8 md:p-12 shadow-xl shadow-slate-200/40 min-h-[640px] flex flex-col relative overflow-hidden">
+      <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-50/50 rounded-full blur-3xl pointer-events-none"></div>
 
-    @if (phase === 'setup') {
-      <div class="bg-white rounded-2xl border border-purple-100 p-6 flex flex-col gap-5">
+      <header class="flex items-start justify-between relative z-10">
         <div>
-          <label class="block text-xs font-medium text-purple-400 uppercase tracking-widest mb-2">Session title</label>
-          <input [(ngModel)]="sessionTitle" placeholder="What are you working on?"
-            class="w-full bg-purple-50 border border-purple-100 rounded-xl px-4 py-3 text-sm text-purple-900 placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all"/>
+          <p class="text-[11px] font-black tracking-[0.25em] uppercase text-indigo-500 mb-1">Focus Mode</p>
+          <h2 class="text-3xl font-extrabold tracking-tight text-slate-900">Deep Work</h2>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-purple-400 uppercase tracking-widest mb-2">Duration</label>
-          <div class="grid grid-cols-4 gap-2">
-            @for (preset of presets; track preset.seconds) {
-              <button (click)="selectPreset(preset.seconds)"
-                class="py-2.5 text-xs font-semibold rounded-xl border transition-all active:scale-95"
-                [class]="selectedSeconds === preset.seconds
-                  ? 'bg-purple-600 text-white border-purple-600'
-                  : 'bg-purple-50 text-purple-500 border-purple-100 hover:border-purple-300 hover:bg-purple-100'">
-                {{ preset.label }}
+        <div class="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-100 rounded-2xl">
+          @if (phase === 'running') {
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+            </span>
+          }
+          <span class="text-[11px] font-bold tracking-wider uppercase text-slate-500">{{ phaseLabel }}</span>
+        </div>
+      </header>
+
+      <!-- SETUP PHASE -->
+      @if (phase === 'setup') {
+        <div class="flex flex-col gap-10 mt-12 flex-1 relative z-10">
+          <div class="space-y-4">
+            <label class="text-xs font-bold tracking-wide text-slate-400 uppercase ml-1">Current Objective</label>
+            <input
+              [(ngModel)]="sessionTitle"
+              placeholder="What are you tackling?"
+              class="w-full bg-slate-50/50 border-2 border-transparent focus:border-indigo-500/20 focus:bg-white rounded-2xl px-6 py-5 text-lg font-medium text-slate-800 outline-none transition-all placeholder:text-slate-300 shadow-sm"
+            />
+          </div>
+
+          <div class="space-y-4">
+            <label class="text-xs font-bold tracking-wide text-slate-400 uppercase ml-1">Select Duration</label>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              @for (preset of presets; track preset.seconds) {
+                <button type="button" (click)="selectPreset(preset.seconds)"
+                  class="group py-4 rounded-2xl border-2 font-bold text-sm transition-all"
+                  [ngClass]="(!customMode && selectedSeconds === preset.seconds)
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200'
+                    : 'bg-white border-slate-100 text-slate-500 hover:border-indigo-100 hover:text-indigo-600'">
+                  {{ preset.label }}
+                </button>
+              }
+              <button type="button" (click)="toggleCustom()"
+                class="py-4 rounded-2xl border-2 font-bold text-xs uppercase tracking-tight transition-all"
+                [ngClass]="customMode
+                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200'
+                  : 'bg-white border-slate-100 text-slate-500 hover:border-indigo-100 hover:text-indigo-600'">
+                Custom
               </button>
+            </div>
+
+            @if (customMode) {
+              <div class="grid grid-cols-2 gap-4 mt-4">
+                <div class="relative">
+                  <input type="number" [(ngModel)]="customHours" min="0" max="8"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 pr-12 font-bold text-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all">
+                  <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase">hr</span>
+                </div>
+                <div class="relative">
+                  <input type="number" [(ngModel)]="customMinutes" min="0" max="59"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 pr-12 font-bold text-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all">
+                  <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase">min</span>
+                </div>
+              </div>
             }
           </div>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-purple-400 uppercase tracking-widest mb-2">
-            Custom <span class="normal-case text-purple-300">(minutes)</span>
-          </label>
-          <input type="number" [(ngModel)]="customMinutes" (ngModelChange)="onCustomMinutesChange($event)"
-            min="1" max="480" placeholder="e.g. 35"
-            class="w-full bg-purple-50 border border-purple-100 rounded-xl px-4 py-3 text-sm text-purple-900 placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all"/>
-        </div>
-        <div class="flex items-center justify-between px-4 py-3 bg-purple-50 rounded-xl border border-purple-100">
-          <span class="text-xs text-purple-400">Selected duration</span>
-          <span class="text-sm font-semibold text-purple-700 font-mono">
-            {{ selectedSeconds >= 3600
-              ? (selectedSeconds / 3600 | number:'1.0-0') + 'h ' + ((selectedSeconds % 3600) / 60 | number:'1.0-0') + 'm'
-              : (selectedSeconds / 60 | number:'1.0-0') + ' min' }}
-          </span>
-        </div>
-        <button (click)="start()"
-          [disabled]="!sessionTitle.trim() || selectedSeconds <= 0 || isLoading"
-          class="w-full py-3.5 text-sm font-semibold rounded-xl transition-all active:scale-[0.98] bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-purple-600">
-          {{ isLoading ? 'Starting...' : 'Start session' }}
-        </button>
-      </div>
-    }
 
-    @if (phase === 'running' || phase === 'paused') {
-      <div class="flex flex-col items-center gap-6">
-        <div class="w-full bg-white rounded-2xl border border-purple-100 p-8 flex flex-col items-center gap-6">
-          <div class="relative w-56 h-56">
-            <svg class="w-full h-full -rotate-90" viewBox="0 0 140 140">
-              <circle cx="70" cy="70" r="62" fill="none" stroke-width="7" class="stroke-purple-100"/>
-              <circle cx="70" cy="70" r="62" fill="none" stroke-width="7" stroke-linecap="round"
-                [class]="phase === 'paused' ? 'stroke-amber-400' : 'stroke-purple-500'"
-                style="transition: stroke-dashoffset 1s linear, stroke 0.3s ease;"
-                [attr.stroke-dasharray]="circumference"
-                [attr.stroke-dashoffset]="dashOffset"/>
-            </svg>
-            <div class="absolute inset-0 flex flex-col items-center justify-center overflow-hidden">
-              <div class="flex items-center gap-1.5 mb-2">
-                <div class="w-1.5 h-1.5 rounded-full transition-colors"
-                  [class]="phase === 'running' ? 'bg-purple-500 animate-pulse' : 'bg-amber-400'"></div>
-                <span class="text-xs font-medium tracking-wide"
-                  [class]="phase === 'running' ? 'text-purple-400' : 'text-amber-400'">
-                  {{ phase === 'running' ? 'Focusing' : 'Paused' }}
-                </span>
-              </div>
-              <span class="text-5xl font-bold tabular-nums tracking-tight text-purple-900 font-mono leading-none">
-                {{ remainingFormatted }}
-              </span>
-              <span class="mt-2 text-xs text-purple-300">
-                {{ ((remainingSeconds / totalSeconds) * 100 | number:'1.0-0') }}% remaining
-              </span>
-            </div>
-          </div>
-          <div class="w-full px-4 py-2.5 bg-purple-50 rounded-xl border border-purple-100">
-            <p class="text-xs text-purple-400 mb-0.5">Working on</p>
-            <p class="text-sm font-medium text-purple-800 truncate">{{ sessionTitle }}</p>
-          </div>
-          <div class="w-full h-1.5 bg-purple-100 rounded-full overflow-hidden">
-            <div class="h-full rounded-full transition-all duration-1000 ease-linear"
-              [class]="phase === 'paused' ? 'bg-amber-400' : 'bg-purple-500'"
-              [style.width.%]="(1 - remainingSeconds / totalSeconds) * 100">
-            </div>
-          </div>
-        </div>
-
-        <div class="flex gap-2.5 w-full">
-          @if (phase === 'running') {
-            <button (click)="pause()"
-              class="flex-1 py-3 text-sm font-semibold rounded-xl border transition-all active:scale-95 bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100">
-              Pause
-            </button>
-          }
-          @if (phase === 'paused') {
-            <button (click)="resume()"
-              class="flex-1 py-3 text-sm font-semibold rounded-xl border transition-all active:scale-95 bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100">
-              Resume
-            </button>
-          }
-          <button (click)="stopAndSave()"
-            class="flex-1 py-3 text-sm font-semibold rounded-xl border transition-all active:scale-95 bg-white text-red-500 border-red-200 hover:bg-red-50">
-            Stop & save
+          <button type="button" (click)="start()"
+            [disabled]="!sessionTitle.trim() || effectiveSeconds < 60 || isLoading"
+            class="mt-auto w-full bg-slate-900 py-5 rounded-2xl text-white font-bold text-lg shadow-xl shadow-slate-200 hover:bg-indigo-600 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-20 disabled:grayscale disabled:pointer-events-none transition-all">
+            {{ isLoading ? 'Starting...' : 'Start Focused Session' }}
           </button>
         </div>
-        <button (click)="cancelAndDiscard()"
-          class="text-xs text-purple-300 hover:text-purple-500 underline underline-offset-2 transition-colors bg-transparent border-none cursor-pointer">
-          Cancel & discard
-        </button>
-      </div>
-    }
+      }
 
-    @if (phase === 'done') {
-      <div class="bg-white rounded-2xl border border-purple-100 p-8 flex flex-col items-center gap-4">
-        <div class="w-14 h-14 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M5 13l5 5L19 7" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <div class="text-center">
-          <p class="text-base font-semibold text-purple-900">Session complete</p>
-          <p class="text-sm text-purple-400 mt-1">{{ savedMessage }}</p>
-        </div>
-        <div class="w-full h-px bg-purple-50 my-1"></div>
-        <button (click)="resetToSetup()"
-          class="w-full py-3 text-sm font-semibold rounded-xl transition-all active:scale-[0.98] bg-purple-600 text-white hover:bg-purple-700">
-          Start another session
-        </button>
-      </div>
-    }
+      <!-- RUNNING / PAUSED PHASE -->
+      @if (phase === 'running' || phase === 'paused') {
+        <div class="flex flex-col items-center justify-center flex-1 gap-12 mt-8 relative z-10">
+          <div class="relative w-72 h-72 md:w-80 md:h-80">
+            <svg class="absolute inset-0 -rotate-90 w-full h-full drop-shadow-sm" viewBox="0 0 220 220">
+              <circle class="fill-none stroke-slate-100 stroke-[5]" cx="110" cy="110" r="100"/>
+              <circle
+                class="fill-none stroke-indigo-600 stroke-[5] transition-[stroke-dashoffset] duration-1000 ease-linear"
+                [class.opacity-40]="phase === 'paused'"
+                stroke-linecap="round"
+                cx="110" cy="110" r="100"
+                [attr.stroke-dasharray]="circumference"
+                [attr.stroke-dashoffset]="dashOffset"
+              />
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <div class="text-6xl font-black text-slate-900 tracking-tighter tabular-nums">{{ remainingFormatted }}</div>
+              <div class="text-[11px] font-black tracking-[0.3em] uppercase mt-3 transition-colors"
+                   [ngClass]="phase === 'running' ? 'text-indigo-600' : 'text-slate-400'">
+                {{ phase === 'running' ? 'Active' : 'On Hold' }}
+              </div>
+            </div>
+          </div>
 
-    @if (sessionHistory.length > 0) {
-      <div class="mt-6">
-        <div class="flex items-center justify-between mb-3">
-          <p class="text-xs font-medium text-purple-400 uppercase tracking-widest">Recent sessions</p>
-          <span class="text-xs text-purple-300">{{ sessionHistory.length }} total</span>
+          <div class="text-center space-y-2">
+            <h3 class="text-2xl font-bold text-slate-800">{{ sessionTitle }}</h3>
+            <div class="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full">
+              <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Goal: {{ formatSeconds(totalSeconds) }}</span>
+            </div>
+          </div>
+
+          <div class="flex gap-4 w-full max-w-md">
+            @if (phase === 'running') {
+              <button (click)="pause()"
+                class="flex-1 bg-white border-2 border-slate-200 text-slate-700 py-4 rounded-2xl font-bold hover:bg-slate-50 active:scale-95 transition-all">
+                Pause
+              </button>
+            } @else {
+              <button (click)="resume()"
+                class="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 active:scale-95 transition-all">
+                Resume
+              </button>
+            }
+            <button (click)="stopAndSave()"
+              class="flex-1 bg-rose-50 border-2 border-rose-100 text-rose-600 py-4 rounded-2xl font-bold hover:bg-rose-600 hover:text-white hover:border-rose-600 active:scale-95 transition-all">
+              End Session
+            </button>
+          </div>
+
+          <button (click)="cancelAndDiscard()"
+            class="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors bg-transparent border-none cursor-pointer">
+            Cancel & discard
+          </button>
         </div>
-        <div class="flex flex-col gap-2">
+      }
+
+      <!-- DONE PHASE -->
+      @if (phase === 'done') {
+        <div class="flex flex-col items-center justify-center flex-1 text-center relative z-10">
+          <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl mb-6">✓</div>
+          <h3 class="text-3xl font-black text-slate-900 mb-2">Well Done!</h3>
+          <p class="text-slate-500 max-w-xs mx-auto mb-8">You've successfully completed your focus block. Take a moment to recharge.</p>
+
+          <div class="bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8 w-full max-w-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Session Summary</p>
+            <p class="font-bold text-slate-700 text-lg">{{ savedMessage }}</p>
+          </div>
+
+          <button (click)="resetToSetup()"
+            class="w-full max-w-sm bg-slate-900 py-5 rounded-2xl text-white font-bold hover:bg-indigo-600 shadow-xl shadow-slate-200 transition-all">
+            Start New Session
+          </button>
+        </div>
+      }
+    </section>
+
+    <!-- SIDEBAR / HISTORY -->
+    <aside class="bg-slate-50/50 border border-slate-200/50 rounded-[40px] p-8 flex flex-col lg:sticky lg:top-10" style="max-height: 700px;">
+      <div class="flex items-center justify-between mb-8">
+        <h3 class="text-xs font-black tracking-[0.2em] uppercase text-slate-400">Activity History</h3>
+        <span class="bg-white border border-slate-200 text-slate-600 text-[10px] font-black px-3 py-1 rounded-full shadow-sm">
+          {{ sessionHistory.length }} Total
+        </span>
+      </div>
+
+      @if (isLoadingHistory()) {
+        <div class="flex-1 flex items-center justify-center text-slate-300">
+          <p class="text-[11px] font-bold tracking-widest uppercase">Loading...</p>
+        </div>
+      } @else if (sessionHistory.length === 0) {
+        <div class="flex-1 flex flex-col items-center justify-center text-slate-300">
+          <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4 italic text-2xl font-serif">i</div>
+          <p class="text-[11px] font-bold tracking-widest uppercase">No history yet</p>
+        </div>
+      } @else {
+        <div class="flex flex-col gap-3 flex-1 overflow-y-auto pr-2">
           @for (session of visibleHistory; track $index) {
-            <div class="flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-purple-100">
-              <div class="flex items-center gap-3 min-w-0">
-                <div class="w-1.5 h-1.5 rounded-full bg-purple-300 shrink-0"></div>
-                <span class="text-sm font-medium text-purple-800 truncate">{{ session.title }}</span>
+            <div class="bg-white border border-slate-100 p-5 rounded-3xl flex items-center justify-between gap-4 hover:border-indigo-200 hover:shadow-md transition-all group cursor-default">
+              <div class="flex items-center gap-4 overflow-hidden">
+                <div class="h-10 w-10 shrink-0 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                  <span class="text-xs font-bold">#{{ $index + 1 }}</span>
+                </div>
+                <div class="flex flex-col overflow-hidden">
+                  <span class="text-sm font-bold text-slate-700 truncate tracking-tight">{{ session.title }}</span>
+                  <span class="text-[10px] font-medium text-slate-400 uppercase">
+                    {{ session.createdAt ? (session.createdAt | date:'shortTime') : 'Focus Session' }}
+                  </span>
+                </div>
               </div>
-              <div class="flex items-center gap-3 shrink-0 ml-3">
-                <span class="text-xs font-mono font-medium text-purple-500">{{ session.timer | formatTimer }}</span>
-                <span class="text-xs text-purple-300">{{ session.createdAt ? (session.createdAt | date:'shortTime') : '—' }}</span>
-              </div>
+              <span class="font-mono text-sm font-bold text-indigo-600 bg-indigo-50/50 px-3 py-1 rounded-lg shrink-0">
+                {{ session.timer | formatTimer }}
+              </span>
             </div>
           }
         </div>
+
         @if (sessionHistory.length > 5) {
           <button (click)="showAllHistory = !showAllHistory"
-            class="mt-3 w-full py-2.5 text-xs font-medium text-purple-500 bg-white rounded-xl border border-purple-100 hover:bg-purple-50 transition-colors cursor-pointer">
-            {{ showAllHistory ? 'Show less' : 'Show all ' + sessionHistory.length + ' sessions' }}
+            class="mt-6 pt-6 border-t border-slate-200/60 w-full text-xs font-bold text-slate-400 hover:text-indigo-600 uppercase tracking-widest transition-colors">
+            {{ showAllHistory ? 'Show less' : 'Show all ' + sessionHistory.length }}
           </button>
         }
-      </div>
-    }
+      }
+    </aside>
 
   </div>
-</div>`
+</div>
+  `
 })
 export class FocusTimerComponent implements OnInit, OnDestroy {
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly focusSessionFacade = inject(FocusSessionFacadeService);
+  private readonly userContext = inject(UserContextService);
+
+  readonly isLoadingHistory = signal(false);
+
+  // Timer state
   phase: Phase = 'setup';
   sessionTitle = '';
   selectedSeconds = 25 * 60;
-  customMinutes: number | undefined = undefined;
   remainingSeconds = 0;
   totalSeconds = 0;
   sessionHistory: SessionHistoryItem[] = [];
@@ -226,29 +254,39 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
   savedMessage = '';
   isLoading = false;
 
-  // Stores the DB id of the active session so we can call pause/complete on it
+  // Custom duration state
+  customMode = false;
+  customHours: number | null = 0;
+  customMinutes: number | null = 25;
+
+  // Session tracking
   private activeSessionId: number | null = null;
   private tickCount = 0;
   private timerSubscription: Subscription | null = null;
 
   readonly presets = PRESET_DURATIONS;
-  readonly circumference = 2 * Math.PI * 62; // matches r="62" in the SVG
+  readonly circumference = 2 * Math.PI * 100; // matches r="100" in SVG
 
-  private readonly cdr = inject(ChangeDetectorRef);
-  private readonly focusSessionFacade = inject(FocusSessionFacadeService);
-  private readonly userContext = inject(UserContextService);
-
-  get dashOffset(): number {
-    if (this.totalSeconds === 0) return 0;
-    return this.circumference * (1 - this.remainingSeconds / this.totalSeconds);
+  get phaseLabel(): string {
+    return { setup: 'Ready', running: 'Active', paused: 'Paused', done: 'Done' }[this.phase];
   }
 
   get remainingFormatted(): string {
     const h = Math.floor(this.remainingSeconds / 3600);
     const m = Math.floor((this.remainingSeconds % 3600) / 60);
     const s = this.remainingSeconds % 60;
-    const pad = (n: number) => n.toString().padStart(2, '0');
+    const pad = (n: number) => String(n).padStart(2, '0');
     return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  }
+
+  get dashOffset(): number {
+    if (this.totalSeconds === 0) return 0;
+    return this.circumference * (1 - this.remainingSeconds / this.totalSeconds);
+  }
+
+  get effectiveSeconds(): number {
+    if (!this.customMode) return this.selectedSeconds;
+    return ((Number(this.customHours) || 0) * 3600) + ((Number(this.customMinutes) || 0) * 60);
   }
 
   get visibleHistory(): SessionHistoryItem[] {
@@ -265,31 +303,36 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
   }
 
   selectPreset(seconds: number): void {
+    this.customMode = false;
     this.selectedSeconds = seconds;
-    this.customMinutes = undefined;
   }
 
-  onCustomMinutesChange(minutes: number | undefined): void {
-    if (minutes && minutes > 0) {
-      this.selectedSeconds = minutes * 60;
-    }
+  toggleCustom(): void {
+    this.customMode = !this.customMode;
   }
 
-  // ── LIFECYCLE METHODS ────────────────────────────────────────
+  formatSeconds(s: number): string {
+    const m = Math.floor(s / 60);
+    const h = Math.floor(m / 60);
+    return h > 0 ? `${h}h ${m % 60}m` : `${m}m`;
+  }
+
+  // ── API-WIRED ACTIONS ─────────────────────────────────────
 
   start(): void {
-    if (!this.sessionTitle.trim() || this.selectedSeconds <= 0) return;
+    const seconds = this.effectiveSeconds;
+    if (!this.sessionTitle.trim() || seconds < 60) return;
     this.isLoading = true;
 
     this.focusSessionFacade.start({
       title: this.sessionTitle,
       timer: this.remainingFormatted,
-      remainingSeconds: this.selectedSeconds
+      remainingSeconds: seconds
     }).subscribe({
       next: (session) => {
         this.activeSessionId = session.id;
-        this.totalSeconds = this.selectedSeconds;
-        this.remainingSeconds = this.selectedSeconds;
+        this.totalSeconds = seconds;
+        this.remainingSeconds = seconds;
         this.phase = 'running';
         this.isLoading = false;
         this.tick();
@@ -346,8 +389,6 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
   }
 
   cancelAndDiscard(): void {
-    // User discards without saving — complete it on the backend so it
-    // doesn't come back as "active" on next load, then reset the UI
     if (this.activeSessionId) {
       this.timerSubscription?.unsubscribe();
       this.focusSessionFacade.complete(this.activeSessionId, '00:00:00').subscribe({
@@ -357,45 +398,54 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
     this.resetToSetup();
   }
 
+  pauseSession(): void {
+    this.pause();
+  }
+
   resetToSetup(): void {
     this.timerSubscription?.unsubscribe();
     this.phase = 'setup';
     this.remainingSeconds = 0;
     this.activeSessionId = null;
     this.tickCount = 0;
+    this.sessionTitle = '';
   }
 
   loadSessionHistory(): void {
     const userId = this.userContext.user()?.id;
     if (!userId) { this.sessionHistory = []; return; }
 
+    this.isLoadingHistory.set(true);
     this.focusSessionFacade.getByUser(userId).subscribe({
       next: (sessions) => {
-        this.sessionHistory = sessions.map((s) => this.mapToHistoryItem(s));
+        this.sessionHistory = sessions.map((s: any) => ({
+          title: s.title ?? '',
+          timer: s.displayDuration ?? s.timer ?? '00:00:00',
+          createdAt: s.createdAt ? new Date(s.createdAt) : undefined,
+        }));
+        this.isLoadingHistory.set(false);
         this.cdr.detectChanges();
       },
-      error: () => { this.sessionHistory = []; this.cdr.detectChanges(); }
+      error: () => {
+        this.sessionHistory = [];
+        this.isLoadingHistory.set(false);
+        this.cdr.detectChanges();
+      }
     });
   }
 
-  // ── PRIVATE HELPERS ──────────────────────────────────────────
+  // ── PRIVATE ───────────────────────────────────────────────
 
-  // Called on ngOnInit — restores state if the user refreshed mid-session
   private restoreActiveSession(): void {
     this.focusSessionFacade.getActive().subscribe({
       next: (session) => {
-        if (!session) return; // 204 No Content — nothing to restore
+        if (!session) return;
 
         this.activeSessionId = session.id;
         this.sessionTitle = session.title;
         this.remainingSeconds = session.remainingSeconds;
 
-        // totalSeconds isn't stored in DB — we reconstruct it from the
-        // nearest preset or fall back to remaining (slightly inaccurate
-        // for the ring but functionally fine)
-        const matchedPreset = PRESET_DURATIONS.find(p =>
-          p.seconds >= session.remainingSeconds
-        );
+        const matchedPreset = PRESET_DURATIONS.find(p => p.seconds >= session.remainingSeconds);
         this.totalSeconds = matchedPreset?.seconds ?? session.remainingSeconds;
 
         this.phase = session.status === 'PAUSED' ? 'paused' : 'running';
@@ -413,7 +463,6 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
       this.tickCount++;
       this.cdr.detectChanges();
 
-      // Auto-complete when timer reaches zero
       if (this.remainingSeconds <= 0) {
         this.timerSubscription?.unsubscribe();
         if (this.activeSessionId) {
@@ -431,11 +480,9 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // Periodic sync: every SYNC_INTERVAL_TICKS seconds, push remaining
-      // time to DB so a crash doesn't lose all progress
+      // Background sync every 30s to protect against crashes
       if (this.tickCount % SYNC_INTERVAL_TICKS === 0 && this.activeSessionId) {
         this.focusSessionFacade.pause(this.activeSessionId, this.remainingSeconds).subscribe({
-          // Immediately re-set to ACTIVE after the sync pause
           next: () => {
             if (this.activeSessionId) {
               this.focusSessionFacade.resume(this.activeSessionId, this.remainingSeconds).subscribe();
@@ -444,14 +491,5 @@ export class FocusTimerComponent implements OnInit, OnDestroy {
         });
       }
     });
-  }
-
-  private mapToHistoryItem(s: any): SessionHistoryItem {
-    return {
-      title: s.title ?? '',
-      timer: s.displayDuration ?? '00:00:00',
-      userId: s.userId ?? undefined,
-      createdAt: s.createdAt ? new Date(s.createdAt) : undefined,
-    };
   }
 }
