@@ -104,9 +104,13 @@ export class FocusSessionFacadeService {
   /**
    * Get the current user's active session
    */
-  getActive(): Observable<FocusSessionUI> {
+  getActive(): Observable<FocusSessionUI | null> {
     return this.focusSessionController.getActive().pipe(
-      map(dto => this.mapToUI(dto)),
+      map(dto => {
+        // If backend returns null/undefined (no active session), return null safely
+        if (!dto) return null;
+        return this.mapToUI(dto);
+      }),
       catchError(err => this.handleError(err, 'Failed to fetch active session'))
     );
   }

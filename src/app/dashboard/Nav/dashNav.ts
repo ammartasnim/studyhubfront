@@ -110,19 +110,21 @@ export class DashboardComponent {
     this.router.navigateByUrl('/login');
   }
 
-  handleSidebarNavigation(section: string): void {
-    const routes: Record<string, string> = {
-      'dashboard':   '/dashboard/feed',
-      'feed':        '/dashboard/feed',
-      'communities': '/dashboard/communities',
-      'my-created':  '/dashboard/my-created',
-      'focus':       '/dashboard/focus-room',
-      'profile':     '/dashboard/profile',
-      'settings':    '/dashboard/settings',
-      'support':     '/dashboard/support',
-      'followed':    '/dashboard/followed',
-      'bookmarks':   '/dashboard/bookmarks',
-    };
-    this.router.navigateByUrl(routes[section] ?? '/dashboard/feed');
-  }
+handleSidebarNavigation(section: string): void {
+  const routes: Record<string, string> = {
+    'dashboard':   '/dashboard/feed',
+    'feed':        '/dashboard/feed',
+    'communities': '/dashboard/communities',
+    'my-created':  '/dashboard/my-created',
+    'focus':       '/dashboard/focus-room',
+    'profile':     '/dashboard/profile',
+    'settings':    '/dashboard/settings',
+    'support':     '/dashboard/support',
+    'followed':    '/dashboard/followed',
+    'bookmarks':   '/dashboard/bookmarks',
+  };
+
+  const target = routes[section] ?? '/dashboard/feed';
+  this.router.navigateByUrl(target);
+}
 }
