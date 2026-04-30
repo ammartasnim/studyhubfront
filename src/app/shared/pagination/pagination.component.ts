@@ -63,7 +63,7 @@ export interface PaginationConfig {
         <!-- First Page Button -->
         <button
           (click)="goToFirstPage()"
-          [disabled]="isLoading || config.currentPage === 0"
+          [disabled]="isLoading || config.currentPage === 0 || config.totalPages === 0"
           title="First page"
           class="p-2 border border-slate-200 rounded-lg text-slate-600 hover:border-purple-300 hover:text-purple-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
         >
@@ -73,7 +73,7 @@ export interface PaginationConfig {
         <!-- Previous Page Button -->
         <button
           (click)="goToPreviousPage()"
-          [disabled]="isLoading || !config.hasPrevious"
+          [disabled]="isLoading || !config.hasPrevious || config.totalPages === 0"
           title="Previous page"
           class="p-2 border border-slate-200 rounded-lg text-slate-600 hover:border-purple-300 hover:text-purple-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
         >
@@ -102,7 +102,7 @@ export interface PaginationConfig {
         <!-- Next Page Button -->
         <button
           (click)="goToNextPage()"
-          [disabled]="isLoading || !config.hasNext"
+          [disabled]="isLoading || !config.hasNext || config.totalPages === 0"
           title="Next page"
           class="p-2 border border-slate-200 rounded-lg text-slate-600 hover:border-purple-300 hover:text-purple-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
         >
@@ -112,7 +112,7 @@ export interface PaginationConfig {
         <!-- Last Page Button -->
         <button
           (click)="goToLastPage()"
-          [disabled]="isLoading || config.currentPage === config.totalPages - 1"
+          [disabled]="isLoading || config.currentPage === config.totalPages - 1 || config.totalPages === 0"
           title="Last page"
           class="p-2 border border-slate-200 rounded-lg text-slate-600 hover:border-purple-300 hover:text-purple-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
         >
@@ -159,27 +159,29 @@ export class PaginationComponent {
   }
 
   goToFirstPage(): void {
-    if (this.config.currentPage !== 0) {
+    if (this.config.totalPages > 0 && this.config.currentPage !== 0) {
       this.pageChange.emit(0);
     }
   }
 
   goToPreviousPage(): void {
-    if (this.config.hasPrevious) {
+    if (this.config.totalPages > 0 && this.config.hasPrevious) {
       this.pageChange.emit(this.config.currentPage - 1);
     }
   }
 
   goToNextPage(): void {
-    if (this.config.hasNext) {
+    if (this.config.totalPages > 0 && this.config.hasNext) {
       this.pageChange.emit(this.config.currentPage + 1);
     }
   }
 
   goToLastPage(): void {
-    const lastPage = this.config.totalPages - 1;
-    if (this.config.currentPage !== lastPage) {
-      this.pageChange.emit(lastPage);
+    if (this.config.totalPages > 0) {
+      const lastPage = this.config.totalPages - 1;
+      if (this.config.currentPage !== lastPage) {
+        this.pageChange.emit(lastPage);
+      }
     }
   }
 

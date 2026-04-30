@@ -75,6 +75,7 @@ export class DashboardComponent {
 handleSidebarNavigation(section: string): void {
   const routes: Record<string, string> = {
     'dashboard':   '/dashboard/feed',
+    'explore':     '/dashboard/explore',
     'feed':        '/dashboard/feed',
     'communities': '/dashboard/communities',
     'my-created':  '/dashboard/my-created',
