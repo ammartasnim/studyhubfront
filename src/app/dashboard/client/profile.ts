@@ -63,6 +63,7 @@ import { UserFacadeService } from '../../api/facades/user.facade';
                   <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-600 ring-1 ring-indigo-200">
                     Lv.&nbsp;{{ level() }}
                   </span>
+                  
                 </div>
               </div>
 
