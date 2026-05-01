@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { from, Observable } from 'rxjs';
+import { map, catchError, switchMap } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 
 import { PostControllerService } from '../api/postController.service';
@@ -138,27 +138,25 @@ create(data: { title: string; content: string; imgs?: Blob[]; communityId?: numb
    /**
     * Get posts by community
     */
-  getByCommunity(
-  communityId: number,
-  filters?: { page?: number; size?: number }
-): Observable<PaginatedPosts> {
+getByCommunity(communityId: number, filters?: { page?: number; size?: number }): Observable<PaginatedPosts> {
+  const pageable: Pageable = {
+    page: filters?.page ?? 0,
+    size: filters?.size ?? 10
+  };
 
-  const page = filters?.page ?? 0;
-  const size = filters?.size ?? 10;
-
-  return this.http.get<PagePostResDto>(
-    `/api/posts/community/${communityId}`,
-    {
-      params: {
-        page,
-        size
+  return this.postController.getPostsByCommunity(communityId, pageable).pipe(
+    switchMap((response: any) => {
+      // If the response is a Blob, we must read it as text and parse it
+      if (response instanceof Blob) {
+        return from(response.text()).pipe(
+          map(text => JSON.parse(text))
+        );
       }
-    }
-  ).pipe(
-    map(this.mapPagedResponse),
-    catchError(err =>
-      this.handleError(err, `Failed to fetch posts for community ${communityId}`)
-    )
+      // If it's already JSON, just wrap it back in an observable
+      return from([response]);
+    }),
+    map(jsonResponse => this.mapPagedResponse(jsonResponse)),
+    catchError(err => this.handleError(err, `Failed to fetch posts`))
   );
 }
    /**
@@ -247,27 +245,23 @@ create(data: { title: string; content: string; imgs?: Blob[]; communityId?: numb
   /**
    * Map paginated response
    */
-  private mapPagedResponse(response: PagePostResDto | null | undefined): PaginatedPosts {
-    if (!response) {
-      return {
-        items: [],
-        totalItems: 0,
-        totalPages: 0,
-        currentPage: 0,
-        pageSize: 0
-      };
-    }
+private mapPagedResponse(response: any): PaginatedPosts {
+  console.log("DEBUG: What is actually inside the response variable?", response);
+  // 1. Extract the raw list from Spring's 'content' key
+  const rawContent = response.content || [];
 
-    const items = (response.content ?? []).map(dto => this.mapToUI(dto));
+  // 2. Transform each DTO into the PostUI model
+  // This ensures authorFullName, previewText, and Dates are correctly set
+  const mappedItems = rawContent.map((dto: PostResDto) => this.mapToUI(dto));
 
-    return {
-      items,
-      totalItems: response.totalElements ?? 0,
-      totalPages: response.totalPages ?? 0,
-      currentPage: response.number ?? 0,
-      pageSize: response.size ?? 0
-    };
-  }
+  return {
+    items: mappedItems,
+    totalItems: response.totalElements ?? 0,
+    totalPages: response.totalPages ?? 0,
+    currentPage: response.number ?? 0,
+    pageSize: response.size ?? 10
+  };
+}
 
   /**
    * Truncate string to specified length

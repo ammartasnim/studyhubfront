@@ -318,20 +318,26 @@ export class CommunityDetailComponent implements OnInit {
     }
   }
 
-  async loadPosts(id: number) {
-    this.postsLoading.set(true);
-    try {
-      const paged = await firstValueFrom(this.postFacade.getByCommunity(id));
-      this.posts.set(paged.items);
-      console.log("RAW RESPONSE:", paged);
-      console.log("ITEMS:", paged.items);
-      console.log("the posts:",this.posts)
-    } catch (err) {
-      console.error("Failed to load posts", err);
-    } finally {
-      this.postsLoading.set(false);
-    }
+ async loadPosts(id: number) {
+  this.postsLoading.set(true);
+  try {
+    // Cast the response to 'any' temporarily to see the raw structure
+    const response: any = await firstValueFrom(this.postFacade.getByCommunity(id));
+    
+    console.log("Raw API Response:", response);
+
+    // Use 'content' if 'items' is undefined
+    const posts = response.content || response.items || [];
+    
+    this.posts.set(posts);
+    
+    console.log("Successfully set posts:", posts);
+  } catch (err: any) {
+    console.error("Failed to load posts", err?.error);
+  } finally {
+    this.postsLoading.set(false);
   }
+}
 
   goBack() {
     this.router.navigate(['/dashboard/client/communities']);
