@@ -1,8 +1,12 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { UserContextService } from '../../user-context.service';
 import { BadgesDisplayComponent } from '../Nav/badges-display.';
 import { UserFacadeService } from '../../api/facades/user.facade';
+import { PostFacadeService } from '../../api/facades/post.facade';
+import { PostUI } from '../../api/facades/models/post.model';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-profile',
@@ -63,7 +67,6 @@ import { UserFacadeService } from '../../api/facades/user.facade';
                   <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-600 ring-1 ring-indigo-200">
                     Lv.&nbsp;{{ level() }}
                   </span>
-                  
                 </div>
               </div>
 
@@ -87,10 +90,98 @@ import { UserFacadeService } from '../../api/facades/user.facade';
         <!-- Badges -->
         <div class="h-px bg-gradient-to-r from-indigo-100 via-purple-100 to-transparent my-5"></div>
         <app-badges-display [badges]="badges()" />
+
+        <!-- ── My Posts ──────────────────────────────────────────────── -->
+        <div class="h-px bg-gradient-to-r from-indigo-100 via-purple-100 to-transparent my-5"></div>
+
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider">My Posts</h3>
+          <span class="text-xs text-slate-400">{{ posts().length }} post{{ posts().length !== 1 ? 's' : '' }}</span>
+        </div>
+
+        @if (postsLoading()) {
+          <div class="flex justify-center py-8">
+            <div class="w-7 h-7 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+          </div>
+        } @else if (posts().length === 0) {
+          <div class="text-center py-8 bg-slate-50 rounded-2xl ring-1 ring-slate-100">
+            <p class="text-slate-400 text-sm">You haven't posted anything yet.</p>
+          </div>
+        } @else {
+          <div class="divide-y divide-slate-100 rounded-2xl ring-1 ring-slate-100 overflow-hidden">
+            @for (post of posts(); track post.id) {
+              <article class="p-5 transition-colors hover:bg-slate-50 bg-white">
+
+                <!-- Community badge -->
+                <div class="mb-2">
+                  @if (post.communityTitle && post.communityTitle !== 'General') {
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[0.65rem] font-semibold bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      c/{{ post.communityTitle }}
+                    </span>
+                  } @else {
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[0.65rem] font-semibold bg-slate-100 text-slate-500 ring-1 ring-slate-200">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Personal
+                    </span>
+                  }
+                  <span class="ml-2 text-xs text-slate-400">{{ getTimeAgo(post.createdAt) }}</span>
+                </div>
+
+                <h4 class="font-bold text-slate-900 mb-1">{{ post.title }}</h4>
+                <p class="text-sm text-slate-600 leading-relaxed">{{ post.previewText }}</p>
+
+                <!-- Images -->
+                @if (post.images.length > 0) {
+                  <div class="mt-3 rounded-xl overflow-hidden"
+                    [class.grid]="post.images.length > 1"
+                    [class.grid-cols-2]="post.images.length > 1"
+                    [class.gap-0.5]="post.images.length > 1">
+                    @for (img of post.images.slice(0, 4); track img; let i = $index) {
+                      <div class="relative bg-slate-100 overflow-hidden"
+                        [class.aspect-video]="post.images.length === 1"
+                        [class.aspect-square]="post.images.length > 1">
+                        <img [src]="'http://localhost:8081/uploads/' + img" [alt]="post.title" class="w-full h-full object-cover" />
+                        @if (i === 3 && post.images.length > 4) {
+                          <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                            <span class="text-white text-2xl font-bold">+{{ post.images.length - 4 }}</span>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+
+                <!-- Stats row -->
+                <div class="mt-3 flex items-center gap-4">
+                  <span class="flex items-center gap-1.5 text-sm text-slate-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    {{ post.likeCount }}
+                  </span>
+                  <span class="flex items-center gap-1.5 text-sm text-slate-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    {{ post.commentCount }}
+                  </span>
+                </div>
+
+              </article>
+            }
+          </div>
+        }
+        <!-- ── End My Posts ─────────────────────────────────────────── -->
+
       </div>
     </article>
 
-    <!-- Upload Modal -->
+    <!-- Upload Modal — unchanged -->
     @if (modalOpen()) {
       <div
         class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center animate-[fadeIn_0.15s_ease]"
@@ -103,14 +194,12 @@ import { UserFacadeService } from '../../api/facades/user.facade';
           <h3 class="text-xl font-extrabold text-slate-900 mb-1">Upload Profile Picture</h3>
           <p class="text-sm text-slate-400 mb-6">JPG, PNG or WebP · Max 5MB</p>
 
-          <!-- Error -->
           @if (errorMsg()) {
             <div class="mb-4 px-4 py-3 rounded-xl bg-red-50 ring-1 ring-red-200 text-sm text-red-600">
               {{ errorMsg() }}
             </div>
           }
 
-          <!-- Drop zone -->
           <label
             class="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-indigo-200 rounded-xl p-8 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-all duration-200 group"
             for="pfp-input"
@@ -120,16 +209,9 @@ import { UserFacadeService } from '../../api/facades/user.facade';
               <p class="text-sm font-semibold text-slate-700">Click to browse</p>
               <p class="text-xs text-slate-400 mt-0.5">or drag and drop your image here</p>
             </div>
-            <input
-              id="pfp-input"
-              type="file"
-              accept="image/*"
-              class="hidden"
-              (change)="onFileSelected($event)"
-            />
+            <input id="pfp-input" type="file" accept="image/*" class="hidden" (change)="onFileSelected($event)" />
           </label>
 
-          <!-- Preview -->
           @if (previewUrl()) {
             <div class="mt-5 flex items-center gap-4 p-3 bg-slate-50 rounded-xl ring-1 ring-slate-100">
               <img [src]="previewUrl()!" class="w-14 h-14 rounded-xl object-cover" alt="Preview" />
@@ -137,21 +219,12 @@ import { UserFacadeService } from '../../api/facades/user.facade';
                 <p class="text-sm font-medium text-slate-700 truncate">{{ selectedFile()?.name }}</p>
                 <p class="text-xs text-slate-400">{{ fileSizeLabel() }}</p>
               </div>
-              <button
-                (click)="clearFile()"
-                class="text-slate-400 hover:text-red-400 transition-colors text-lg leading-none"
-              >✕</button>
+              <button (click)="clearFile()" class="text-slate-400 hover:text-red-400 transition-colors text-lg leading-none">✕</button>
             </div>
           }
 
-          <!-- Actions -->
           <div class="flex gap-3 mt-6">
-            <button
-              (click)="closeModal()"
-              class="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
-            >
-              Cancel
-            </button>
+            <button (click)="closeModal()" class="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancel</button>
             <button
               [disabled]="!selectedFile() || uploading()"
               (click)="uploadPfp()"
@@ -170,7 +243,6 @@ import { UserFacadeService } from '../../api/facades/user.facade';
               }
             </button>
           </div>
-
         </div>
       </div>
     }
@@ -190,9 +262,10 @@ import { UserFacadeService } from '../../api/facades/user.facade';
     }
   `]
 })
-export class ProfileComponent {
+export class ProfileComponent implements OnInit {
   private readonly userContext = inject(UserContextService);
   private readonly userFacade  = inject(UserFacadeService);
+  private readonly postFacade  = inject(PostFacadeService);   // ← added
   readonly user = this.userContext.user;
 
   readonly modalOpen    = signal(false);
@@ -200,7 +273,41 @@ export class ProfileComponent {
   readonly previewUrl   = signal<string | null>(null);
   readonly uploading    = signal(false);
   readonly errorMsg     = signal<string | null>(null);
-  readonly localPfp     = signal<string | null>(null); // ← overrides after upload
+  readonly localPfp     = signal<string | null>(null);
+
+  // ── Posts ──
+  readonly posts        = signal<PostUI[]>([]);
+  readonly postsLoading = signal(true);
+
+  ngOnInit() {
+    this.loadMyPosts();
+  }
+
+  private async loadMyPosts() {
+    this.postsLoading.set(true);
+    try {
+      const res = await firstValueFrom(this.postFacade.getMy());
+      this.posts.set(res.items);
+    } catch (err) {
+      console.error('[Profile] Failed to load posts', err);
+    } finally {
+      this.postsLoading.set(false);
+    }
+  }
+
+  // ── Helpers ──
+  getTimeAgo(date: Date | null): string {
+    if (!date) return '';
+    const diff = Date.now() - new Date(date).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  }
+
+  // ── Everything below is unchanged ──
 
   openModal()  { this.modalOpen.set(true); this.errorMsg.set(null); }
   closeModal() { this.modalOpen.set(false); this.clearFile(); this.errorMsg.set(null); }
@@ -235,7 +342,6 @@ export class ProfileComponent {
     this.userFacade.uploadPfp(file).subscribe({
       next: (updatedUser) => {
         this.userContext.setUser(updatedUser);
-        // ← immediately show the new pfp using the blob URL
         const newPfp = updatedUser.pfp
           ? `http://localhost:8081/uploads/${updatedUser.pfp}`
           : null;
@@ -250,7 +356,6 @@ export class ProfileComponent {
     });
   }
 
-  // ── Computed ──
   readonly displayName = computed(() => {
     const u = this.user();
     return `${u?.firstName ?? ''} ${u?.lastName ?? ''}`.trim() || u?.username || 'Student';
@@ -260,7 +365,6 @@ export class ProfileComponent {
   readonly roleLabel = computed(() => this.user()?.role ?? '');
   readonly level     = computed(() => this.user()?.level ?? 1);
 
-  // localPfp takes priority over user context pfp
   readonly pfp = computed(() => {
     if (this.localPfp()) return this.localPfp()!;
     const p = this.user()?.pfp;
