@@ -12,6 +12,13 @@ interface Message {
   typing?: boolean;
 }
 
+interface MessageSegment {
+  type: 'text' | 'code';
+  content: string;
+  language?: string;
+  open?: boolean; // ✅ true while the closing ``` hasn't arrived yet
+}
+
 @Component({
   selector: 'app-ai-assistant',
   standalone: true,
@@ -80,10 +87,9 @@ interface Message {
               </div>
             }
 
-            <!-- Assistant — no bubble, renders directly like Claude/ChatGPT -->
+            <!-- Assistant -->
             @if (msg.role === 'assistant') {
               <div class="flex flex-col gap-1 max-w-[90%]">
-                <!-- AI label -->
                 <span class="flex items-center gap-1.5 text-[11px] font-medium text-indigo-400 mb-0.5">
                   <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none"
                        stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -91,18 +97,69 @@ interface Message {
                   </svg>
                   AI Assistant
                 </span>
-                <!-- Text renders directly on background -->
-                <p class="text-sm leading-relaxed text-slate-800 whitespace-pre-wrap">
-                  {{ msg.text }}<span
-                    class="inline-block w-0.5 h-4 bg-indigo-400 ml-0.5 align-middle animate-pulse"
-                    [class.hidden]="!msg.typing"
-                  ></span>
-                </p>
+
+                @for (seg of parseMessage(msg.text); track $index) {
+
+                  <!-- Plain text segment -->
+                  @if (seg.type === 'text') {
+                    <p class="text-sm leading-relaxed text-slate-800 whitespace-pre-wrap m-0">
+                      {{ seg.content }}<span
+                        class="inline-block w-0.5 h-4 bg-indigo-400 ml-0.5 align-middle animate-pulse"
+                        [class.hidden]="!msg.typing || !isLastSegment(msg.text, $index)"
+                      ></span>
+                    </p>
+                  }
+
+                  <!-- Code block segment -->
+                  @if (seg.type === 'code') {
+                    <div class="rounded-xl overflow-hidden border border-slate-200 my-1 text-sm">
+                      <!-- Header -->
+                      <div class="flex items-center justify-between px-3 py-2
+                                  bg-slate-100 border-b border-slate-200">
+                        <span class="flex items-center gap-2 text-xs font-medium text-slate-500">
+                          <!-- Triangle -->
+                          <span class="w-0 h-0
+                                       border-t-[5px] border-t-transparent
+                                       border-b-[5px] border-b-transparent
+                                       border-l-[8px]"
+                                [class.border-l-indigo-400]="seg.open"
+                                [class.animate-pulse]="seg.open"
+                                [class.border-l-indigo-500]="!seg.open">
+                          </span>
+                          {{ seg.language || 'code' }}
+                          <!-- ✅ "writing…" label while block is still open -->
+                          @if (seg.open) {
+                            <span class="text-[10px] text-indigo-300 font-normal">writing…</span>
+                          }
+                        </span>
+                        <!-- Copy only available once block is closed -->
+                        @if (!seg.open) {
+                          <button
+                            (click)="copyCode(seg.content, $index)"
+                            class="text-xs px-2.5 py-1 rounded-md border border-slate-300
+                                   text-slate-500 hover:bg-slate-200 transition-colors"
+                            [class.text-green-600]="copiedIndex() === $index"
+                            [class.border-green-400]="copiedIndex() === $index"
+                          >
+                            {{ copiedIndex() === $index ? 'Copied!' : 'Copy' }}
+                          </button>
+                        }
+                      </div>
+                      <!-- Code body -->
+                      <pre class="m-0 px-4 py-3 bg-slate-50 overflow-x-auto
+                                  text-[13px] leading-relaxed text-slate-800 font-mono"
+                      >{{ seg.content }}<span
+                          class="inline-block w-0.5 h-4 bg-indigo-400 ml-0.5 align-middle animate-pulse"
+                          [class.hidden]="!msg.typing || !seg.open"
+                        ></span></pre>
+                    </div>
+                  }
+                }
               </div>
             }
           }
 
-          <!-- Thinking dots (before first char appears) -->
+          <!-- Thinking dots -->
           @if (loading()) {
             <div class="flex flex-col gap-1">
               <span class="flex items-center gap-1.5 text-[11px] font-medium text-indigo-400 mb-0.5">
@@ -136,7 +193,7 @@ interface Message {
         </div>
       }
 
-      <!-- Input -->
+      <!-- Input row -->
       <div class="flex items-end gap-2.5 px-4 py-3.5 border-t border-slate-100 flex-shrink-0">
         <textarea
           [(ngModel)]="inputText"
@@ -150,20 +207,39 @@ interface Message {
                  focus:border-indigo-400 transition-colors font-[inherit]"
         ></textarea>
 
-        <button
-          (click)="sendMessage()"
-          [disabled]="!inputText.trim() || loading()"
-          class="w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center
-                 bg-gradient-to-br from-indigo-500 to-violet-500 text-white
-                 transition-all duration-150
-                 hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-        >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"/>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-          </svg>
-        </button>
+        <!-- ✅ Stop button — shown while typing is in progress -->
+        @if (typing()) {
+          <button
+            (click)="stopTyping()"
+            class="w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center
+                   border-2 border-red-400 text-red-400
+                   hover:bg-red-50 transition-all duration-150"
+            title="Stop generating"
+          >
+            <!-- Square stop icon -->
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+            </svg>
+          </button>
+        }
+
+        <!-- Send button — hidden while typing -->
+        @if (!typing()) {
+          <button
+            (click)="sendMessage()"
+            [disabled]="!inputText.trim() || loading()"
+            class="w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center
+                   bg-gradient-to-br from-indigo-500 to-violet-500 text-white
+                   transition-all duration-150
+                   hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        }
       </div>
     </div>
   `
@@ -176,9 +252,13 @@ export class AiAssistant {
   private readonly aiFacade = inject(AiFacadeService);
 
   inputText = '';
-  readonly messages = signal<Message[]>([]);
-  readonly loading  = signal(false);
-  readonly error    = signal<string | null>(null);
+  readonly messages    = signal<Message[]>([]);
+  readonly loading     = signal(false);
+  readonly typing      = signal(false);  
+  readonly error       = signal<string | null>(null);
+  readonly copiedIndex = signal<number | null>(null);
+
+  private stopRequested = false;
 
   onEnter(event: Event): void {
     const ke = event as KeyboardEvent;
@@ -191,20 +271,73 @@ export class AiAssistant {
     el.style.height = Math.min(el.scrollHeight, 120) + 'px';
   }
 
+  stopTyping(): void {
+    this.stopRequested = true;
+  }
+
   private scrollToBottom(): void {
     setTimeout(() => {
       const el = this.msgContainer?.nativeElement;
       if (el) el.scrollTop = el.scrollHeight;
     }, 0);
   }
+  parseMessage(text: string): MessageSegment[] {
+    const segments: MessageSegment[] = [];
+    const closedFence = /```(\w*)\n?([\s\S]*?)```/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
 
-  // 👇 types out the reply character by character
+    while ((match = closedFence.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        segments.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+      }
+      segments.push({ type: 'code', language: match[1] || 'code', content: match[2].trimEnd(), open: false });
+      lastIndex = match.index + match[0].length;
+    }
+
+    const remaining = text.slice(lastIndex);
+
+    // ✅ Check if there's an unclosed opening fence in what's left
+    const openFence = /```(\w*)\n?([\s\S]*)$/;
+    const openMatch = remaining.match(openFence);
+
+    if (openMatch) {
+      // Text before the opening fence
+      const before = remaining.slice(0, remaining.indexOf('```'));
+      if (before) segments.push({ type: 'text', content: before });
+      // The in-progress code block — marked open: true
+      segments.push({ type: 'code', language: openMatch[1] || 'code', content: openMatch[2], open: true });
+    } else if (remaining) {
+      segments.push({ type: 'text', content: remaining });
+    }
+
+    return segments;
+  }
+
+  isLastSegment(text: string, segIndex: number): boolean {
+    const segs = this.parseMessage(text);
+    // Last segment is text type — cursor goes there
+    const lastText = [...segs].reverse().find(s => s.type === 'text');
+    return segs[segIndex] === lastText;
+  }
+
+  copyCode(content: string, index: number): void {
+    navigator.clipboard.writeText(content).then(() => {
+      this.copiedIndex.set(index);
+      setTimeout(() => this.copiedIndex.set(null), 2000);
+    });
+  }
+
   private async typeMessage(fullText: string): Promise<void> {
-    // push empty assistant message with typing cursor visible
+    this.stopRequested = false;
+    this.typing.set(true);
     this.messages.update(m => [...m, { role: 'assistant', text: '', typing: true }]);
 
     for (let i = 0; i < fullText.length; i++) {
-      await new Promise(r => setTimeout(r, 18)); // 👈 speed — lower = faster
+      // ✅ Check stop flag each character
+      if (this.stopRequested) break;
+
+      await new Promise(r => setTimeout(r, 13));
       this.messages.update(msgs => {
         const updated = [...msgs];
         const last = { ...updated[updated.length - 1] };
@@ -215,12 +348,12 @@ export class AiAssistant {
       this.scrollToBottom();
     }
 
-    // hide cursor when done
     this.messages.update(msgs => {
       const updated = [...msgs];
       updated[updated.length - 1] = { ...updated[updated.length - 1], typing: false };
       return updated;
     });
+    this.typing.set(false);
   }
 
   async sendMessage(): Promise<void> {
@@ -235,14 +368,15 @@ export class AiAssistant {
 
     try {
       const reply = await firstValueFrom(this.aiFacade.chat(text));
-      this.loading.set(false);          // hide dots before typing starts
-      await this.typeMessage(reply);    // 👈 typewriter
+      this.loading.set(false);
+      await this.typeMessage(reply);
     } catch (err: any) {
       const msg = err?.error?.message ?? err?.message ?? 'Something went wrong.';
       console.error('AI chat error:', err);
       this.error.set(msg);
     } finally {
       this.loading.set(false);
+      this.typing.set(false);
     }
   }
 }

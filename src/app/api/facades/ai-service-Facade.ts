@@ -33,7 +33,7 @@ function toText(res: any): Observable<string> {
       observer.complete();
     }).catch(e => observer.error(e));
   });
-  if (res?.response) return of(String(res.response)); // 👈 unwrap object
+  if (res?.response) return of(String(res.response)); 
   return of(JSON.stringify(res));
 }
 
