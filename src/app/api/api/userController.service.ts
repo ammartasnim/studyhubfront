@@ -503,7 +503,7 @@ export class UserControllerService extends BaseService {
     }
 
     /**
-     * @endpoint put /api/clients/me/pfp
+     * @endpoint post /api/clients/me/pfp
      * @param file 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
@@ -566,7 +566,7 @@ export class UserControllerService extends BaseService {
 
         let localVarPath = `/api/clients/me/pfp`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<UserResDto>('put', `${basePath}${localVarPath}`,
+        return this.httpClient.request<UserResDto>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,

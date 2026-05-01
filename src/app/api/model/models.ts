@@ -2,7 +2,7 @@ export * from './authResDto';
 export * from './badgeResDto';
 export * from './changePasswordDto';
 export * from './chatRequest';
-export * from './chatWithContextRequest';
+export * from './chatResponse';
 export * from './commentReqDto';
 export * from './commentResDto';
 export * from './communityReqDto';

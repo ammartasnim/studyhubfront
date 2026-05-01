@@ -12,7 +12,7 @@
 export interface PostReqDto { 
     title?: string;
     content?: string;
-    imgs?: Array<string>;
+    imgs?: Array<Blob>;
     communityId?: number;
 }
 

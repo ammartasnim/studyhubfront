@@ -62,22 +62,21 @@ export class PostFacadeService {
   /**
    * Create a new post
    */
-  create(data: { title: string; content: string; communityId?: number }): Observable<PostUI> {
-    if (!data?.title?.trim() || !data?.content?.trim()) {
-      return throwError(() => new Error('Title and content are required'));
-    }
-
-    const req: PostReqDto = {
-      title: data.title.trim(),
-      content: data.content.trim(),
-      communityId: data.communityId
-    };
-
-    return this.postController.createPost(req).pipe(
-      map(dto => this.mapToUI(dto)),
-      catchError(err => this.handleError(err, 'Failed to create post'))
-    );
+create(data: { title: string; content: string; imgs?: Blob[]; communityId?: number }): Observable<PostUI> {
+  if (!data?.title?.trim() || !data?.content?.trim()) {
+    return throwError(() => new Error('Title and content are required'));
   }
+
+  return (this.postController.createPost as any)(
+    data.title.trim(),
+    data.content.trim(),
+    data.imgs,
+    data.communityId != null ? String(data.communityId) : undefined
+  ).pipe(
+    map((dto: PostResDto) => this.mapToUI(dto)),
+    catchError((err: any) => this.handleError(err, 'Failed to create post'))
+  );
+}
 
   /**
    * Update a post

@@ -18,7 +18,7 @@ model/authResDto.ts
 model/badgeResDto.ts
 model/changePasswordDto.ts
 model/chatRequest.ts
-model/chatWithContextRequest.ts
+model/chatResponse.ts
 model/commentReqDto.ts
 model/commentResDto.ts
 model/communityReqDto.ts

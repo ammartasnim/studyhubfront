@@ -9,7 +9,7 @@ import { UserFacadeService } from '../../api/facades/user.facade';
   standalone: true,
   imports: [CommonModule, BadgesDisplayComponent],
   template: `
-    <article class="relative rounded-3xl overflow-hidden bg-white shadow-sm ring-1 ring-indigo-500/10">
+    <article class="relative rounded-3xl overflow-hidden bg-white shadow-sm ring-1 ring-indigo-500/10 w-full">
 
       <!-- Banner -->
       <div

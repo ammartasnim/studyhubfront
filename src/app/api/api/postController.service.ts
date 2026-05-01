@@ -98,17 +98,23 @@ export class PostControllerService extends BaseService {
 
     /**
      * @endpoint post /api/posts
-     * @param postReqDto 
+     * @param title 
+     * @param content 
+     * @param imgs 
+     * @param communityId 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public createPost(postReqDto: PostReqDto, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<PostResDto>;
-    public createPost(postReqDto: PostReqDto, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PostResDto>>;
-    public createPost(postReqDto: PostReqDto, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PostResDto>>;
-    public createPost(postReqDto: PostReqDto, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<any> {
-        if (postReqDto === null || postReqDto === undefined) {
-            throw new Error('Required parameter postReqDto was null or undefined when calling createPost.');
+    public createPost(title: string, content: string, imgs?: Array<Blob>, communityId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<PostResDto>;
+    public createPost(title: string, content: string, imgs?: Array<Blob>, communityId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PostResDto>>;
+    public createPost(title: string, content: string, imgs?: Array<Blob>, communityId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PostResDto>>;
+    public createPost(title: string, content: string, imgs?: Array<Blob>, communityId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: '*/*', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (title === null || title === undefined) {
+            throw new Error('Required parameter title was null or undefined when calling createPost.');
+        }
+        if (content === null || content === undefined) {
+            throw new Error('Required parameter content was null or undefined when calling createPost.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -124,14 +130,42 @@ export class PostControllerService extends BaseService {
 
         const localVarTransferCache: boolean = options?.transferCache ?? true;
 
-
         // to determine the Content-Type header
         const consumes: string[] = [
-            'application/json'
+            'multipart/form-data'
         ];
-        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
-        if (httpContentTypeSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+
+        const canConsumeForm = this.canConsumeForm(consumes);
+
+        let localVarFormParams: { append(param: string, value: any): any; };
+        let localVarUseForm = false;
+        let localVarConvertFormParamsToString = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
+        localVarUseForm = canConsumeForm;
+        if (localVarUseForm) {
+            localVarFormParams = new FormData();
+        } else {
+            localVarFormParams = new HttpParams({encoder: this.encoder});
+        }
+
+        if (title !== undefined) {
+            localVarFormParams = localVarFormParams.append('title', <any>title) as any || localVarFormParams;
+        }
+        if (content !== undefined) {
+            localVarFormParams = localVarFormParams.append('content', <any>content) as any || localVarFormParams;
+        }
+        if (imgs) {
+            if (localVarUseForm) {
+                imgs.forEach((element) => {
+                    localVarFormParams = localVarFormParams.append('imgs', <any>element) as any || localVarFormParams;
+            })
+            } else {
+                localVarFormParams = localVarFormParams.append('imgs', [...imgs].join(COLLECTION_FORMATS['csv'])) as any || localVarFormParams;
+            }
+        }
+        if (communityId !== undefined) {
+            localVarFormParams = localVarFormParams.append('communityId', <any>communityId) as any || localVarFormParams;
         }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';
@@ -150,7 +184,7 @@ export class PostControllerService extends BaseService {
         return this.httpClient.request<PostResDto>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                body: postReqDto,
+                body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
