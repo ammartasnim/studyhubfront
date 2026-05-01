@@ -39,6 +39,7 @@ model/postResDto.ts
 model/profileUpdateResDto.ts
 model/registerReqDto.ts
 model/sortObject.ts
+model/userFocusRankDto.ts
 model/userReqDto.ts
 model/userResDto.ts
 param.ts

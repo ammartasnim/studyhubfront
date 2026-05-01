@@ -22,5 +22,6 @@ export * from './postResDto';
 export * from './profileUpdateResDto';
 export * from './registerReqDto';
 export * from './sortObject';
+export * from './userFocusRankDto';
 export * from './userReqDto';
 export * from './userResDto';

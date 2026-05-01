@@ -9,13 +9,9 @@
  */
 
 
-export interface RegisterReqDto { 
-    username: string;
-    password: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    phone?: string;
-    pfp?: string;
+export interface UserFocusRankDto { 
+    userId?: number;
+    username?: string;
+    totalHours?: number;
 }
 

@@ -3,12 +3,14 @@ import { Observable } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 
-import { FocusSessionControllerService } from '../generated/api/focusSessionController.service';
-import { FocusSessionReqDto } from '../generated/model/focusSessionReqDto';
-import { FocusSessionResDto } from '../generated/model/focusSessionResDto';
-import { PageFocusSessionResDto } from '../generated/model/pageFocusSessionResDto';
+import { FocusSessionControllerService } from '../api/focusSessionController.service';
+import { FocusSessionReqDto } from '../model/focusSessionReqDto';
+import { FocusSessionResDto } from '../model/focusSessionResDto';
+import { PageFocusSessionResDto } from '../model/pageFocusSessionResDto';
+import { UserFocusRankDto } from '../model/userFocusRankDto';
 import { FocusSessionUI } from './models/focus-session.model'
 import { PaginatedSessions } from './models/PaginatedSessions';
+import { UserFocusRank } from './models/user-focus-rank.model';
 
 @Injectable({ providedIn: 'root' })
 export class FocusSessionFacadeService {
@@ -95,7 +97,7 @@ export class FocusSessionFacadeService {
     if (!id || id <= 0) {
       return throwError(() => new Error('Invalid session ID'));
     }
-
+   
     return this.focusSessionController.deleteSession(id).pipe(
       catchError(err => this.handleError(err, `Failed to delete session ${id}`))
     );
@@ -176,6 +178,29 @@ export class FocusSessionFacadeService {
         map(res => this.mapPagedResponse(res)),
         catchError(err => this.handleError(err, `Failed to fetch paginated sessions for user ${userId}`))
       );
+  }
+
+  /**
+   * Get focus session stats
+   */
+  getStats(): Observable<{ [key: string]: number }> {
+    return this.focusSessionController.getFocusStats().pipe(
+      catchError(err => this.handleError(err, 'Failed to fetch focus stats'))
+    );
+  }
+
+  /**
+   * Get top focus users leaderboard
+   */
+  getTopUsers(): Observable<UserFocusRank[]> {
+    return this.focusSessionController.getTopFocusUsers().pipe(
+      map(dtos => (dtos ?? []).map(dto => ({
+        userId: dto.userId ?? 0,
+        username: dto.username ?? 'Unknown',
+        totalHours: dto.totalHours ?? 0
+      }))),
+      catchError(err => this.handleError(err, 'Failed to fetch top focus users'))
+    );
   }
 
   // ── Private helpers ──────────────────────────────────────────────────────────

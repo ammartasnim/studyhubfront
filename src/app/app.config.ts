@@ -1,7 +1,7 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { Configuration } from './api/generated/configuration';
+import { Configuration } from './api/configuration';
 import { CustomConfiguration } from './api/custom-configuration';
 
 import { authTokenInterceptor } from './auth-token.interceptor';

@@ -3,10 +3,10 @@ import { Observable } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 
-import { AuthControllerService } from '../generated/api/authController.service';
-import { AuthResDto } from '../generated/model/authResDto';
-import { LoginReqDto } from '../generated/model/loginReqDto';
-import { RegisterReqDto } from '../generated/model/registerReqDto';
+import { AuthControllerService } from '../api/authController.service';
+import { AuthResDto } from '../model/authResDto';
+import { LoginReqDto } from '../model/loginReqDto';
+import { RegisterReqDto } from '../model/registerReqDto';
 
 import { AuthUI, LoginRequest, RegisterRequest } from './models/auth.model';
 /*ok*/

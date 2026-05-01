@@ -210,6 +210,34 @@ getByCommunity(communityId: number, filters?: { page?: number; size?: number }):
   }
 
   /**
+   * Approve a post (admin/moderator)
+   */
+  approve(id: number): Observable<PostUI> {
+    if (!id || id <= 0) {
+      return throwError(() => new Error('Invalid post ID'));
+    }
+
+    return this.postController.approvePost(id).pipe(
+      map(dto => this.mapToUI(dto)),
+      catchError(err => this.handleError(err, `Failed to approve post ${id}`))
+    );
+  }
+
+  /**
+   * Flag a post as inappropriate
+   */
+  flag(id: number): Observable<PostUI> {
+    if (!id || id <= 0) {
+      return throwError(() => new Error('Invalid post ID'));
+    }
+
+    return this.postController.flagPost(id).pipe(
+      map(dto => this.mapToUI(dto)),
+      catchError(err => this.handleError(err, `Failed to flag post ${id}`))
+    );
+  }
+
+  /**
    * Map DTO to UI Model
    */
   private mapToUI(dto: PostResDto | null | undefined): PostUI {

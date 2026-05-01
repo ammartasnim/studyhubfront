@@ -3,10 +3,10 @@ import { Observable } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 
-import { CommunityControllerService } from '../generated/api/communityController.service';
-import { CommunityReqDto } from '../generated/model/communityReqDto';
-import { CommunityResDto } from '../generated/model/communityResDto';
-import { PageCommunityResDto } from '../generated/model/pageCommunityResDto';
+import { CommunityControllerService } from '../api/communityController.service';
+import { CommunityReqDto } from '../model/communityReqDto';
+import { CommunityResDto } from '../model/communityResDto';
+import { PageCommunityResDto } from '../model/pageCommunityResDto';
 
 import { CommunityUI, PaginatedCommunities } from './models/community.model';
 import { ResponseHandlerService } from './response-handler.service';
@@ -198,6 +198,32 @@ export class CommunityFacadeService {
         return this.mapPagedResponse(response);
       }),
       catchError(err => this.responseHandler.handleError(err, 'Failed to fetch joined communities'))
+    );
+  }
+
+  /**
+   * Get community stats (total count, etc.)
+   */
+  getStats(): Observable<{ [key: string]: number }> {
+    return this.communityController.getCommunityStats().pipe(
+      map(response => {
+        this.responseHandler.logResponse('getCommunityStats', 'GET', response);
+        return response ?? {};
+      }),
+      catchError(err => this.responseHandler.handleError(err, 'Failed to fetch community stats'))
+    );
+  }
+
+  /**
+   * Get top communities
+   */
+  getTop(): Observable<CommunityUI[]> {
+    return this.communityController.getTopCommunities().pipe(
+      map(dtos => {
+        this.responseHandler.logResponse('getTopCommunities', 'GET', dtos);
+        return (dtos ?? []).map(dto => this.mapToUI(dto));
+      }),
+      catchError(err => this.responseHandler.handleError(err, 'Failed to fetch top communities'))
     );
   }
 

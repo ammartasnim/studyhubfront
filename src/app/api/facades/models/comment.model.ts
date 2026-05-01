@@ -10,3 +10,11 @@ export interface CommentUI {
   authorUsername?: string;
   authorFullName?: string;
 }
+
+export interface PaginatedComments {
+  items: CommentUI[];
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}

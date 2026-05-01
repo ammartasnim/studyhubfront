@@ -3,9 +3,9 @@ import { Observable } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 
-import { UserControllerService } from '../generated';
-import { UserResDto } from '../generated/model/userResDto';
-import { PageUserResDto } from '../generated/model/pageUserResDto';
+import { UserControllerService } from '../api/userController.service';
+import { UserResDto } from '../model/userResDto';
+import { PageUserResDto } from '../model/pageUserResDto';
 
 import { UserUI, PaginatedUsers, Badge } from './models/user.model';
 import { ChangePasswordDto, UserReqDto } from '../model/models';
@@ -128,6 +128,18 @@ export class UserFacadeService {
 
     return this.userController.unbanUser(userId, 'body', false, JSON_ACCEPT).pipe(
       catchError(err => this.handleError(err, `Failed to unban user ${userId}`))
+    );
+  }
+
+  getStats(): Observable<{ [key: string]: number }> {
+    return this.userController.getUserStats().pipe(
+      catchError(err => this.handleError(err, 'Failed to fetch user stats'))
+    );
+  }
+
+  getBadgeDistribution(): Observable<{ [key: string]: number }> {
+    return this.userController.getBadgeDistribution().pipe(
+      catchError(err => this.handleError(err, 'Failed to fetch badge distribution'))
     );
   }
 

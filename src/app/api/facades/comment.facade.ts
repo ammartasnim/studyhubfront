@@ -3,11 +3,12 @@ import { Observable } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 
-import { CommentControllerService } from '../generated/api/commentController.service';
-import { CommentReqDto } from '../generated/model/commentReqDto';
-import { CommentResDto } from '../generated/model/commentResDto';
+import { CommentControllerService } from '../api/commentController.service';
+import { CommentReqDto } from '../model/commentReqDto';
+import { CommentResDto } from '../model/commentResDto';
+import { PageCommentResDto } from '../model/pageCommentResDto';
 
-import { CommentUI } from './models/comment.model';
+import { CommentUI, PaginatedComments } from './models/comment.model';
 
 /**
  * Comment Facade Service
@@ -47,9 +48,44 @@ export class CommentFacadeService {
     );
   }
 
-   /**
-    * Get all comments for a post
-    */
+  /**
+   * Get all comments with pagination
+   */
+  getAll(filters?: { page?: number; size?: number }): Observable<PaginatedComments> {
+    const page = filters?.page ?? 0;
+    const size = filters?.size ?? 10;
+
+    return this.commentController.getAllComments(page, size).pipe(
+      map(response => this.mapPagedResponse(response)),
+      catchError(err => this.handleError(err, 'Failed to fetch all comments'))
+    );
+  }
+
+  /**
+   * Get current user's comments with pagination
+   */
+  getMy(filters?: { page?: number; size?: number; sortBy?: string; sortDir?: string }): Observable<PaginatedComments> {
+    const page = filters?.page ?? 0;
+    const size = filters?.size ?? 10;
+
+    return this.commentController.getMyComments(page, size, filters?.sortBy, filters?.sortDir).pipe(
+      map(response => this.mapPagedResponse(response)),
+      catchError(err => this.handleError(err, 'Failed to fetch your comments'))
+    );
+  }
+
+  /**
+   * Get comment stats
+   */
+  getStats(): Observable<{ [key: string]: number }> {
+    return this.commentController.getCommentStats().pipe(
+      catchError(err => this.handleError(err, 'Failed to fetch comment stats'))
+    );
+  }
+
+  /**
+   * Get all comments for a post
+   */
     getByPost(postId: number): Observable<CommentUI[]> {
       if (!postId || postId <= 0) {
         return throwError(() => new Error('Invalid post ID'));
@@ -115,6 +151,29 @@ export class CommentFacadeService {
       postId: dto.postId ?? 0,
       userId: dto.userId ?? 0,
       previewText: this.truncate(dto.content ?? '', 50)
+    };
+  }
+
+  /**
+   * Map paginated response
+   */
+  private mapPagedResponse(response: PageCommentResDto | null | undefined): PaginatedComments {
+    if (!response) {
+      return {
+        items: [],
+        totalItems: 0,
+        totalPages: 0,
+        currentPage: 0,
+        pageSize: 0
+      };
+    }
+
+    return {
+      items: (response.content ?? []).map(dto => this.mapToUI(dto)),
+      totalItems: response.totalElements ?? 0,
+      totalPages: response.totalPages ?? 0,
+      currentPage: response.number ?? 0,
+      pageSize: response.size ?? 0
     };
   }
 

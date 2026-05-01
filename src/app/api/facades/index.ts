@@ -14,6 +14,7 @@ export * from './post.facade';
 export * from './user.facade';
 export * from './comment.facade';
 export * from './focus-session.facade';
+export * from './ai-service-Facade';
 
 // UI Models
 export * from './models/auth.model';
