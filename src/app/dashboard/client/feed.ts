@@ -148,10 +148,41 @@ import { FeedService } from '../../services/feed.service';
                 </div>
 
                 <!-- Post content -->
-                <div class="px-6 pb-4">
+                <div class="px-6 pb-3">
                   <h3 class="font-bold text-slate-900 mb-1">{{ post.title }}</h3>
                   <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{{ post.content }}</p>
                 </div>
+
+                <!-- Post images -->
+                @if (post.images.length > 0) {
+                  <div class="px-6 pb-3">
+                    <div
+                      class="rounded-xl overflow-hidden"
+                      [class.grid]="post.images.length > 1"
+                      [class.grid-cols-2]="post.images.length > 1"
+                      [class.gap-0.5]="post.images.length > 1"
+                    >
+                      @for (img of post.images.slice(0, 4); track img; let i = $index) {
+                        <div
+                          class="relative bg-slate-100 overflow-hidden"
+                          [class.aspect-video]="post.images.length === 1"
+                          [class.aspect-square]="post.images.length > 1"
+                        >
+                          <img
+                            [src]="'http://localhost:8081/uploads/' + img"
+                            [alt]="post.title"
+                            class="w-full h-full object-cover"
+                          />
+                          @if (i === 3 && post.images.length > 4) {
+                            <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                              <span class="text-white text-2xl font-bold">+{{ post.images.length - 4 }}</span>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
 
                 <!-- Post actions -->
                 <div class="px-6 pb-4 flex items-center gap-2">

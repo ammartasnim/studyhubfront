@@ -133,7 +133,38 @@ import { CreatePostModalComponent } from './create-post';
                   </div>
                   <h3 class="font-bold text-slate-900 mb-2">{{ post.title }}</h3>
                   <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{{ post.content }}</p>
-                  
+
+                  <!-- Post images -->
+                  @if (post.images.length > 0) {
+                    <div class="mt-3">
+                      <div
+                        class="rounded-xl overflow-hidden"
+                        [class.grid]="post.images.length > 1"
+                        [class.grid-cols-2]="post.images.length > 1"
+                        [class.gap-0.5]="post.images.length > 1"
+                      >
+                        @for (img of post.images.slice(0, 4); track img; let i = $index) {
+                          <div
+                            class="relative bg-slate-100 overflow-hidden"
+                            [class.aspect-video]="post.images.length === 1"
+                            [class.aspect-square]="post.images.length > 1"
+                          >
+                            <img
+                              [src]="'http://localhost:8081/uploads/' + img"
+                              [alt]="post.title"
+                              class="w-full h-full object-cover"
+                            />
+                            @if (i === 3 && post.images.length > 4) {
+                              <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                <span class="text-white text-2xl font-bold">+{{ post.images.length - 4 }}</span>
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+
                   <!-- Post actions -->
                   <div class="mt-4 flex items-center gap-4">
                     <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors" [class.text-rose-600]="post.isLiked" [class.bg-rose-50]="post.isLiked" (click)="toggleLike(post)">
@@ -292,6 +323,9 @@ export class CommunityDetailComponent implements OnInit {
     try {
       const paged = await firstValueFrom(this.postFacade.getByCommunity(id));
       this.posts.set(paged.items);
+      console.log("RAW RESPONSE:", paged);
+      console.log("ITEMS:", paged.items);
+      console.log("the posts:",this.posts)
     } catch (err) {
       console.error("Failed to load posts", err);
     } finally {

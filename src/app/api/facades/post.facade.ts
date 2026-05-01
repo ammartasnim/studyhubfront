@@ -3,13 +3,14 @@ import { Observable } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 
-import { PostControllerService } from '../generated/api/postController.service';
-import { PostReqDto } from '../generated/model/postReqDto';
-import { PostResDto } from '../generated/model/postResDto';
-import { PagePostResDto } from '../generated/model/pagePostResDto';
-import { Pageable } from '../generated/model/pageable';
+import { PostControllerService } from '../api/postController.service';
+import { PostReqDto } from '../model/postReqDto';
+import { PostResDto } from '../model/postResDto';
+import { PagePostResDto } from '../model/pagePostResDto';
+import { Pageable } from '../model/pageable';
 
 import { PostUI, PaginatedPosts } from './models/post.model';
+import { HttpClient } from '@angular/common/http';
 
 /**
  * Post Facade Service
@@ -26,6 +27,7 @@ import { PostUI, PaginatedPosts } from './models/post.model';
 })
 export class PostFacadeService {
   private readonly postController = inject(PostControllerService);
+  private readonly http = inject(HttpClient);
 
   /**
    * Get all posts with pagination
@@ -67,14 +69,14 @@ create(data: { title: string; content: string; imgs?: Blob[]; communityId?: numb
     return throwError(() => new Error('Title and content are required'));
   }
 
-  return (this.postController.createPost as any)(
+  return this.postController.createPost(
     data.title.trim(),
     data.content.trim(),
     data.imgs,
     data.communityId != null ? String(data.communityId) : undefined
   ).pipe(
-    map((dto: PostResDto) => this.mapToUI(dto)),
-    catchError((err: any) => this.handleError(err, 'Failed to create post'))
+    map(dto => this.mapToUI(dto)),
+    catchError(err => this.handleError(err, 'Failed to create post'))
   );
 }
 
@@ -136,25 +138,29 @@ create(data: { title: string; content: string; imgs?: Blob[]; communityId?: numb
    /**
     * Get posts by community
     */
-   getByCommunity(communityId: number, filters?: { page?: number; size?: number }): Observable<PaginatedPosts> {
-     if (!communityId || communityId <= 0) {
-       return throwError(() => new Error('Invalid community ID'));
-     }
+  getByCommunity(
+  communityId: number,
+  filters?: { page?: number; size?: number }
+): Observable<PaginatedPosts> {
 
-     const page = filters?.page ?? 0;
-     const size = filters?.size ?? 10;
+  const page = filters?.page ?? 0;
+  const size = filters?.size ?? 10;
 
-     const pageable: Pageable = {
-       page: page,
-       size: size
-     };
-
-     return this.postController.getPostsByCommunity(communityId, pageable).pipe(
-       map(response => this.mapPagedResponse(response)),
-       catchError(err => this.handleError(err, `Failed to fetch posts for community ${communityId}`))
-     );
-   }
-
+  return this.http.get<PagePostResDto>(
+    `/api/posts/community/${communityId}`,
+    {
+      params: {
+        page,
+        size
+      }
+    }
+  ).pipe(
+    map(this.mapPagedResponse),
+    catchError(err =>
+      this.handleError(err, `Failed to fetch posts for community ${communityId}`)
+    )
+  );
+}
    /**
     * Get posts by user
     */
@@ -232,7 +238,7 @@ create(data: { title: string; content: string; imgs?: Blob[]; communityId?: numb
       imageCount: images.length,
       likeCount: dto.likeCount ?? 0,
       commentCount: dto.commentCount ?? 0,
-      isLiked: dto.isLiked ?? false,
+      isLiked: dto.liked ?? false,
       createdAt: dto.createdAt ? new Date(dto.createdAt) : null,
       status: dto.status ?? ''
     };
