@@ -1,4 +1,6 @@
-import { Component, ViewChild, OnInit, inject, signal, computed } from '@angular/core';
+import {
+  Component, ViewChild, OnInit, OnDestroy, inject, signal, computed, HostListener, ElementRef
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CreatePostModalComponent } from './create-post';
 import { CreateCommunityModalComponent } from './create-community';
@@ -32,15 +34,17 @@ import { FeedService } from '../../services/feed.service';
         </div>
 
         <div class="flex gap-2">
-          <button
-            (click)="openCreatePost()"
-            class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 font-semibold text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            New Post
-          </button>
+          @if (feedService.hasCommunities()) {
+            <button
+              (click)="openCreatePost()"
+              class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 font-semibold text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              New Post
+            </button>
+          }
           <button
             (click)="openCreateCommunity()"
             class="hidden sm:inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
@@ -110,15 +114,17 @@ import { FeedService } from '../../services/feed.service';
             } @else {
               <p class="text-lg font-medium text-slate-700">Nothing in your feed yet</p>
               <p class="mt-2 text-sm">Join communities to see posts here, or be the first to share something!</p>
-              <button
-                (click)="openCreatePost()"
-                class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                Create First Post
-              </button>
+              @if (feedService.hasCommunities()) {
+                <button
+                  (click)="openCreatePost()"
+                  class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create First Post
+                </button>
+              }
             }
           </div>
         }
@@ -130,9 +136,17 @@ import { FeedService } from '../../services/feed.service';
               <article class="bg-white transition-colors hover:bg-slate-50/40">
                 <!-- Post header -->
                 <div class="flex items-start gap-3 px-6 pt-5 pb-3">
-                  <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0 select-none">
-                    {{ getInitials(post.authorFullName) }}
-                  </div>
+                  @if (post.authorPfp) {
+                    <img
+                      [src]="'http://localhost:8081/uploads/' + post.authorPfp"
+                      [alt]="post.authorFullName"
+                      class="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                    />
+                  } @else {
+                    <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0 select-none">
+                      {{ getInitials(post.authorFullName) }}
+                    </div>
+                  }
                   <div class="flex-1 min-w-0">
                     <div class="flex items-start justify-between gap-2">
                       <p class="font-semibold text-slate-900 text-sm">{{ post.authorFullName }}</p>
@@ -234,13 +248,73 @@ import { FeedService } from '../../services/feed.service';
 
                       @for (comment of postComments; track comment.id) {
                         <div class="flex items-start gap-2 mb-3">
-                          <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold flex-shrink-0 select-none">
-                            {{ getInitials(comment.authorFullName ?? comment.authorUsername ?? '?') }}
-                          </div>
+                          @if (comment.authorPfp) {
+                            <img
+                              [src]="'http://localhost:8081/uploads/' + comment.authorPfp"
+                              [alt]="comment.authorFullName"
+                              class="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                            />
+                          } @else {
+                            <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold flex-shrink-0 select-none">
+                              {{ getInitials(comment.authorFullName ?? comment.authorUsername ?? '?') }}
+                            </div>
+                          }
                           <div class="flex-1 bg-white rounded-xl px-3 py-2 text-sm border border-slate-100 shadow-sm">
-                            <p class="font-semibold text-slate-800 text-xs mb-0.5">{{ comment.authorFullName }}</p>
+                            <div class="flex items-center justify-between gap-2 mb-0.5">
+                              <p class="font-semibold text-slate-800 text-xs">{{ comment.authorFullName }}</p>
+                              <div class="flex items-center gap-2">
+                                @if (comment.createdAt) {
+                                  <span class="text-xs text-slate-400">{{ getTimeAgo(comment.createdAt) }}</span>
+                                }
+                                @if (isOwnComment(comment.userId)) {
+                                  <button
+                                    (click)="deleteComment(post.id, comment.id)"
+                                    class="text-xs text-red-400 hover:text-red-600 transition-colors"
+                                    title="Delete comment"
+                                  >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                  <button
+  (click)="toggleCommentLike(post.id, comment.id)"
+  class="flex items-center gap-1 text-xs transition-colors"
+  [class.text-rose-600]="comment.isLiked"
+  [class.text-slate-400]="!comment.isLiked"
+>
+  <svg
+    class="w-3.5 h-3.5"
+    [attr.fill]="comment.isLiked ? 'currentColor' : 'none'"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+    />
+  </svg>
+
+  {{ comment.likeCount ?? 0 }}
+</button>
+                                }
+                              </div>
+                            </div>
                             <p class="text-slate-700">{{ comment.content }}</p>
                           </div>
+                        </div>
+                      }
+
+                      <!-- Load more comments -->
+                      @if (feedService.commentHasMore().get(post.id)) {
+                        <div class="text-center mt-2 mb-3">
+                          <button
+                            (click)="feedService.loadMoreComments(post.id)"
+                            class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                          >
+                            Load more comments
+                          </button>
                         </div>
                       }
 
@@ -275,12 +349,24 @@ import { FeedService } from '../../services/feed.service';
               </article>
             }
           </div>
+
+          <!-- Infinite scroll sentinel -->
+          @if (feedService.isLoadingMore()) {
+            <div class="py-6 flex justify-center">
+              <svg class="w-6 h-6 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+            </div>
+          } @else if (!feedService.hasMore() && filteredPosts().length > 0) {
+            <p class="text-center text-xs text-slate-400 py-4">You've reached the end</p>
+          }
         }
       </section>
     </div>
   `
 })
-export class FeedComponent implements OnInit {
+export class FeedComponent implements OnInit, OnDestroy {
   @ViewChild('createPostModal') createPostModal!: CreatePostModalComponent;
   @ViewChild('createCommunityModal') createCommunityModal!: CreateCommunityModalComponent;
 
@@ -304,7 +390,19 @@ export class FeedComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.feedService.loadFeed();
+    this.feedService.init();
+  }
+
+  ngOnDestroy(): void {}
+
+  @HostListener('window:scroll')
+  onWindowScroll(): void {
+    if (this.feedService.isLoading() || this.feedService.isLoadingMore() || !this.feedService.hasMore()) return;
+    const scrolled = window.scrollY + window.innerHeight;
+    const total = document.documentElement.scrollHeight;
+    if (scrolled >= total - 300) {
+      this.feedService.loadMorePosts();
+    }
   }
 
   openCreatePost(): void {
@@ -319,7 +417,9 @@ export class FeedComponent implements OnInit {
     this.feedService.loadFeed();
   }
 
-  onCommunityCreated(): void {}
+  onCommunityCreated(): void {
+    this.feedService.checkCommunities();
+  }
 
   toggleComments(postId: number): void {
     this.expandedPosts.update(set => {
@@ -347,7 +447,6 @@ export class FeedComponent implements OnInit {
   async submitComment(postId: number): Promise<void> {
     const content = this.getCommentInput(postId).trim();
     if (!content) return;
-
     this.submittingComments.update(s => new Set(s).add(postId));
     try {
       await this.feedService.addComment(postId, content);
@@ -357,9 +456,18 @@ export class FeedComponent implements OnInit {
     }
   }
 
-  getTimeAgo(date: Date | null): string {
+  async deleteComment(postId: number, commentId: number): Promise<void> {
+    await this.feedService.deleteComment(postId, commentId);
+  }
+
+  isOwnComment(commentUserId: number): boolean {
+    const user = this.feedService.userContext.user();
+    return !!user && user.id === commentUserId;
+  }
+
+  getTimeAgo(date: Date | null | undefined): string {
     if (!date) return '';
-    const diff = Date.now() - date.getTime();
+    const diff = Date.now() - new Date(date).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return 'just now';
     if (mins < 60) return `${mins}m ago`;
@@ -372,4 +480,7 @@ export class FeedComponent implements OnInit {
     if (!name?.trim()) return '?';
     return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
   }
+  toggleCommentLike(postId: number, commentId: number): void {
+  this.feedService.toggleCommentLike(postId, commentId);
+}
 }

@@ -258,6 +258,7 @@ getByCommunity(communityId: number, filters?: { page?: number; size?: number }):
       authorUsername: dto.userUsername ?? 'unknown',
       authorFirstName: firstName,
       authorLastName: lastName,
+      authorPfp: dto.userPfp ?? undefined,
       communityTitle: dto.communityTitle ?? 'General',
       authorFullName: fullName,
       previewText: this.truncate(dto.content ?? '', 100),

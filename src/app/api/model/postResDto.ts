@@ -17,6 +17,7 @@ export interface PostResDto {
     userUsername?: string;
     userFirstName?: string;
     userLastName?: string;
+    userPfp?: string;
     communityTitle?: string;
     status?: PostResDto.StatusEnum;
     likeCount?: number;

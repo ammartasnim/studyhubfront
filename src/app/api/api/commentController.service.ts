@@ -431,6 +431,49 @@ export class CommentControllerService extends BaseService {
     }
 
     /**
+     * @endpoint post /api/posts/{postId}/comments
+     */
+    public createCommentForPost(postId: number, commentReqDto: CommentReqDto): Observable<CommentResDto> {
+        let localVarHeaders = this.defaultHeaders;
+        const localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(['*/*']);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+        const httpContentTypeSelected = this.configuration.selectHeaderContentType(['application/json']);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<CommentResDto>('post',
+            `${basePath}/api/posts/${encodeURIComponent(String(postId))}/comments`,
+            { body: commentReqDto, responseType: 'json', ...(withCredentials ? { withCredentials } : {}), headers: localVarHeaders }
+        );
+    }
+
+    /**
+     * @endpoint get /api/posts/{postId}/comments
+     */
+    public getCommentsByPostPaged(postId: number, page?: number, size?: number): Observable<PageCommentResDto> {
+        let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+        if (page !== undefined) {
+            localVarQueryParameters = this.addToHttpParams(localVarQueryParameters, 'page', <any>page, QueryParamStyle.Form, true);
+        }
+        if (size !== undefined) {
+            localVarQueryParameters = this.addToHttpParams(localVarQueryParameters, 'size', <any>size, QueryParamStyle.Form, true);
+        }
+        let localVarHeaders = this.defaultHeaders;
+        const localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(['*/*']);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<PageCommentResDto>('get',
+            `${basePath}/api/posts/${encodeURIComponent(String(postId))}/comments`,
+            { params: localVarQueryParameters.toHttpParams(), responseType: 'json', ...(withCredentials ? { withCredentials } : {}), headers: localVarHeaders }
+        );
+    }
+
+    /**
      * @endpoint get /api/comments/me
      * @param page 
      * @param size 
@@ -520,6 +563,34 @@ export class CommentControllerService extends BaseService {
                 observe: observe,
                 ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
                 reportProgress: reportProgress
+            }
+        );
+    }
+     /**
+     * @endpoint post /api/comments/{commentId}/like
+     * Toggle like on a comment
+     */
+    public toggleLike(commentId: number): Observable<void> {
+        if (commentId === null || commentId === undefined) {
+            throw new Error('Required parameter commentId was null or undefined when calling toggleLike.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(['*/*']);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const { basePath, withCredentials } = this.configuration;
+
+        return this.httpClient.request<void>(
+            'post',
+            `${basePath}/api/comments/${encodeURIComponent(String(commentId))}/like`,
+            {
+                responseType: 'json',
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders
             }
         );
     }

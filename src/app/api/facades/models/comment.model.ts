@@ -1,6 +1,3 @@
-/**
- * Comment UI Model - Clean interface for components
- */
 export interface CommentUI {
   id: number;
   content: string;
@@ -9,6 +6,10 @@ export interface CommentUI {
   previewText: string;
   authorUsername?: string;
   authorFullName?: string;
+  authorPfp?: string;
+  createdAt?: Date;
+   likeCount: number;
+  isLiked: boolean;
 }
 
 export interface PaginatedComments {

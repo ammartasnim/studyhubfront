@@ -9,6 +9,7 @@ export interface PostUI {
   authorUsername: string;
   authorFirstName: string;
   authorLastName: string;
+  authorPfp?: string;
   communityTitle: string;
   // UI helper fields
   authorFullName: string;
