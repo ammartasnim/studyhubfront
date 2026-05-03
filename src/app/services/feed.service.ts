@@ -22,7 +22,9 @@ export class FeedService {
   private readonly commentFacade = inject(CommentFacadeService);
   private readonly communityFacade = inject(CommunityFacadeService);
   readonly userContext = inject(UserContextService);
+  readonly totalPosts = signal(0);
 
+  // ---------------- POSTS ----------------
   readonly posts = signal<PostUI[]>([]);
   readonly isLoading = signal(false);
   readonly isLoadingMore = signal(false);
@@ -31,27 +33,46 @@ export class FeedService {
   private currentPage = 0;
   private loading = false;
 
+  // ---------------- COMMENTS ----------------
   private readonly commentStates = signal<Map<number, CommentState>>(new Map());
-  readonly hasCommunities = signal(false);
 
   readonly comments = computed(() => {
     const result = new Map<number, CommentUI[]>();
-    this.commentStates().forEach((state, postId) => result.set(postId, state.items));
+    this.commentStates().forEach((state, postId) =>
+      result.set(postId, state.items)
+    );
     return result;
   });
 
   readonly commentsLoading = computed(() => {
     const result = new Set<number>();
-    this.commentStates().forEach((state, postId) => { if (state.loading) result.add(postId); });
+    this.commentStates().forEach((state, postId) => {
+      if (state.loading) result.add(postId);
+    });
     return result;
   });
 
   readonly commentHasMore = computed(() => {
     const result = new Map<number, boolean>();
-    this.commentStates().forEach((state, postId) => result.set(postId, state.hasMore));
+    this.commentStates().forEach((state, postId) =>
+      result.set(postId, state.hasMore)
+    );
     return result;
   });
 
+  // ---------------- REPLIES ----------------
+  readonly replyStates = signal<Map<number, CommentUI[]>>(new Map());
+  private readonly replyLoading = signal<Set<number>>(new Set());
+
+  readonly replies = computed(() => this.replyStates());
+
+  readonly repliesLoading = computed(() => this.replyLoading());
+
+  readonly hasCommunities = signal(false);
+
+  // =========================================================
+  // INIT
+  // =========================================================
   async init(): Promise<void> {
     this.currentPage = 0;
     this.posts.set([]);
@@ -59,77 +80,89 @@ export class FeedService {
     await Promise.all([this.loadFeed(), this.checkCommunities()]);
   }
 
-  async loadFeed(): Promise<void> {
-    if (this.loading) return;
-    this.loading = true;
-    this.isLoading.set(true);
-    this.error.set(null);
-    try {
-      const result = await firstValueFrom(this.postFacade.getFeed({ page: 0, size: FEED_PAGE_SIZE }));
-      this.currentPage = 0;
-      this.posts.set(result.items);
-      this.hasMore.set(result.items.length >= FEED_PAGE_SIZE && result.currentPage < result.totalPages - 1);
-    } catch (err: any) {
-      this.error.set(err.message ?? 'Failed to load feed');
-    } finally {
-      this.isLoading.set(false);
-      this.loading = false;
-    }
+  // =========================================================
+  // FEED
+  // =========================================================
+async loadFeed(): Promise<void> {
+  if (this.loading) return;
+
+  this.loading = true;
+  this.isLoading.set(true);
+  this.error.set(null);
+
+  try {
+    const result = await firstValueFrom(
+      this.postFacade.getFeed({ page: 0, size: FEED_PAGE_SIZE })
+    );
+
+    this.currentPage = 0;
+    this.posts.set(result.items);
+    this.totalPosts.set(result.totalItems); // ← added here
+
+    this.hasMore.set(
+      result.items.length >= FEED_PAGE_SIZE &&
+      result.currentPage < result.totalPages - 1
+    );
+  } catch (err: any) {
+    this.error.set(err.message ?? 'Failed to load feed');
+  } finally {
+    this.isLoading.set(false);
+    this.loading = false;
   }
+}
 
   async loadMorePosts(): Promise<void> {
     if (this.loading || !this.hasMore()) return;
+
     this.loading = true;
     this.isLoadingMore.set(true);
+
     try {
       const nextPage = this.currentPage + 1;
-      const result = await firstValueFrom(this.postFacade.getFeed({ page: nextPage, size: FEED_PAGE_SIZE }));
+
+      const result = await firstValueFrom(
+        this.postFacade.getFeed({ page: nextPage, size: FEED_PAGE_SIZE })
+      );
+
       if (result.items.length === 0) {
         this.hasMore.set(false);
         return;
       }
+
       const existingIds = new Set(this.posts().map(p => p.id));
       const newPosts = result.items.filter(p => !existingIds.has(p.id));
+
       this.posts.update(list => [...list, ...newPosts]);
       this.currentPage = nextPage;
-      this.hasMore.set(result.items.length >= FEED_PAGE_SIZE && nextPage < result.totalPages - 1);
-    } catch (err: any) {
-      console.error('Failed to load more posts:', err);
+
+      this.hasMore.set(
+        result.items.length >= FEED_PAGE_SIZE &&
+        nextPage < result.totalPages - 1
+      );
+    } catch (err) {
+      console.error(err);
     } finally {
       this.isLoadingMore.set(false);
       this.loading = false;
     }
   }
 
-  async checkCommunities(): Promise<void> {
-    try {
-      const result = await firstValueFrom(this.communityFacade.getMy({ size: 1 }));
-      this.hasCommunities.set(result.totalItems > 0);
-    } catch {
-      this.hasCommunities.set(false);
-    }
-  }
-
-  toggleLike(postId: number): void {
-    const posts = this.posts();
-    const idx = posts.findIndex(p => p.id === postId);
-    if (idx === -1) return;
-    const post = posts[idx];
-    const wasLiked = post.isLiked;
-    this.posts.update(list => {
-      const updated = [...list];
-      updated[idx] = { ...post, isLiked: !wasLiked, likeCount: wasLiked ? post.likeCount - 1 : post.likeCount + 1 };
-      return updated;
-    });
-    firstValueFrom(this.postFacade.toggleLike(postId)).catch(() => {
-      this.posts.update(list => { const rev = [...list]; rev[idx] = post; return rev; });
-    });
-  }
-
+  // =========================================================
+  // COMMENTS
+  // =========================================================
   async loadComments(postId: number): Promise<void> {
-    this.setCommentState(postId, { items: [], page: 0, hasMore: false, loading: true });
+    this.setCommentState(postId, {
+      items: [],
+      page: 0,
+      hasMore: false,
+      loading: true
+    });
+
     try {
-      const result = await firstValueFrom(this.commentFacade.getByPostPaged(postId, 0, COMMENT_PAGE_SIZE));
+      const result = await firstValueFrom(
+        this.commentFacade.getByPostPaged(postId, 0, COMMENT_PAGE_SIZE)
+      );
+
       this.setCommentState(postId, {
         items: result.items,
         page: 0,
@@ -137,88 +170,259 @@ export class FeedService {
         loading: false
       });
     } catch (err) {
-      console.error(`Failed to load comments for post ${postId}:`, err);
-      this.setCommentState(postId, { items: [], page: 0, hasMore: false, loading: false });
-    }
-  }
-
-  async loadMoreComments(postId: number): Promise<void> {
-    const state = this.commentStates().get(postId);
-    if (!state || state.loading || !state.hasMore) return;
-    this.updateCommentState(postId, { loading: true });
-    try {
-      const nextPage = state.page + 1;
-      const result = await firstValueFrom(this.commentFacade.getByPostPaged(postId, nextPage, COMMENT_PAGE_SIZE));
-      this.updateCommentState(postId, {
-        items: [...state.items, ...result.items],
-        page: nextPage,
-        hasMore: (nextPage + 1) * COMMENT_PAGE_SIZE < result.totalItems,
+      console.error(err);
+      this.setCommentState(postId, {
+        items: [],
+        page: 0,
+        hasMore: false,
         loading: false
       });
-    } catch (err) {
-      console.error(`Failed to load more comments for post ${postId}:`, err);
-      this.updateCommentState(postId, { loading: false });
     }
   }
+  toggleLike(postId: number): void {
+  const posts = this.posts();
+  const idx = posts.findIndex(p => p.id === postId);
+  if (idx === -1) return;
+
+  const post = posts[idx];
+  const wasLiked = post.isLiked;
+
+  this.posts.update(list => {
+    const updated = [...list];
+    updated[idx] = {
+      ...post,
+      isLiked: !wasLiked,
+      likeCount: wasLiked
+        ? post.likeCount - 1
+        : post.likeCount + 1
+    };
+    return updated;
+  });
+
+
+  firstValueFrom(this.postFacade.toggleLike(postId)).catch(() => {
+
+    this.posts.update(list => {
+      const reverted = [...list];
+      reverted[idx] = post;
+      return reverted;
+    });
+  });
+}
 
   async addComment(postId: number, content: string): Promise<void> {
-    const comment = await firstValueFrom(this.commentFacade.create({ content, postId }));
+    const comment = await firstValueFrom(
+      this.commentFacade.create({ content, postId })
+    );
+
     this.updateCommentState(postId, {
       items: [...(this.commentStates().get(postId)?.items ?? []), comment]
     });
+
     this.posts.update(list =>
-      list.map(p => p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p)
+      list.map(p =>
+        p.id === postId
+          ? { ...p, commentCount: p.commentCount + 1 }
+          : p
+      )
     );
   }
 
-  async deleteComment(postId: number, commentId: number): Promise<void> {
-    await firstValueFrom(this.commentFacade.delete(commentId));
-    const state = this.commentStates().get(postId);
-    if (state) {
-      this.updateCommentState(postId, { items: state.items.filter(c => c.id !== commentId) });
+async deleteComment(postId: number, commentId: number): Promise<void> {
+  await firstValueFrom(this.commentFacade.delete(commentId));
+
+  const state = this.commentStates().get(postId);
+  if (!state) return;
+
+  const updatedItems = state.items.filter(c => c.id !== commentId);
+  this.updateCommentState(postId, { items: updatedItems });
+
+  this.posts.update(list =>
+    list.map(p =>
+      p.id === postId
+        ? { ...p, commentCount: Math.max(0, p.commentCount - 1) }
+        : p
+    )
+  );
+
+  // Auto-load next page if we deleted down to fewer than page size and more exist
+  if (updatedItems.length < COMMENT_PAGE_SIZE && state.hasMore) {
+    const nextPage = state.page + 1;
+    try {
+      const result = await firstValueFrom(
+        this.commentFacade.getByPostPaged(postId, nextPage, COMMENT_PAGE_SIZE)
+      );
+      const existingIds = new Set(updatedItems.map(c => c.id));
+      const newItems = result.items.filter(c => !existingIds.has(c.id));
+      this.updateCommentState(postId, {
+        items: [...updatedItems, ...newItems],
+        page: nextPage,
+        hasMore: (nextPage + 1) * COMMENT_PAGE_SIZE < result.totalItems
+      });
+    } catch (err) {
+      console.error('Failed to auto-load comments after delete:', err);
     }
-    this.posts.update(list =>
-      list.map(p => p.id === postId ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p)
-    );
+  }
+}
+
+  // =========================================================
+  // REPLIES (FIXED)
+  // =========================================================
+  async loadReplies(commentId: number): Promise<void> {
+    this.replyLoading.update(s => new Set(s).add(commentId));
+
+    try {
+      const res = await firstValueFrom(
+        this.commentFacade.getReplies(commentId, 0, 5)
+      );
+
+      this.replyStates.update(m =>
+        new Map(m).set(commentId, res.items ?? [])
+      );
+    } finally {
+      this.replyLoading.update(s => {
+        const n = new Set(s);
+        n.delete(commentId);
+        return n;
+      });
+    }
   }
 
+  async addReply(commentId: number, content: string): Promise<void> {
+    const reply = await firstValueFrom(
+      this.commentFacade.createReply(commentId, { content })
+    );
+
+    this.replyStates.update(m => {
+      const map = new Map(m);
+      const list = map.get(commentId) ?? [];
+      map.set(commentId, [...list, reply]);
+      return map;
+    });
+  }
+
+  createReply(commentId: number, content: string): Promise<void> {
+    return this.addReply(commentId, content);
+  }
+
+  // =========================================================
+  // HELPERS
+  // =========================================================
   private setCommentState(postId: number, state: CommentState): void {
     this.commentStates.update(m => new Map(m).set(postId, state));
   }
 
-  private updateCommentState(postId: number, partial: Partial<CommentState>): void {
+  private updateCommentState(
+    postId: number,
+    partial: Partial<CommentState>
+  ): void {
     this.commentStates.update(m => {
-      const existing = m.get(postId) ?? { items: [], page: 0, hasMore: false, loading: false };
-      return new Map(m).set(postId, { ...existing, ...partial });
+      const existing =
+        m.get(postId) ?? {
+          items: [],
+          page: 0,
+          hasMore: false,
+          loading: false
+        };
+
+      return new Map(m).set(postId, {
+        ...existing,
+        ...partial
+      });
     });
   }
-  toggleCommentLike(postId: number, commentId: number): void {
+
+  // =========================================================
+  // COMMUNITIES + LIKES
+  // =========================================================
+  async checkCommunities(): Promise<void> {
+    try {
+      const result = await firstValueFrom(
+        this.communityFacade.getMy({ size: 1 })
+      );
+      this.hasCommunities.set(result.totalItems > 0);
+    } catch {
+      this.hasCommunities.set(false);
+    }
+  }
+
+toggleCommentLike(postId: number, commentId: number): void {
+  // Check top-level comments first
   const state = this.commentStates().get(postId);
-  if (!state) return;
+  if (state) {
+    const idx = state.items.findIndex(c => c.id === commentId);
+    if (idx !== -1) {
+      const comment = state.items[idx];
+      const wasLiked = comment.isLiked;
+      this.updateCommentState(postId, {
+        items: state.items.map((c, i) =>
+          i === idx
+            ? { ...c, isLiked: !wasLiked, likeCount: wasLiked ? (c.likeCount ?? 0) - 1 : (c.likeCount ?? 0) + 1 }
+            : c
+        )
+      });
+      firstValueFrom(this.commentFacade.toggleLike(commentId)).catch(() => {
+        this.updateCommentState(postId, { items: state.items });
+      });
+      return;
+    }
+  }
 
-  const idx = state.items.findIndex(c => c.id === commentId);
-  if (idx === -1) return;
-
-  const comment = state.items[idx];
-  const wasLiked = comment.isLiked;
-
-  // ✅ Optimistic UI update
-  this.updateCommentState(postId, {
-    items: state.items.map((c, i) =>
-      i === idx
-        ? {
-            ...c,
-            isLiked: !wasLiked,
-            likeCount: wasLiked ? (c.likeCount ?? 0) - 1 : (c.likeCount ?? 0) + 1
-          }
-        : c
-    )
-  });
-
-  firstValueFrom(this.commentFacade.toggleLike(commentId)).catch(() => {
-    this.updateCommentState(postId, {
-      items: state.items
+  this.replyStates.update(m => {
+    const newMap = new Map(m);
+    newMap.forEach((replies, cId) => {
+      const idx = replies.findIndex(r => r.id === commentId);
+      if (idx !== -1) {
+        const reply = replies[idx];
+        const wasLiked = reply.isLiked;
+        const updated = replies.map((r, i) =>
+          i === idx
+            ? { ...r, isLiked: !wasLiked, likeCount: wasLiked ? (r.likeCount ?? 0) - 1 : (r.likeCount ?? 0) + 1 }
+            : r
+        );
+        newMap.set(cId, updated);
+        firstValueFrom(this.commentFacade.toggleLike(commentId)).catch(() => {
+          this.replyStates.update(m2 => new Map(m2).set(cId, replies));
+        });
+      }
     });
+    return newMap;
   });
 }
+  async loadMoreComments(postId: number): Promise<void> {
+  const state = this.commentStates().get(postId);
+
+  if (!state || state.loading || !state.hasMore) return;
+
+  this.updateCommentState(postId, { loading: true });
+
+  try {
+    const nextPage = state.page + 1;
+
+    const result = await firstValueFrom(
+      this.commentFacade.getByPostPaged(postId, nextPage, COMMENT_PAGE_SIZE)
+    );
+
+    this.updateCommentState(postId, {
+      items: [...state.items, ...result.items],
+      page: nextPage,
+      hasMore: (nextPage + 1) * COMMENT_PAGE_SIZE < result.totalItems,
+      loading: false
+    });
+
+  } catch (err) {
+    console.error(`Failed to load more comments for post ${postId}:`, err);
+    this.updateCommentState(postId, { loading: false });
+  }
+}
+async deleteReply(commentId: number, replyId: number): Promise<void> {
+  await firstValueFrom(this.commentFacade.delete(replyId));
+  this.replyStates.update(m => {
+    const newMap = new Map(m);
+    const replies = newMap.get(commentId) ?? [];
+    newMap.set(commentId, replies.filter(r => r.id !== replyId));
+    return newMap;
+  });
+}
+  
 }

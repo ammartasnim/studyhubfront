@@ -1,10 +1,12 @@
 import {
-  Component, ViewChild, OnInit, OnDestroy, inject, signal, computed, HostListener, ElementRef
+  Component, ViewChild, OnInit, OnDestroy, inject, signal, computed, HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CreatePostModalComponent } from './create-post';
 import { CreateCommunityModalComponent } from './create-community';
 import { FeedService } from '../../services/feed.service';
+import { CommentUI } from '../../api/facades';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-academic-feed',
@@ -62,11 +64,10 @@ import { FeedService } from '../../services/feed.service';
         <div class="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-slate-50">
           <h2 class="text-xl font-bold text-slate-900">Academic Feed</h2>
           @if (!feedService.isLoading() && filteredPosts().length > 0) {
-            <span class="text-sm text-slate-500">{{ filteredPosts().length }} post{{ filteredPosts().length === 1 ? '' : 's' }}</span>
+            <span class="text-sm text-slate-500">{{ feedService.totalPosts() }} post{{ feedService.totalPosts() === 1 ? '' : 's' }}</span>
           }
         </div>
 
-        <!-- Loading skeleton -->
         @if (feedService.isLoading()) {
           <div class="p-6 flex flex-col gap-4">
             @for (i of [1, 2, 3]; track i) {
@@ -86,7 +87,6 @@ import { FeedService } from '../../services/feed.service';
           </div>
         }
 
-        <!-- Error state -->
         @else if (feedService.error()) {
           <div class="px-6 py-10 text-center">
             <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
@@ -96,16 +96,12 @@ import { FeedService } from '../../services/feed.service';
             </div>
             <p class="font-medium text-slate-700">Failed to load feed</p>
             <p class="text-sm text-slate-500 mt-1">{{ feedService.error() }}</p>
-            <button
-              (click)="feedService.loadFeed()"
-              class="mt-4 px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
-            >
+            <button (click)="feedService.loadFeed()" class="mt-4 px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
               Try again
             </button>
           </div>
         }
 
-        <!-- Empty state -->
         @else if (filteredPosts().length === 0) {
           <div class="px-6 py-10 text-center text-slate-500">
             @if (searchQuery()) {
@@ -115,10 +111,7 @@ import { FeedService } from '../../services/feed.service';
               <p class="text-lg font-medium text-slate-700">Nothing in your feed yet</p>
               <p class="mt-2 text-sm">Join communities to see posts here, or be the first to share something!</p>
               @if (feedService.hasCommunities()) {
-                <button
-                  (click)="openCreatePost()"
-                  class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
-                >
+                <button (click)="openCreatePost()" class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                   </svg>
@@ -129,19 +122,15 @@ import { FeedService } from '../../services/feed.service';
           </div>
         }
 
-        <!-- Posts list -->
         @else {
           <div class="divide-y divide-slate-100">
             @for (post of filteredPosts(); track post.id) {
               <article class="bg-white transition-colors hover:bg-slate-50/40">
+
                 <!-- Post header -->
                 <div class="flex items-start gap-3 px-6 pt-5 pb-3">
                   @if (post.authorPfp) {
-                    <img
-                      [src]="'http://localhost:8081/uploads/' + post.authorPfp"
-                      [alt]="post.authorFullName"
-                      class="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                    />
+                    <img [src]="'http://localhost:8081/uploads/' + post.authorPfp" [alt]="post.authorFullName" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                   } @else {
                     <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0 select-none">
                       {{ getInitials(post.authorFullName) }}
@@ -154,9 +143,7 @@ import { FeedService } from '../../services/feed.service';
                     </div>
                     <div class="flex items-center gap-1 mt-0.5">
                       <span class="text-xs text-slate-400">in</span>
-                      <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                        {{ post.communityTitle }}
-                      </span>
+                      <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ post.communityTitle }}</span>
                     </div>
                   </div>
                 </div>
@@ -170,23 +157,10 @@ import { FeedService } from '../../services/feed.service';
                 <!-- Post images -->
                 @if (post.images.length > 0) {
                   <div class="px-6 pb-3">
-                    <div
-                      class="rounded-xl overflow-hidden"
-                      [class.grid]="post.images.length > 1"
-                      [class.grid-cols-2]="post.images.length > 1"
-                      [class.gap-0.5]="post.images.length > 1"
-                    >
+                    <div class="rounded-xl overflow-hidden" [class.grid]="post.images.length > 1" [class.grid-cols-2]="post.images.length > 1" [class.gap-0.5]="post.images.length > 1">
                       @for (img of post.images.slice(0, 4); track img; let i = $index) {
-                        <div
-                          class="relative bg-slate-100 overflow-hidden"
-                          [class.aspect-video]="post.images.length === 1"
-                          [class.aspect-square]="post.images.length > 1"
-                        >
-                          <img
-                            [src]="'http://localhost:8081/uploads/' + img"
-                            [alt]="post.title"
-                            class="w-full h-full object-cover"
-                          />
+                        <div class="relative bg-slate-100 overflow-hidden" [class.aspect-video]="post.images.length === 1" [class.aspect-square]="post.images.length > 1">
+                          <img [src]="'http://localhost:8081/uploads/' + img" [alt]="post.title" class="w-full h-full object-cover" />
                           @if (i === 3 && post.images.length > 4) {
                             <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
                               <span class="text-white text-2xl font-bold">+{{ post.images.length - 4 }}</span>
@@ -231,6 +205,7 @@ import { FeedService } from '../../services/feed.service';
                 <!-- Comments section -->
                 @if (expandedPosts().has(post.id)) {
                   <div class="border-t border-slate-100 bg-slate-50/80 px-6 py-4">
+
                     @if (feedService.commentsLoading().has(post.id)) {
                       <div class="flex items-center gap-2 text-sm text-slate-500 py-2">
                         <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -247,61 +222,144 @@ import { FeedService } from '../../services/feed.service';
                       }
 
                       @for (comment of postComments; track comment.id) {
+                        <!-- Comment row -->
                         <div class="flex items-start gap-2 mb-3">
+
+                          <!-- Avatar -->
                           @if (comment.authorPfp) {
-                            <img
-                              [src]="'http://localhost:8081/uploads/' + comment.authorPfp"
-                              [alt]="comment.authorFullName"
-                              class="w-7 h-7 rounded-full object-cover flex-shrink-0"
-                            />
+                            <img [src]="'http://localhost:8081/uploads/' + comment.authorPfp" [alt]="comment.authorFullName" class="w-7 h-7 rounded-full object-cover flex-shrink-0" />
                           } @else {
                             <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold flex-shrink-0 select-none">
                               {{ getInitials(comment.authorFullName ?? comment.authorUsername ?? '?') }}
                             </div>
                           }
-                          <div class="flex-1 bg-white rounded-xl px-3 py-2 text-sm border border-slate-100 shadow-sm">
-                            <div class="flex items-center justify-between gap-2 mb-0.5">
-                              <p class="font-semibold text-slate-800 text-xs">{{ comment.authorFullName }}</p>
-                              <div class="flex items-center gap-2">
-                                @if (comment.createdAt) {
-                                  <span class="text-xs text-slate-400">{{ getTimeAgo(comment.createdAt) }}</span>
-                                }
-                                @if (isOwnComment(comment.userId)) {
-                                  <button
-                                    (click)="deleteComment(post.id, comment.id)"
-                                    class="text-xs text-red-400 hover:text-red-600 transition-colors"
-                                    title="Delete comment"
-                                  >
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button>
-                                  <button
-  (click)="toggleCommentLike(post.id, comment.id)"
-  class="flex items-center gap-1 text-xs transition-colors"
-  [class.text-rose-600]="comment.isLiked"
-  [class.text-slate-400]="!comment.isLiked"
->
-  <svg
-    class="w-3.5 h-3.5"
-    [attr.fill]="comment.isLiked ? 'currentColor' : 'none'"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      stroke-width="2"
-      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-    />
-  </svg>
 
-  {{ comment.likeCount ?? 0 }}
-</button>
-                                }
+                          <!-- Comment bubble + replies all inside one column -->
+                          <div class="flex-1">
+
+                            <!-- Bubble -->
+                            <div class="bg-white rounded-xl px-3 py-2 text-sm border border-slate-100 shadow-sm">
+                              <div class="flex items-center justify-between gap-2 mb-0.5">
+                                <p class="font-semibold text-slate-800 text-xs">{{ comment.authorFullName }}</p>
+                                <div class="flex items-center gap-2">
+                                  @if (comment.createdAt) {
+                                    <span class="text-xs text-slate-400">{{ getTimeAgo(comment.createdAt) }}</span>
+                                  }
+                                  <!-- Like button — visible to everyone -->
+                                  <button
+                                    (click)="toggleCommentLike(post.id, comment.id)"
+                                    class="flex items-center gap-1 text-xs transition-colors"
+                                    [class.text-rose-600]="comment.isLiked"
+                                    [class.text-slate-400]="!comment.isLiked"
+                                  >
+                                    <svg class="w-3.5 h-3.5" [attr.fill]="comment.isLiked ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                    </svg>
+                                    {{ comment.likeCount ?? 0 }}
+                                  </button>
+                                  <!-- Delete — only owner -->
+                                  @if (isOwnComment(comment.userId)) {
+                                    <button
+                                      (click)="deleteComment(post.id, comment.id)"
+                                      class="text-xs text-red-400 hover:text-red-600 transition-colors"
+                                      title="Delete comment"
+                                    >
+                                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  }
+                                </div>
                               </div>
+                              <p class="text-slate-700">{{ comment.content }}</p>
+
+                              <!-- Reply toggle link -->
+                              <div class="flex items-center justify-between mt-1">
+  <button
+    (click)="toggleReplies(comment.id)"
+    class="text-xs text-indigo-500 hover:text-indigo-700 font-medium"
+  >
+    @if (expandedComments().has(comment.id)) { Hide replies } @else { View replies }
+  </button>
+
+</div>
                             </div>
-                            <p class="text-slate-700">{{ comment.content }}</p>
+
+                            <!-- Replies section — directly below bubble, same column -->
+                            @if (expandedComments().has(comment.id)) {
+                              <div class="ml-4 mt-2 border-l-2 border-slate-200 pl-3 space-y-2">
+
+                                @if (isRepliesLoading(comment.id)) {
+                                  <p class="text-xs text-slate-400 py-1">Loading replies...</p>
+                                }
+
+                                @for (reply of getReplies(comment.id); track reply.id) {
+                                  <div class="flex items-start gap-2">
+                                    @if (reply.authorPfp) {
+                                      <img [src]="'http://localhost:8081/uploads/' + reply.authorPfp" class="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                                    } @else {
+                                      <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                                        {{ getInitials(reply.authorFullName ?? '?') }}
+                                      </div>
+                                    }
+                                    <div class="flex-1 bg-white rounded-lg px-2 py-1.5 text-xs border border-slate-100 shadow-sm">
+                                      <div class="flex items-center justify-between mb-0.5">
+                                        <span class="font-semibold text-slate-800">{{ reply.authorFullName }}</span>
+                                        <div class="flex items-center gap-1.5">
+                                          @if (reply.createdAt) {
+                                            <span class="text-slate-400">{{ getTimeAgo(reply.createdAt) }}</span>
+                                          }
+                                          <button
+                                            (click)="toggleCommentLike(post.id, reply.id)"
+                                            class="flex items-center gap-0.5 transition-colors"
+                                            [class.text-rose-500]="reply.isLiked"
+                                            [class.text-slate-400]="!reply.isLiked"
+                                          >
+                                            <svg class="w-3 h-3" [attr.fill]="reply.isLiked ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                            </svg>
+                                            {{ reply.likeCount ?? 0 }}
+                                          </button>
+                                          @if (isOwnComment(reply.userId)) {
+                                              <button
+                                                (click)="deleteReply(comment.id, reply.id)"
+                                                class="text-red-400 hover:text-red-600 transition-colors"
+                                                title="Delete reply"
+                                              >
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                              </button>
+                                            }
+                                                                                  
+                                        </div>
+                                      </div>
+                                      <p class="text-slate-700">{{ reply.content }}</p>
+                                    </div>
+                                  </div>
+                                }
+
+                                <!-- Reply input -->
+                                <div class="flex items-center gap-2 mt-1">
+                                  <input
+                                    type="text"
+                                    placeholder="Write a reply..."
+                                    [value]="getReplyInput(comment.id)"
+                                    (input)="setReplyInput(comment.id, $any($event.target).value)"
+                                    (keyup.enter)="submitReply(comment.id)"
+                                    class="flex-1 px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white"
+                                  />
+                                  <button
+                                    (click)="submitReply(comment.id)"
+                                    class="text-xs px-2 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                                  >
+                                    Send
+                                  </button>
+                                </div>
+
+                              </div>
+                            }
+
                           </div>
                         </div>
                       }
@@ -346,11 +404,11 @@ import { FeedService } from '../../services/feed.service';
                     }
                   </div>
                 }
+
               </article>
             }
           </div>
 
-          <!-- Infinite scroll sentinel -->
           @if (feedService.isLoadingMore()) {
             <div class="py-6 flex justify-center">
               <svg class="w-6 h-6 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
@@ -376,6 +434,8 @@ export class FeedComponent implements OnInit, OnDestroy {
   readonly expandedPosts = signal<Set<number>>(new Set());
   readonly commentInputs = signal<Map<number, string>>(new Map());
   readonly submittingComments = signal<Set<number>>(new Set());
+  readonly expandedComments = signal<Set<number>>(new Set());
+  readonly replyInputs = signal<Map<number, string>>(new Map());
 
   readonly filteredPosts = computed(() => {
     const q = this.searchQuery().toLowerCase().trim();
@@ -389,37 +449,22 @@ export class FeedComponent implements OnInit, OnDestroy {
     );
   });
 
-  ngOnInit(): void {
-    this.feedService.init();
-  }
-
+  ngOnInit(): void { this.feedService.init(); }
   ngOnDestroy(): void {}
 
   @HostListener('window:scroll')
   onWindowScroll(): void {
     if (this.feedService.isLoading() || this.feedService.isLoadingMore() || !this.feedService.hasMore()) return;
     const scrolled = window.scrollY + window.innerHeight;
-    const total = document.documentElement.scrollHeight;
-    if (scrolled >= total - 300) {
+    if (scrolled >= document.documentElement.scrollHeight - 300) {
       this.feedService.loadMorePosts();
     }
   }
 
-  openCreatePost(): void {
-    this.createPostModal.open();
-  }
-
-  openCreateCommunity(): void {
-    this.createCommunityModal.open();
-  }
-
-  onPostCreated(): void {
-    this.feedService.loadFeed();
-  }
-
-  onCommunityCreated(): void {
-    this.feedService.checkCommunities();
-  }
+  openCreatePost(): void { this.createPostModal.open(); }
+  openCreateCommunity(): void { this.createCommunityModal.open(); }
+  onPostCreated(): void { this.feedService.loadFeed(); }
+  onCommunityCreated(): void { this.feedService.checkCommunities(); }
 
   toggleComments(postId: number): void {
     this.expandedPosts.update(set => {
@@ -436,13 +481,23 @@ export class FeedComponent implements OnInit, OnDestroy {
     });
   }
 
-  getCommentInput(postId: number): string {
-    return this.commentInputs().get(postId) ?? '';
+  toggleReplies(commentId: number): void {
+    this.expandedComments.update(set => {
+      const next = new Set(set);
+      if (next.has(commentId)) {
+        next.delete(commentId);
+      } else {
+        next.add(commentId);
+        if (!this.feedService.replies().has(commentId)) {
+          this.feedService.loadReplies(commentId);
+        }
+      }
+      return next;
+    });
   }
 
-  setCommentInput(postId: number, value: string): void {
-    this.commentInputs.update(m => new Map(m).set(postId, value));
-  }
+  getCommentInput(postId: number): string { return this.commentInputs().get(postId) ?? ''; }
+  setCommentInput(postId: number, value: string): void { this.commentInputs.update(m => new Map(m).set(postId, value)); }
 
   async submitComment(postId: number): Promise<void> {
     const content = this.getCommentInput(postId).trim();
@@ -459,13 +514,42 @@ export class FeedComponent implements OnInit, OnDestroy {
   async deleteComment(postId: number, commentId: number): Promise<void> {
     await this.feedService.deleteComment(postId, commentId);
   }
+  
 
-  isOwnComment(commentUserId: number): boolean {
-    const user = this.feedService.userContext.user();
-    return !!user && user.id === commentUserId;
+  getReplyInput(commentId: number): string { return this.replyInputs().get(commentId) ?? ''; }
+  setReplyInput(commentId: number, value: string): void { this.replyInputs.update(m => new Map(m).set(commentId, value)); }
+
+  async submitReply(commentId: number): Promise<void> {
+    const content = this.getReplyInput(commentId).trim();
+    if (!content) return;
+    try {
+      await this.feedService.createReply(commentId, content);
+      this.replyInputs.update(m => { const n = new Map(m); n.delete(commentId); return n; });
+    } catch (err) {
+      console.error('Failed to send reply', err);
+    }
+  }
+async deleteReply(commentId: number, replyId: number): Promise<void> {
+  try {
+    await this.feedService.deleteReply(commentId, replyId);
+  } catch (err) {
+    console.error('Failed to delete reply', err);
+  }
+}
+
+  getReplies(commentId: number): CommentUI[] { return this.feedService.replies().get(commentId) ?? []; }
+  isRepliesLoading(commentId: number): boolean { return this.feedService.repliesLoading().has(commentId); }
+
+  toggleCommentLike(postId: number, commentId: number): void {
+    this.feedService.toggleCommentLike(postId, commentId);
   }
 
-  getTimeAgo(date: Date | null | undefined): string {
+  isOwnComment(commentUserId: number | undefined): boolean {
+    const user = this.feedService.userContext.user();
+    return !!user && !!commentUserId && user.id === commentUserId;
+  }
+
+  getTimeAgo(date: Date | string | null | undefined): string {
     if (!date) return '';
     const diff = Date.now() - new Date(date).getTime();
     const mins = Math.floor(diff / 60000);
@@ -480,7 +564,5 @@ export class FeedComponent implements OnInit, OnDestroy {
     if (!name?.trim()) return '?';
     return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
   }
-  toggleCommentLike(postId: number, commentId: number): void {
-  this.feedService.toggleCommentLike(postId, commentId);
-}
+
 }

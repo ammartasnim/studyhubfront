@@ -92,6 +92,38 @@ export class CommentFacadeService {
       catchError(err => this.handleError(err, `Failed to toggle like on comment ${commentId}`))
     );
   }
+    getReplies(commentId: number, page: number = 0, size: number = 5): Observable<PaginatedComments> {
+    if (!commentId || commentId <= 0) {
+      return throwError(() => new Error('Invalid comment ID'));
+    }
+
+    return this.commentController
+      .getReplies(commentId, page, size)
+      .pipe(
+        map(response => this.mapPagedResponse(response)),
+        catchError(err =>
+          this.handleError(err, `Failed to fetch replies for comment ${commentId}`)
+        )
+      );
+  }
+  createReply(commentId: number, data: { content: string }): Observable<CommentUI> {
+    if (!commentId || commentId <= 0) {
+      return throwError(() => new Error('Invalid comment ID'));
+    }
+
+    if (!data?.content?.trim()) {
+      return throwError(() => new Error('Reply content is required'));
+    }
+
+    return this.commentController
+      .replyToComment(commentId, { content: data.content.trim(), postId: 0 })
+      .pipe(
+        map(dto => this.mapToUI(dto)),
+        catchError(err =>
+          this.handleError(err, `Failed to create reply for comment ${commentId}`)
+        )
+      );
+  }
 
   mapToUI(dto: CommentResDto | null | undefined): CommentUI {
     if (!dto) throw new Error('Comment data is null or undefined');

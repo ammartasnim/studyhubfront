@@ -594,5 +594,97 @@ export class CommentControllerService extends BaseService {
             }
         );
     }
+    /**
+ * @endpoint get /api/comments/{commentId}/replies
+ */
+public getReplies(commentId: number, page?: number, size?: number): Observable<PageCommentResDto> {
+    if (commentId === null || commentId === undefined) {
+        throw new Error('Required parameter commentId was null or undefined when calling getReplies.');
+    }
+
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    if (page !== undefined) {
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'page',
+            <any>page,
+            QueryParamStyle.Form,
+            true,
+        );
+    }
+
+    if (size !== undefined) {
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'size',
+            <any>size,
+            QueryParamStyle.Form,
+            true,
+        );
+    }
+
+    let localVarHeaders = this.defaultHeaders;
+
+    const localVarHttpHeaderAcceptSelected =
+        this.configuration.selectHeaderAccept(['*/*']);
+
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+        localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const { basePath, withCredentials } = this.configuration;
+
+    return this.httpClient.request<PageCommentResDto>(
+        'get',
+        `${basePath}/api/comments/${encodeURIComponent(String(commentId))}/replies`,
+        {
+            params: localVarQueryParameters.toHttpParams(),
+            responseType: 'json',
+            ...(withCredentials ? { withCredentials } : {}),
+            headers: localVarHeaders
+        }
+    );
+}
+/**
+ * @endpoint post /api/comments/{commentId}/replies
+ */
+public replyToComment(commentId: number, commentReqDto: CommentReqDto): Observable<CommentResDto> {
+    if (commentId === null || commentId === undefined) {
+        throw new Error('Required parameter commentId was null or undefined when calling replyToComment.');
+    }
+    if (commentReqDto === null || commentReqDto === undefined) {
+        throw new Error('Required parameter commentReqDto was null or undefined when calling replyToComment.');
+    }
+
+    let localVarHeaders = this.defaultHeaders;
+
+    const localVarHttpHeaderAcceptSelected =
+        this.configuration.selectHeaderAccept(['*/*']);
+
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+        localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const httpContentTypeSelected =
+        this.configuration.selectHeaderContentType(['application/json']);
+
+    if (httpContentTypeSelected !== undefined) {
+        localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+    }
+
+    const { basePath, withCredentials } = this.configuration;
+
+    return this.httpClient.request<CommentResDto>(
+        'post',
+        `${basePath}/api/comments/${encodeURIComponent(String(commentId))}/reply`,
+        {
+            body: commentReqDto,
+            responseType: 'json',
+            ...(withCredentials ? { withCredentials } : {}),
+            headers: localVarHeaders
+        }
+    );
+}
 
 }
