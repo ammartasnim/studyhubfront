@@ -29,17 +29,17 @@ const SYNC_INTERVAL_TICKS = 30;
   standalone: true,
   imports: [CommonModule, FormsModule, FormatTimerPipe],
   template: `
-<div class="min-h-screen bg-purple-50 flex items-start justify-center px-4 py-10">
+<div class="min-h-screen flex items-start justify-center px-4 py-10">
 <div class="w-full max-w-sm">
 
-  <div class="flex items-center gap-2.5 mb-8">
-    <div class="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center">
+  <div class="flex items-center gap-2.5 mb-6">
+    <div class="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <circle cx="8" cy="8" r="6" stroke="white" stroke-width="1.5"/>
         <path d="M8 5v3.5l2 1.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
     </div>
-    <span class="text-sm font-semibold text-purple-900 tracking-wide">Focus timer</span>
+    <span class="text-lg font-semibold text-purple-900 tracking-wide">Focus timer</span>
   </div>
 
   @if (phase === 'setup') {
