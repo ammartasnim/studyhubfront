@@ -11,6 +11,7 @@ import { Pageable } from '../model/pageable';
 
 import { PostUI, PaginatedPosts } from './models/post.model';
 import { HttpClient } from '@angular/common/http';
+import { formatApiError } from './models/api-error.model';
 
 /**
  * Post Facade Service
@@ -267,7 +268,8 @@ getByCommunity(communityId: number, filters?: { page?: number; size?: number }):
       commentCount: dto.commentCount ?? 0,
       isLiked: dto.liked ?? false,
       createdAt: dto.createdAt ? new Date(dto.createdAt) : null,
-      status: dto.status ?? ''
+      status: dto.status ?? '',
+      flagCount: dto.flagCount ?? 0
     };
   }
 
@@ -303,9 +305,13 @@ private mapPagedResponse(response: any): PaginatedPosts {
    * Handle errors with logging
    */
   private handleError(error: any, message: string): Observable<never> {
-    console.error(`[PostFacade] ${message}:`, error);
-    const errorMsg = error?.message || error?.error?.message || message;
-    return throwError(() => new Error(errorMsg));
+    const formatted = formatApiError(error, message);
+    console.groupCollapsed(`[PostFacade] ${formatted}`);
+    console.error('Operation:', message);
+    console.error('Full Error:', error);
+    if (error?.error) console.error('Backend Response:', error.error);
+    console.groupEnd();
+    return throwError(() => new Error(formatted));
   }
   markSeen(postIds: number[]): Observable<void> {
     return this.http.post<void>(
@@ -314,6 +320,24 @@ private mapPagedResponse(response: any): PaginatedPosts {
     ).pipe(
         catchError(err => this.handleError(err, 'Failed to mark posts as seen'))
     );
+}
+
+getPostStats(): Observable<{ total: number; flagged: number; pending: number }> {
+  return this.http.get<{ total: number; flagged: number; pending: number }>(
+    `${this.postController['configuration'].basePath}/api/posts/stats/count`
+  ).pipe(
+    catchError(err => this.handleError(err, 'Failed to fetch post stats'))
+  );
+}
+
+getByStatus(status: string, page = 0, size = 10): Observable<PaginatedPosts> {
+  return this.http.get<any>(
+    `${this.postController['configuration'].basePath}/api/posts/status/${status}`,
+    { params: { page, size } }
+  ).pipe(
+    map(res => this.mapPagedResponse(res)),
+    catchError(err => this.handleError(err, `Failed to fetch posts with status ${status}`))
+  );
 }
   
 }

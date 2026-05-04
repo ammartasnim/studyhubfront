@@ -24,6 +24,7 @@ export interface PostResDto {
     commentCount?: number;
     createdAt?: string;
     liked?: boolean;
+    flagCount?: number;
 }
 export namespace PostResDto {
     export const StatusEnum = {

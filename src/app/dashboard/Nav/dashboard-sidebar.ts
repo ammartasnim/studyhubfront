@@ -1,6 +1,5 @@
 import { Component, inject, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Token } from '@angular/compiler';
 import { UserContextService } from '../../user-context.service';
 import { Router } from '@angular/router';
 
@@ -167,6 +166,6 @@ export class DashboardSidebarComponent {
     handleLogout(): void {
     localStorage.removeItem('token');
     this.userContext.clear();
-    this.router.navigateByUrl('/login');
+    this.router.navigateByUrl('/auth/login');
   }
 }
