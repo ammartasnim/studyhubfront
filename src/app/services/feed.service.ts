@@ -213,36 +213,46 @@ private markPostsSeen(postIds: number[]): void {
     );
   }
 
-  async deleteComment(postId: number, commentId: number): Promise<void> {
-    await firstValueFrom(this.commentFacade.delete(commentId));
+async deleteComment(postId: number, commentId: number): Promise<void> {
+  await firstValueFrom(this.commentFacade.delete(commentId));
 
-    const state = this.commentStates().get(postId);
-    if (!state) return;
+  const state = this.commentStates().get(postId);
+  if (!state) return;
 
-    const updatedItems = state.items.filter(c => c.id !== commentId);
-    this.updateCommentState(postId, { items: updatedItems });
-    this.posts.update(list =>
-      list.map(p => p.id === postId ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p)
-    );
+  const updatedItems = state.items.filter(c => c.id !== commentId);
+  this.updateCommentState(postId, { items: updatedItems });
 
-    if (updatedItems.length < COMMENT_PAGE_SIZE && state.hasMore) {
-      try {
-        const nextPage = state.page + 1;
-        const result = await firstValueFrom(
-          this.commentFacade.getByPostPaged(postId, nextPage, COMMENT_PAGE_SIZE)
-        );
-        const existingIds = new Set(updatedItems.map(c => c.id));
-        const newItems = result.items.filter(c => !existingIds.has(c.id));
-        this.updateCommentState(postId, {
-          items: [...updatedItems, ...newItems],
-          page: nextPage,
-          hasMore: updatedItems.length + newItems.length < result.totalItems
-        });
-      } catch (err) {
-        console.error('Failed to auto-load comments after delete:', err);
-      }
+  this.posts.update(list =>
+    list.map(p => p.id === postId
+      ? { ...p, commentCount: Math.max(0, p.commentCount - 1) }
+      : p)
+  );
+
+  const missing = COMMENT_PAGE_SIZE - updatedItems.length;
+  if (missing > 0 && state.hasMore) {
+    try {
+      const result = await firstValueFrom(
+        this.commentFacade.getByPostPaged(postId, state.page, COMMENT_PAGE_SIZE)
+      );
+      const existingIds = new Set(updatedItems.map(c => c.id));
+      const newItems = result.items
+        .filter(c => !existingIds.has(c.id))
+        .slice(0, missing); 
+
+      this.updateCommentState(postId, {
+        items: [...updatedItems, ...newItems],
+        hasMore: result.totalItems > updatedItems.length + newItems.length
+      });
+    } catch (err) {
+      console.error('Failed to auto-load comments after delete:', err);
     }
+  } else if (!state.hasMore) {
+
+    this.updateCommentState(postId, {
+      hasMore: false
+    });
   }
+}
 
   async loadReplies(commentId: number): Promise<void> {
     this.replyLoading.update(s => new Set(s).add(commentId));
@@ -362,5 +372,12 @@ private markPostsSeen(postIds: number[]): void {
     console.error('Failed to delete post:', err);
     throw err;
   }
+}
+resetComments(postId: number): void {
+  this.commentStates.update(m => {
+    const newMap = new Map(m);
+    newMap.delete(postId);
+    return newMap;
+  });
 }
 }

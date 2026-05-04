@@ -32,7 +32,7 @@ const AUTH_TOKEN_KEY = 'token';
             [displayName]="displayName()"
             [level]="level()"
             [xp]="xp()"
-            [pfp]="pfp()"
+            [pfp]="'http://localhost:8081/uploads/' + pfp()"
             (navigate)="handleSidebarNavigation($event)"
             (logout)="handleLogout()"
           />
@@ -90,6 +90,7 @@ export class DashboardComponent {
 
   readonly displayName = computed(() => {
     const user = this.user();
+    console.log('User data in displayName computed:', user);
     const fullName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
     return fullName || user?.username || 'Student';
   });
