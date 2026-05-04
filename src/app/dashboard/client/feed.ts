@@ -464,21 +464,19 @@ export class FeedComponent implements OnInit, OnDestroy {
   onPostCreated(): void { this.feedService.loadFeed(); }
   onCommunityCreated(): void { this.feedService.checkCommunities(); }
 
-  toggleComments(postId: number): void {
-    this.expandedPosts.update(set => {
-      const next = new Set(set);
-      if (next.has(postId)) {
-        next.delete(postId);
-      } else {
-        next.add(postId);
-        if (!this.feedService.comments().has(postId)) {
-          this.feedService.loadComments(postId);
-        }
-      }
-      return next;
-    });
-  }
-
+toggleComments(postId: number): void {
+  this.expandedPosts.update(set => {
+    const next = new Set(set);
+    if (next.has(postId)) {
+      next.delete(postId);
+      this.feedService.resetComments(postId);
+    } else {
+      next.add(postId);
+      this.feedService.loadComments(postId);
+    }
+    return next;
+  });
+}
   toggleReplies(commentId: number): void {
     this.expandedComments.update(set => {
       const next = new Set(set);
