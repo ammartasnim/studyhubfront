@@ -398,13 +398,12 @@ export class PostControllerService extends BaseService {
 
         let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
-        localVarQueryParameters = this.addToHttpParams(
-            localVarQueryParameters,
-            'pageable',
-            <any>pageable,
-            QueryParamStyle.Form,
-            true,
-        );
+            if (pageable.page !== undefined) {
+            localVarQueryParameters = this.addToHttpParams(localVarQueryParameters, 'page', <any>pageable.page, QueryParamStyle.Form, true);
+        }
+        if (pageable.size !== undefined) {
+            localVarQueryParameters = this.addToHttpParams(localVarQueryParameters, 'size', <any>pageable.size, QueryParamStyle.Form, true);
+        }
 
 
         let localVarHeaders = this.defaultHeaders;

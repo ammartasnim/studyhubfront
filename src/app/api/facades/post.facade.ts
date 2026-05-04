@@ -275,7 +275,6 @@ getByCommunity(communityId: number, filters?: { page?: number; size?: number }):
    * Map paginated response
    */
 private mapPagedResponse(response: any): PaginatedPosts {
-  console.log("DEBUG: What is actually inside the response variable?", response);
   // 1. Extract the raw list from Spring's 'content' key
   const rawContent = response.content || [];
 
