@@ -8,6 +8,7 @@ export interface CommunityUI {
   description?: string;
   nbrMembers: number;
   moderatorId?: number;
+  category?: string;
 }
 
 /**

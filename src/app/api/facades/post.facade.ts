@@ -307,5 +307,13 @@ private mapPagedResponse(response: any): PaginatedPosts {
     const errorMsg = error?.message || error?.error?.message || message;
     return throwError(() => new Error(errorMsg));
   }
+  markSeen(postIds: number[]): Observable<void> {
+    return this.http.post<void>(
+        `${this.postController['configuration'].basePath}/api/posts/seen`,
+        postIds
+    ).pipe(
+        catchError(err => this.handleError(err, 'Failed to mark posts as seen'))
+    );
+}
   
 }

@@ -90,28 +90,29 @@ export class CommunityFacadeService {
   /**
    * Create a new community
    */
-  create(data: { title: string; description: string }): Observable<CommunityUI> {
-    // Validate required fields
-    if (!data?.title?.trim() || !data?.description?.trim()) {
-      return throwError(() => new Error('Title and description are required'));
-    }
 
-    const req: CommunityReqDto = {
-      title: data.title.trim(),
-      description: data.description.trim()
-    };
 
-    return this.communityController.createCommunity(req).pipe(
-      map(dto => {
-        this.responseHandler.logResponse('createCommunity', 'POST', dto);
-        if (!this.responseHandler.validateJsonResponse(dto)) {
-          throw new Error('Invalid JSON response from server');
-        }
-        return this.mapToUI(dto);
-      }),
-      catchError(err => this.responseHandler.handleError(err, 'Failed to create community'))
-    );
+create(data: { title: string; description: string; category?: string }): Observable<CommunityUI> {
+  if (!data?.title?.trim() || !data?.description?.trim()) {
+    return throwError(() => new Error('Title and description are required'));
   }
+
+  const req: CommunityReqDto = {
+    title: data.title.trim(),
+    description: data.description.trim(),
+    category: data.category ?? ''
+  };
+
+  return this.communityController.createCommunity(req).pipe(
+    map(dto => {
+      if (!this.responseHandler.validateJsonResponse(dto)) {
+        throw new Error('Invalid JSON response from server');
+      }
+      return this.mapToUI(dto);
+    }),
+    catchError(err => this.responseHandler.handleError(err, 'Failed to create community'))
+  );
+}
 
   /**
    * Update a community
@@ -240,7 +241,8 @@ export class CommunityFacadeService {
       title: dto.title ?? 'Untitled Community',
       description: dto.description ?? '',
       nbrMembers: dto.nbrMembers ?? 0,
-      moderatorId: dto.moderatorId
+      moderatorId: dto.moderatorId,
+      category: dto.category
     };
   }
 

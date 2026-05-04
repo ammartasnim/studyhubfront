@@ -68,7 +68,7 @@ export class FeedService {
     await Promise.all([this.loadFeed(), this.checkCommunities()]);
   }
 
-  async loadFeed(): Promise<void> {
+async loadFeed(): Promise<void> {
     if (this.loading) return;
     this.loading = true;
     this.isLoading.set(true);
@@ -76,51 +76,63 @@ export class FeedService {
     this.seenPostIds.clear();
 
     try {
-      const result = await firstValueFrom(
-        this.postFacade.getFeed({ page: 0, size: FEED_PAGE_SIZE })
-      );
-      this.currentPage = 0;
-      this.seenPostIds = new Set(result.items.map(p => p.id));
-      this.posts.set(result.items);
-      this.totalPosts.set(result.totalItems);
-      this.hasMore.set(result.currentPage < result.totalPages - 1);
+        const result = await firstValueFrom(
+            this.postFacade.getFeed({ page: 0, size: FEED_PAGE_SIZE })
+        );
+        this.currentPage = 0;
+        this.seenPostIds = new Set(result.items.map(p => p.id));
+        this.posts.set(result.items);
+        this.hasMore.set(result.currentPage < result.totalPages - 1);
+        this.markPostsSeen(result.items.map(p => p.id));
     } catch (err: any) {
-      this.error.set(err.message ?? 'Failed to load feed');
+        this.error.set(err.message ?? 'Failed to load feed');
     } finally {
-      this.isLoading.set(false);
-      this.loading = false;
+        this.isLoading.set(false);
+        this.loading = false;
     }
-  }
+}
 
-  async loadMorePosts(): Promise<void> {
+async loadMorePosts(): Promise<void> {
     if (this.loading || !this.hasMore()) return;
     this.loading = true;
     this.isLoadingMore.set(true);
 
     try {
-      const nextPage = this.currentPage + 1;
-      const result = await firstValueFrom(
-        this.postFacade.getFeed({ page: nextPage, size: FEED_PAGE_SIZE })
-      );
+        const nextPage = this.currentPage + 1;
+        const result = await firstValueFrom(
+            this.postFacade.getFeed({ page: nextPage, size: FEED_PAGE_SIZE })
+        );
 
-      if (result.items.length === 0) {
-        this.hasMore.set(false);
-        return;
-      }
+        if (result.items.length === 0) {
+            this.hasMore.set(false);
+            return;
+        }
 
-      const newPosts = result.items.filter(p => !this.seenPostIds.has(p.id));
-      newPosts.forEach(p => this.seenPostIds.add(p.id));
-      this.posts.update(list => [...list, ...newPosts]);
-      this.currentPage = nextPage;
-      this.hasMore.set(result.currentPage < result.totalPages - 1);
+        // Only filter out posts already displayed in this session
+        const displayedIds = new Set(this.posts().map(p => p.id));
+        const newPosts = result.items.filter(p => !displayedIds.has(p.id));
+
+        if (newPosts.length > 0) {
+            this.posts.update(list => [...list, ...newPosts]);
+            newPosts.forEach(p => this.seenPostIds.add(p.id));
+            this.markPostsSeen(newPosts.map(p => p.id));
+        }
+
+        this.currentPage = nextPage;
+        this.hasMore.set(result.currentPage < result.totalPages - 1);
     } catch (err) {
-      console.error('Failed to load more posts:', err);
+        console.error('Failed to load more posts:', err);
     } finally {
-      this.isLoadingMore.set(false);
-      this.loading = false;
+        this.isLoadingMore.set(false);
+        this.loading = false;
     }
-  }
-
+}
+private markPostsSeen(postIds: number[]): void {
+    if (!postIds.length) return;
+    firstValueFrom(this.postFacade.markSeen(postIds)).catch(err =>
+        console.error('Failed to mark posts as seen:', err)
+    );
+}
   toggleLike(postId: number): void {
     const posts = this.posts();
     const idx = posts.findIndex(p => p.id === postId);
@@ -312,4 +324,43 @@ export class FeedService {
       return new Map(m).set(postId, { ...existing, ...partial });
     });
   }
+  async deletePost(postId: number): Promise<void> {
+  const currentPosts = this.posts();
+  const idx = currentPosts.findIndex(p => p.id === postId);
+  if (idx === -1) return;
+
+  // Optimistically remove from UI
+  this.posts.update(list => list.filter(p => p.id !== postId));
+  this.totalPosts.update(n => Math.max(0, n - 1));
+
+  try {
+    await firstValueFrom(this.postFacade.delete(postId));
+
+    // If we have more posts available and the list dropped below page size, fetch next page
+    if (this.hasMore() && this.posts().length < FEED_PAGE_SIZE) {
+      const nextPage = this.currentPage + 1;
+      const result = await firstValueFrom(
+        this.postFacade.getFeed({ page: nextPage, size: FEED_PAGE_SIZE })
+      );
+
+      const displayedIds = new Set(this.posts().map(p => p.id));
+      const newPosts = result.items.filter(p => !displayedIds.has(p.id));
+
+      if (newPosts.length > 0) {
+        this.posts.update(list => [...list, ...newPosts]);
+        newPosts.forEach(p => this.seenPostIds.add(p.id));
+        this.markPostsSeen(newPosts.map(p => p.id));
+      }
+
+      this.currentPage = nextPage;
+      this.hasMore.set(result.currentPage < result.totalPages - 1);
+    }
+  } catch (err) {
+    // Revert optimistic update on failure
+    this.posts.set(currentPosts);
+    this.totalPosts.update(n => n + 1);
+    console.error('Failed to delete post:', err);
+    throw err;
+  }
+}
 }

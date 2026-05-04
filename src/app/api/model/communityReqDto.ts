@@ -13,5 +13,6 @@ export interface CommunityReqDto {
     title: string;
     description: string;
     nbrMembers?: number;
+    category?: string;
 }
 

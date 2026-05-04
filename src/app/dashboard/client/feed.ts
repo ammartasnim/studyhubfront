@@ -63,9 +63,7 @@ import { firstValueFrom } from 'rxjs';
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div class="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-slate-50">
           <h2 class="text-xl font-bold text-slate-900">Academic Feed</h2>
-          @if (!feedService.isLoading() && filteredPosts().length > 0) {
-            <span class="text-sm text-slate-500">{{ feedService.totalPosts() }} post{{ feedService.totalPosts() === 1 ? '' : 's' }}</span>
-          }
+         
         </div>
 
         @if (feedService.isLoading()) {

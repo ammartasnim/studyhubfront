@@ -164,7 +164,8 @@ export class CreateCommunityModalComponent {
       // Using facade service - clean and simple
       await firstValueFrom(this.communityFacade.create({
         title: formValue.name,
-        description: formValue.description
+        description: formValue.description,
+        category: formValue.category 
       }));
 
       console.log('[CreateCommunityModal] Community created successfully');

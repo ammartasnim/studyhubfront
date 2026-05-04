@@ -15,5 +15,6 @@ export interface CommunityResDto {
     description?: string;
     nbrMembers?: number;
     moderatorId?: number;
+    category?: string;
 }
 
