@@ -1,5 +1,6 @@
-import { Component, inject, effect, signal, ViewChild } from '@angular/core';
+import { Component, computed, inject, effect, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommunityService } from '../../services/community.service';
 import { CommunityFacadeService, CommunityUI } from '../../api/facades';
@@ -8,7 +9,7 @@ import { CreateCommunityModalComponent } from './create-community';
 @Component({
   selector: 'app-my-created-communities',
   standalone: true,
-  imports: [CommonModule, CreateCommunityModalComponent],
+  imports: [CommonModule, FormsModule, CreateCommunityModalComponent],
   template: `
     <app-create-community-modal #createCommunityModal (communityCreated)="onCommunityCreated()" />
 
@@ -26,6 +27,7 @@ import { CreateCommunityModalComponent } from './create-community';
               aria-label="Search communities"
               class="w-full pl-12 pr-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="Search your created communities..."
+              [(ngModel)]="searchQuery"
             />
           </div>
         </div>
@@ -70,9 +72,9 @@ import { CreateCommunityModalComponent } from './create-community';
         }
 
         <!-- Communities List -->
-        @if (!communityService.myCreatedCommunitiesLoading() && !communityService.isMyCreatedCommunitiesEmpty()) {
+        @if (!communityService.myCreatedCommunitiesLoading() && filteredCommunities().length > 0) {
           <div class="divide-y divide-slate-200">
-            @for (community of communityService.myCreatedCommunities(); track community.id) {
+            @for (community of filteredCommunities(); track community.id) {
               <div class="px-6 py-4 hover:bg-slate-50 transition-colors cursor-pointer">
                 <div class="flex items-start gap-4">
                   <!-- Community Avatar -->
@@ -126,6 +128,15 @@ export class MyCreatedCommunitiesComponent {
   readonly communityService = inject(CommunityService);
   private readonly router = inject(Router);
   private readonly communityFacade = inject(CommunityFacadeService);
+
+  readonly searchQuery = signal('');
+  readonly filteredCommunities = computed(() => {
+    const query = this.searchQuery().toLowerCase();
+    if (!query) return this.communityService.myCreatedCommunities();
+    return this.communityService.myCreatedCommunities().filter(c =>
+      c.title?.toLowerCase().includes(query) || c.description?.toLowerCase().includes(query)
+    );
+  });
 
   constructor() {
     console.log('[MyCreatedCommunitiesComponent] Section component initialized');

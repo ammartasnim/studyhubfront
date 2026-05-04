@@ -1,7 +1,7 @@
-import { FocusSessionResDto } from "../../model/focusSessionResDto";
+import { FocusSessionUI } from './focus-session.model';
 
 export interface PaginatedSessions {
-  items: FocusSessionResDto[];
+  items: FocusSessionUI[];
   totalItems: number;
   totalPages: number;
   currentPage: number;

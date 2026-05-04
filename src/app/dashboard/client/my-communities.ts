@@ -1,5 +1,6 @@
-import { Component, inject, effect, signal } from '@angular/core';
+import { Component, computed, inject, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommunityService } from '../../services/community.service';
 import { CommunityUI } from '../../api/facades';
@@ -7,7 +8,7 @@ import { CommunityUI } from '../../api/facades';
 @Component({
   selector: 'app-my-communities',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="flex flex-col gap-5">
       <!-- Header with Search -->
@@ -23,6 +24,7 @@ import { CommunityUI } from '../../api/facades';
               aria-label="Search communities"
               class="w-full pl-12 pr-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="Search your communities..."
+              [(ngModel)]="searchQuery"
             />
           </div>
         </div>
@@ -56,9 +58,9 @@ import { CommunityUI } from '../../api/facades';
         }
 
         <!-- Communities List -->
-        @if (!communityService.myJoinedCommunitiesLoading() && !communityService.isMyJoinedCommunitiesEmpty()) {
+        @if (!communityService.myJoinedCommunitiesLoading() && filteredCommunities().length > 0) {
           <div class="divide-y divide-slate-200">
-            @for (community of communityService.myJoinedCommunities(); track community.id) {
+            @for (community of filteredCommunities(); track community.id) {
               <div class="px-6 py-4 hover:bg-slate-50 transition-colors cursor-pointer">
                 <div class="flex items-start gap-4">
                   <!-- Community Avatar -->
@@ -107,6 +109,15 @@ import { CommunityUI } from '../../api/facades';
 export class MyCommunitiesComponent {
   readonly communityService = inject(CommunityService);
   private readonly router = inject(Router);
+
+  readonly searchQuery = signal('');
+  readonly filteredCommunities = computed(() => {
+    const query = this.searchQuery().toLowerCase();
+    if (!query) return this.communityService.myJoinedCommunities();
+    return this.communityService.myJoinedCommunities().filter(c =>
+      c.title?.toLowerCase().includes(query) || c.description?.toLowerCase().includes(query)
+    );
+  });
 
   constructor() {
     console.log('[MyCommunitiesComponent] Section component initialized');

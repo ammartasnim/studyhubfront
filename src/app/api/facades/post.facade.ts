@@ -11,6 +11,7 @@ import { Pageable } from '../model/pageable';
 
 import { PostUI, PaginatedPosts } from './models/post.model';
 import { HttpClient } from '@angular/common/http';
+import { formatApiError } from './models/api-error.model';
 
 /**
  * Post Facade Service
@@ -304,9 +305,13 @@ private mapPagedResponse(response: any): PaginatedPosts {
    * Handle errors with logging
    */
   private handleError(error: any, message: string): Observable<never> {
-    console.error(`[PostFacade] ${message}:`, error);
-    const errorMsg = error?.message || error?.error?.message || message;
-    return throwError(() => new Error(errorMsg));
+    const formatted = formatApiError(error, message);
+    console.groupCollapsed(`[PostFacade] ${formatted}`);
+    console.error('Operation:', message);
+    console.error('Full Error:', error);
+    if (error?.error) console.error('Backend Response:', error.error);
+    console.groupEnd();
+    return throwError(() => new Error(formatted));
   }
   markSeen(postIds: number[]): Observable<void> {
     return this.http.post<void>(

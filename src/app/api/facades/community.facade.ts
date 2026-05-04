@@ -8,7 +8,7 @@ import { CommunityReqDto } from '../model/communityReqDto';
 import { CommunityResDto } from '../model/communityResDto';
 import { PageCommunityResDto } from '../model/pageCommunityResDto';
 import { CommunityUI, PaginatedCommunities, ModeratorInfo } from './models/community.model';
-import { ResponseHandlerService } from './response-handler.service';
+import { formatApiError } from './models/api-error.model';
 
 export interface CommunityMemberUI {
   userId: number;
@@ -31,7 +31,6 @@ export interface PaginatedMembers {
 @Injectable({ providedIn: 'root' })
 export class CommunityFacadeService {
   private readonly communityController = inject(CommunityControllerService);
-  private readonly responseHandler = inject(ResponseHandlerService);
   private readonly http = inject(HttpClient);
 
   private get basePath(): string {
@@ -45,7 +44,7 @@ export class CommunityFacadeService {
     const sortDir = filters?.sortDir ?? 'asc';
     return this.communityController.getAllCommunities(filters?.title, filters?.description, filters?.minMembers, page, size, sortBy, sortDir).pipe(
       map(response => this.mapPagedResponse(response)),
-      catchError(err => this.responseHandler.handleError(err, 'Failed to fetch communities'))
+      catchError(err => this.handleError(err, 'Failed to fetch communities'))
     );
   }
 
@@ -53,7 +52,7 @@ export class CommunityFacadeService {
     if (!id || id <= 0) return throwError(() => new Error('Invalid community ID'));
     return this.communityController.getCommunityById(id).pipe(
       map(dto => this.mapToUI(dto)),
-      catchError(err => this.responseHandler.handleError(err, `Failed to fetch community ${id}`))
+      catchError(err => this.handleError(err, `Failed to fetch community ${id}`))
     );
   }
 
@@ -64,7 +63,7 @@ export class CommunityFacadeService {
     const req: CommunityReqDto = { title: data.title.trim(), description: data.description.trim(), category: data.category ?? '' };
     return this.communityController.createCommunity(req).pipe(
       map(dto => this.mapToUI(dto)),
-      catchError(err => this.responseHandler.handleError(err, 'Failed to create community'))
+      catchError(err => this.handleError(err, 'Failed to create community'))
     );
   }
 
@@ -73,14 +72,14 @@ export class CommunityFacadeService {
     const req: CommunityReqDto = { title: data.title.trim(), description: data.description.trim(), category: data.category };
     return this.communityController.updateCommunity(id, req).pipe(
       map(dto => this.mapToUI(dto)),
-      catchError(err => this.responseHandler.handleError(err, `Failed to update community ${id}`))
+      catchError(err => this.handleError(err, `Failed to update community ${id}`))
     );
   }
 
   delete(id: number): Observable<void> {
     if (!id || id <= 0) return throwError(() => new Error('Invalid community ID'));
     return this.communityController.deleteCommunity(id).pipe(
-      catchError(err => this.responseHandler.handleError(err, `Failed to delete community ${id}`))
+      catchError(err => this.handleError(err, `Failed to delete community ${id}`))
     );
   }
 
@@ -91,7 +90,7 @@ export class CommunityFacadeService {
     const sortDir = filters?.sortDir ?? 'asc';
     return this.communityController.getMyCommunities(page, size, sortBy, sortDir).pipe(
       map(response => this.mapPagedResponse(response)),
-      catchError(err => this.responseHandler.handleError(err, 'Failed to fetch joined communities'))
+      catchError(err => this.handleError(err, 'Failed to fetch joined communities'))
     );
   }
 
@@ -102,45 +101,45 @@ export class CommunityFacadeService {
     const sortDir = filters?.sortDir ?? 'asc';
     return this.communityController.getMyCreatedCommunities(page, size, sortBy, sortDir).pipe(
       map(response => this.mapPagedResponse(response)),
-      catchError(err => this.responseHandler.handleError(err, 'Failed to fetch created communities'))
+      catchError(err => this.handleError(err, 'Failed to fetch created communities'))
     );
   }
 
   getStats(): Observable<{ [key: string]: number }> {
     return this.communityController.getCommunityStats().pipe(
-      catchError(err => this.responseHandler.handleError(err, 'Failed to fetch stats'))
+      catchError(err => this.handleError(err, 'Failed to fetch stats'))
     );
   }
 
   getTop(): Observable<CommunityUI[]> {
     return this.communityController.getTopCommunities().pipe(
       map(dtos => (dtos ?? []).map(dto => this.mapToUI(dto))),
-      catchError(err => this.responseHandler.handleError(err, 'Failed to fetch top communities'))
+      catchError(err => this.handleError(err, 'Failed to fetch top communities'))
     );
   }
 
   // Moderator management
   addModerator(communityId: number, userId: number, permissions: string[]): Observable<void> {
     return this.http.post<void>(`${this.basePath}/api/communities/${communityId}/moderators`, { userId, permissions }).pipe(
-      catchError(err => this.responseHandler.handleError(err, 'Failed to add moderator'))
+      catchError(err => this.handleError(err, 'Failed to add moderator'))
     );
   }
 
   removeModerator(communityId: number, userId: number): Observable<void> {
     return this.http.delete<void>(`${this.basePath}/api/communities/${communityId}/moderators/${userId}`).pipe(
-      catchError(err => this.responseHandler.handleError(err, 'Failed to remove moderator'))
+      catchError(err => this.handleError(err, 'Failed to remove moderator'))
     );
   }
 
   updateModeratorPermissions(communityId: number, userId: number, permissions: string[]): Observable<void> {
     return this.http.put<void>(`${this.basePath}/api/communities/${communityId}/moderators/${userId}/permissions`, { permissions }).pipe(
-      catchError(err => this.responseHandler.handleError(err, 'Failed to update permissions'))
+      catchError(err => this.handleError(err, 'Failed to update permissions'))
     );
   }
 
   transferOwnership(communityId: number, newOwnerId: number): Observable<void> {
     return this.http.put<void>(`${this.basePath}/api/communities/${communityId}/transfer-ownership`, { newOwnerId }).pipe(
-      catchError(err => this.responseHandler.handleError(err, 'Failed to transfer ownership'))
+      catchError(err => this.handleError(err, 'Failed to transfer ownership'))
     );
   }
 
@@ -162,38 +161,38 @@ export class CommunityFacadeService {
         totalPages: response.totalPages ?? 0,
         currentPage: response.number ?? 0
       })),
-      catchError(err => this.responseHandler.handleError(err, 'Failed to fetch members'))
+      catchError(err => this.handleError(err, 'Failed to fetch members'))
     );
   }
 
   banMember(communityId: number, userId: number, reason: string): Observable<void> {
     return this.http.post<void>(`${this.basePath}/api/communities/${communityId}/ban`, { userId, reason }).pipe(
-      catchError(err => this.responseHandler.handleError(err, 'Failed to ban member'))
+      catchError(err => this.handleError(err, 'Failed to ban member'))
     );
   }
 
   unbanMember(communityId: number, userId: number): Observable<void> {
     return this.http.delete<void>(`${this.basePath}/api/communities/${communityId}/ban/${userId}`).pipe(
-      catchError(err => this.responseHandler.handleError(err, 'Failed to unban member'))
+      catchError(err => this.handleError(err, 'Failed to unban member'))
     );
   }
 
   warnMember(communityId: number, userId: number, reason: string): Observable<void> {
     return this.http.post<void>(`${this.basePath}/api/communities/${communityId}/warn`, { userId, reason }).pipe(
-      catchError(err => this.responseHandler.handleError(err, 'Failed to warn member'))
+      catchError(err => this.handleError(err, 'Failed to warn member'))
     );
   }
 
   // Join / Leave
   join(communityId: number): Observable<void> {
     return this.http.post<void>(`${this.basePath}/api/communities/${communityId}/join`, {}).pipe(
-      catchError(err => this.responseHandler.handleError(err, 'Failed to join community'))
+      catchError(err => this.handleError(err, 'Failed to join community'))
     );
   }
 
   leave(communityId: number): Observable<void> {
     return this.http.delete<void>(`${this.basePath}/api/communities/${communityId}/leave`).pipe(
-      catchError(err => this.responseHandler.handleError(err, 'Failed to leave community'))
+      catchError(err => this.handleError(err, 'Failed to leave community'))
     );
   }
 
@@ -224,5 +223,15 @@ export class CommunityFacadeService {
       currentPage: response.number ?? 0,
       pageSize: response.size ?? 0
     };
+  }
+
+  private handleError(error: any, message: string): Observable<never> {
+    const formatted = formatApiError(error, message);
+    console.groupCollapsed(`[CommunityFacade] ${formatted}`);
+    console.error('Operation:', message);
+    console.error('Full Error:', error);
+    if (error?.error) console.error('Backend Response:', error.error);
+    console.groupEnd();
+    return throwError(() => new Error(formatted));
   }
 }

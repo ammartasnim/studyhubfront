@@ -9,6 +9,7 @@ import { CommentResDto } from '../model/commentResDto';
 import { PageCommentResDto } from '../model/pageCommentResDto';
 
 import { CommentUI, PaginatedComments } from './models/comment.model';
+import { formatApiError } from './models/api-error.model';
 
 @Injectable({ providedIn: 'root' })
 export class CommentFacadeService {
@@ -159,7 +160,12 @@ export class CommentFacadeService {
   }
 
   private handleError(error: any, message: string): Observable<never> {
-    console.error(`[CommentFacade] ${message}:`, error);
-    return throwError(() => new Error(error?.message || error?.error?.message || message));
+    const formatted = formatApiError(error, message);
+    console.groupCollapsed(`[CommentFacade] ${formatted}`);
+    console.error('Operation:', message);
+    console.error('Full Error:', error);
+    if (error?.error) console.error('Backend Response:', error.error);
+    console.groupEnd();
+    return throwError(() => new Error(formatted));
   }
 }

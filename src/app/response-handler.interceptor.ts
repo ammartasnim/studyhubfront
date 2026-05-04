@@ -1,57 +1,64 @@
-import { HttpInterceptorFn, HttpResponse } from '@angular/common/http';
-import { throwError } from 'rxjs';
+import { HttpErrorResponse, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
+import { throwError, of } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 
-/**
- * Centralized Response Handler Interceptor
- * Ensures all API responses are valid JSON and properly formatted
- * Handles non-JSON responses and converts them to standardized error format
- */
 export const responseHandlerInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     tap({
       next: (event) => {
-        // Only process successful HTTP responses
-        if (!(event instanceof HttpResponse)) {
-          return;
-        }
+        if (!(event instanceof HttpResponse)) return;
 
         const contentType = event.headers.get('content-type') || '';
-        const isJsonResponse = contentType.includes('application/json');
-
-       
-
-        // If response is not JSON, log warning but allow it through
-        // (The facade services will handle any parsing issues)
-        if (!isJsonResponse && event.body) {
+        if (!contentType.includes('application/json') && event.body) {
           console.warn(
-            `[ResponseHandler] Non-JSON response from ${req.url}`,
-            {
-              contentType,
-              bodyPreview: String(event.body).substring(0, 100)
-            }
+            `[ResponseHandler] Non-JSON response from ${req.method} ${req.url}`,
+            { contentType, bodyPreview: String(event.body).substring(0, 100) }
           );
         }
       }
     }),
-    catchError((error) => {
-      console.error(`[ResponseHandler] Error from ${req.method} ${req.url}:`, {
-        status: error.status,
-        statusText: error.statusText,
-        message: error.message,
-        error: error.error
-      });
+    catchError((error: HttpErrorResponse) => {
+      // HANDLE JSON PARSE ERROR ON SUCCESSFUL RESPONSE
+      // Sometimes Spring Boot returns a plain string (e.g. "User banned") 
+      // but sets Content-Type to application/json, causing Angular to fail parsing.
+      if (error.status === 200 && error.message?.includes('Http failure during parsing')) {
+         const rawText = error.error?.text || 'Success';
+         console.log(`[ResponseHandler] Intercepted text response that failed JSON parse (Status 200). Treating as success: ${rawText}`);
+         // Return a mock HttpResponse to simulate success (using `as any` because TS might complain about the type constraint)
+         return of(new HttpResponse({ body: rawText, status: 200, statusText: 'OK' }) as any);
+      }
 
-      // Return standardized error response
-      const errorResponse = {
+      console.group(`[ResponseHandler] ${req.method} ${req.url} FAILED`);
+      console.error(`Status: ${error.status} ${error.statusText}`);
+
+      const body = error.error;
+      if (body && typeof body === 'object') {
+        if (body.message) console.error(`Message: ${body.message}`);
+        if (body.path) console.error(`Path: ${body.path}`);
+        if (body.details && Array.isArray(body.details) && body.details.length > 0) {
+          console.error(`Root Cause: ${body.details[0]}`);
+          if (body.details.length > 1) {
+            console.groupCollapsed('Full Stack Trace');
+            console.error(body.details.slice(1).join('\n'));
+            console.groupEnd();
+          }
+        }
+        console.error('Full Response Body:', body);
+      } else {
+        console.error('Error Body:', body);
+      }
+
+      console.groupEnd();
+
+      return throwError(() => ({
         success: false,
-        message: error.error?.message || error.statusText || 'Unknown error',
+        message: body?.message || error.statusText || 'Unknown error',
         status: error.status,
-        error: error.error,
+        error: body,
+        rootCause: body?.details?.[0] || null,
+        path: body?.path || req.url,
         timestamp: new Date().toISOString()
-      };
-
-      return throwError(() => errorResponse);
+      }));
     })
   );
 };
