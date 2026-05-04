@@ -565,6 +565,38 @@ export class ProfileComponent implements OnInit {
   readonly badges    = computed(() => this.user()?.badges ?? []);
   readonly xpPercent = computed(() => Math.min(100, (this.xp() % 5000) / 50));
 
+  uploadUrl(path?: string | null): string {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    if (path.startsWith('/uploads/')) return `${environment.apiBaseUrl}${path}`;
+    return `${environment.apiBaseUrl}/uploads/${path}`;
+  }
+
+  friendAvatarUrl(pfp?: string | null): string {
+    return this.uploadUrl(pfp ?? undefined);
+  }
+
+  friendInitials(friend: UserSummaryUI): string {
+    const name = friend.fullName?.trim() || friend.username?.trim() || 'User';
+    const parts = name.split(/\s+/);
+    return parts.length >= 2
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
+      : name.substring(0, 2).toUpperCase();
+  }
+
+  viewFriendProfile(friendId: number) {
+    if (!friendId) return;
+    this.router.navigate(['/dashboard/client/profile', friendId]);
+  }
+
+  onFriendsPageChange(page: number) {
+    this.loadFriends(page, this.friendsPaginationConfig().pageSize);
+  }
+
+  onFriendsPageSizeChange(size: number) {
+    this.loadFriends(0, size);
+  }
+
   initials(): string {
     const parts = this.displayName().trim().split(/\s+/);
     return parts.length >= 2
