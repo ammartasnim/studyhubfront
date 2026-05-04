@@ -5,7 +5,7 @@ import { CommonModule } from '@angular/common';
 import { CreatePostModalComponent } from './create-post';
 import { CreateCommunityModalComponent } from './create-community';
 import { FeedService } from '../../services/feed.service';
-import { CommentUI } from '../../api/facades';
+import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -198,6 +198,22 @@ import { firstValueFrom } from 'rxjs';
                     </svg>
                     {{ post.commentCount }}
                   </button>
+                  <button
+  (click)="reportPost(post)"
+  [disabled]="post.status === 'FLAGGED'"
+  class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+  [class.text-amber-500]="post.status === 'FLAGGED'"
+  [class.bg-amber-50]="post.status === 'FLAGGED'"
+  [class.text-slate-400]="post.status !== 'FLAGGED'"
+  [class.hover:text-amber-500]="post.status !== 'FLAGGED'"
+  [class.hover:bg-amber-50]="post.status !== 'FLAGGED'"
+  [title]="post.status === 'FLAGGED' ? 'Already reported' : 'Report post'"
+>
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/>
+  </svg>
+  {{ post.status === 'FLAGGED' ? 'Reported' : 'Report' }}
+</button>
                 </div>
 
                 <!-- Comments section -->
@@ -448,7 +464,7 @@ export class FeedComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void { this.feedService.init(); }
-  ngOnDestroy(): void {}
+  ngOnDestroy(): void { }
 
   @HostListener('window:scroll')
   onWindowScroll(): void {
@@ -464,19 +480,19 @@ export class FeedComponent implements OnInit, OnDestroy {
   onPostCreated(): void { this.feedService.loadFeed(); }
   onCommunityCreated(): void { this.feedService.checkCommunities(); }
 
-toggleComments(postId: number): void {
-  this.expandedPosts.update(set => {
-    const next = new Set(set);
-    if (next.has(postId)) {
-      next.delete(postId);
-      this.feedService.resetComments(postId);
-    } else {
-      next.add(postId);
-      this.feedService.loadComments(postId);
-    }
-    return next;
-  });
-}
+  toggleComments(postId: number): void {
+    this.expandedPosts.update(set => {
+      const next = new Set(set);
+      if (next.has(postId)) {
+        next.delete(postId);
+        this.feedService.resetComments(postId);
+      } else {
+        next.add(postId);
+        this.feedService.loadComments(postId);
+      }
+      return next;
+    });
+  }
   toggleReplies(commentId: number): void {
     this.expandedComments.update(set => {
       const next = new Set(set);
@@ -491,6 +507,23 @@ toggleComments(postId: number): void {
       return next;
     });
   }
+
+  private readonly postFacade = inject(PostFacadeService);
+  reportPost(post: PostUI) {
+  this.postFacade.flag(post.id).subscribe({
+    next: () => {
+      // FIX: Reference this.feedService.posts instead of this.posts
+      this.feedService.posts.update(currentPosts =>
+        currentPosts.map(p => 
+          p.id === post.id ? { ...p, status: 'FLAGGED', flagCount: (p.flagCount ?? 0) + 1 } : p
+        )
+      );
+    },
+    error: (err) => {
+      console.error('Failed to flag post:', err);
+    }
+  });
+}
 
   getCommentInput(postId: number): string { return this.commentInputs().get(postId) ?? ''; }
   setCommentInput(postId: number, value: string): void { this.commentInputs.update(m => new Map(m).set(postId, value)); }
@@ -510,7 +543,7 @@ toggleComments(postId: number): void {
   async deleteComment(postId: number, commentId: number): Promise<void> {
     await this.feedService.deleteComment(postId, commentId);
   }
-  
+
 
   getReplyInput(commentId: number): string { return this.replyInputs().get(commentId) ?? ''; }
   setReplyInput(commentId: number, value: string): void { this.replyInputs.update(m => new Map(m).set(commentId, value)); }
@@ -525,13 +558,13 @@ toggleComments(postId: number): void {
       console.error('Failed to send reply', err);
     }
   }
-async deleteReply(commentId: number, replyId: number): Promise<void> {
-  try {
-    await this.feedService.deleteReply(commentId, replyId);
-  } catch (err) {
-    console.error('Failed to delete reply', err);
+  async deleteReply(commentId: number, replyId: number): Promise<void> {
+    try {
+      await this.feedService.deleteReply(commentId, replyId);
+    } catch (err) {
+      console.error('Failed to delete reply', err);
+    }
   }
-}
 
   getReplies(commentId: number): CommentUI[] { return this.feedService.replies().get(commentId) ?? []; }
   isRepliesLoading(commentId: number): boolean { return this.feedService.repliesLoading().has(commentId); }
