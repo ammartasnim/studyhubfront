@@ -11,11 +11,14 @@ import {
 
 import { UserContextService } from '../../user-context.service';
 import { UserFacadeService } from '../../api/facades';
+import { FriendshipFacadeService } from '../../api/facades/friendship.facade';
+import { UserSummaryUI } from '../../api/facades/models/friendship.model';
+import { PaginationComponent, PaginationConfig } from '../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, PaginationComponent],
   styles: [`
     @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -141,8 +144,8 @@ import { UserFacadeService } from '../../api/facades';
         <p class="text-slate-500 mt-1">Manage your profile information and security</p>
       </div>
 
-      <!-- Two-column layout -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+       <!-- Two-column layout -->
+       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <!-- Profile Information Form -->
         <div class="card">
@@ -305,7 +308,60 @@ import { UserFacadeService } from '../../api/facades';
           </form>
         </div>
 
-      </div>
+       </div>
+
+       <!-- Blocked Users -->
+       <div class="mt-6 card">
+         <div class="flex items-center justify-between mb-4">
+           <h2 class="text-lg font-semibold text-slate-900">Blocked Users</h2>
+           <span class="text-xs text-slate-400">{{ blockedPaginationConfig().totalElements }} total</span>
+         </div>
+
+         @if (blockedLoading()) {
+           <div class="flex justify-center py-6">
+             <div class="w-6 h-6 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+           </div>
+         } @else if (blockedError()) {
+           <div class="msg-error">{{ blockedError() }}</div>
+         } @else if (blockedUsers().length === 0) {
+           <div class="text-center py-6 bg-slate-50 rounded-2xl ring-1 ring-slate-100">
+             <p class="text-slate-400 text-sm">No blocked users.</p>
+           </div>
+         } @else {
+           <div class="divide-y divide-slate-100 rounded-2xl ring-1 ring-slate-100 overflow-hidden">
+             @for (user of blockedUsers(); track user.id) {
+               <div class="px-5 py-4 flex items-center gap-4">
+                 <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+                   @if (user.pfp) {
+                     <img [src]="blockedAvatarUrl(user.pfp)" [alt]="blockedName(user)" class="w-full h-full object-cover" />
+                   } @else {
+                     <span class="text-slate-600 font-semibold text-sm">{{ blockedInitials(user) }}</span>
+                   }
+                 </div>
+                 <div class="flex-1 min-w-0">
+                   <p class="font-semibold text-slate-900 truncate">{{ blockedName(user) }}</p>
+                   <p class="text-sm text-slate-500 truncate">@{{ user.username || 'unknown' }}</p>
+                 </div>
+                 <button
+                   class="px-4 py-2 rounded-xl bg-white border border-emerald-200 text-emerald-600 font-semibold hover:bg-emerald-50 transition-colors"
+                   (click)="unblockUser(user.id)"
+                 >
+                   Unblock
+                 </button>
+               </div>
+             }
+           </div>
+         }
+
+         <div class="border-t border-slate-200 bg-slate-50 p-4 mt-4">
+           <app-pagination
+             [config]="blockedPaginationConfig()"
+             [isLoading]="blockedLoading()"
+             (pageChange)="onBlockedPageChange($event)"
+             (pageSizeChange)="onBlockedPageSizeChange($event)"
+           ></app-pagination>
+         </div>
+       </div>
     </div>
   `
 })
@@ -313,6 +369,7 @@ export class SettingsComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly userContext = inject(UserContextService);
   private readonly userFacade = inject(UserFacadeService);
+  private readonly friendshipFacade = inject(FriendshipFacadeService);
 
   // Forms
   readonly profileForm = this.fb.nonNullable.group({
@@ -348,12 +405,26 @@ export class SettingsComponent implements OnInit {
   profileError = signal<string | null>(null);
   passwordError = signal<string | null>(null);
 
+  // Blocked users
+  blockedUsers = signal<UserSummaryUI[]>([]);
+  blockedLoading = signal(false);
+  blockedError = signal<string | null>(null);
+  blockedPaginationConfig = signal<PaginationConfig>({
+    totalPages: 0,
+    totalElements: 0,
+    currentPage: 0,
+    pageSize: 10,
+    hasNext: false,
+    hasPrevious: false
+  });
+
   // Flags for inline validation trigger
   profileInvalid = false;
   passwordInvalid = false;
 
   ngOnInit(): void {
     this.initializeForms();
+    this.loadBlockedUsers(0, this.blockedPaginationConfig().pageSize);
   }
 
   private initializeForms(): void {
@@ -373,6 +444,84 @@ export class SettingsComponent implements OnInit {
         phone: user.phone ?? ''
       });
     }
+  }
+
+  private loadBlockedUsers(page: number, size: number) {
+    const safePage = Math.max(0, page);
+    this.blockedLoading.set(true);
+    this.blockedError.set(null);
+
+    this.friendshipFacade.getBlockedUsers({ page: safePage, size }).subscribe({
+      next: res => {
+        this.blockedUsers.set(res.items);
+        this.blockedPaginationConfig.set({
+          currentPage: res.currentPage,
+          pageSize: res.pageSize,
+          totalElements: res.totalItems,
+          totalPages: res.totalPages,
+          hasNext: res.currentPage < res.totalPages - 1,
+          hasPrevious: res.currentPage > 0
+        });
+        this.blockedLoading.set(false);
+      },
+      error: err => {
+        console.error('[Settings] Failed to load blocked users', err);
+        this.blockedError.set(err?.message || 'Failed to load blocked users.');
+        this.blockedLoading.set(false);
+      }
+    });
+  }
+
+  unblockUser(userId: number) {
+    if (!userId || userId <= 0) {
+      return;
+    }
+
+    if (!confirm('Unblock this user?')) {
+      return;
+    }
+
+    this.friendshipFacade.unblockUser(userId).subscribe({
+      next: () => {
+        this.blockedUsers.set(this.blockedUsers().filter(u => u.id !== userId));
+      },
+      error: err => {
+        console.error('[Settings] Failed to unblock user', err);
+      }
+    });
+  }
+
+  onBlockedPageChange(page: number) {
+    this.loadBlockedUsers(page, this.blockedPaginationConfig().pageSize);
+  }
+
+  onBlockedPageSizeChange(size: number) {
+    this.loadBlockedUsers(0, size);
+  }
+
+  blockedName(user: UserSummaryUI): string {
+    const name = user.fullName || `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
+    return name || user.username || `User #${user.id}`;
+  }
+
+  blockedInitials(user: UserSummaryUI): string {
+    const name = this.blockedName(user);
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  }
+
+  blockedAvatarUrl(pfp?: string | null): string {
+    if (!pfp) {
+      return '';
+    }
+    if (pfp.startsWith('http://') || pfp.startsWith('https://')) {
+      return pfp;
+    }
+    if (pfp.startsWith('/uploads/')) {
+      return `http://localhost:8081${pfp}`;
+    }
+    return `http://localhost:8081/uploads/${pfp}`;
   }
 
   // ── Profile ──
