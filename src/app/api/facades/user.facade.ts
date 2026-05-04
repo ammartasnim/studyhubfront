@@ -19,37 +19,37 @@ const JSON_ACCEPT = { httpHeaderAccept: 'application/json' } as any;
 export class UserFacadeService {
   private readonly userController = inject(UserControllerService);
   private readonly TOKEN_KEY = 'token';
-    private readonly http = inject(HttpClient);
+  private readonly http = inject(HttpClient);
 
 
   editMe(dto: UserReqDto): Observable<UserUI> {
     return this.userController.editUser(dto, 'body', false, JSON_ACCEPT).pipe(
-        map((response: any) => {
-          const userData = response?.user ?? response;
-          const token = response?.token;
-          if (token) {
-            localStorage.setItem(this.TOKEN_KEY, token);
-          }
-          return this.mapToUI(userData);
-        }),
-        catchError(err => this.handleError(err, 'Failed to edit current user profile'))
+      map((response: any) => {
+        const userData = response?.user ?? response;
+        const token = response?.token;
+        if (token) {
+          localStorage.setItem(this.TOKEN_KEY, token);
+        }
+        return this.mapToUI(userData);
+      }),
+      catchError(err => this.handleError(err, 'Failed to edit current user profile'))
     );
-}
+  }
   editPassword(oldPassword: string, newPassword: string, confirmPassword: string): Observable<void> {
     if (!oldPassword || !newPassword) {
-        return throwError(() => new Error('All password fields are required'));
+      return throwError(() => new Error('All password fields are required'));
     }
 
     const dto: ChangePasswordDto = {
-        currentPassword: oldPassword,
-        newPassword: newPassword,
-        confirmPassword: confirmPassword
+      currentPassword: oldPassword,
+      newPassword: newPassword,
+      confirmPassword: confirmPassword
     };
 
     return this.userController.changePassword(dto, 'body', false, JSON_ACCEPT).pipe(
-        catchError(err => this.handleError(err, 'Failed to change password'))
+      catchError(err => this.handleError(err, 'Failed to change password'))
     );
-}
+  }
 
   getMe(): Observable<UserUI> {
     return this.userController.getMe('body', false, JSON_ACCEPT).pipe(
@@ -68,6 +68,42 @@ export class UserFacadeService {
       catchError(err => this.handleError(err, `Failed to fetch user with ID ${id}`))
     );
   }
+
+
+
+  getAllRaw(filters?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    banned?: boolean;
+    page?: number;
+    size?: number;
+  }): Observable<PaginatedUsers> {
+    const params: Record<string, any> = {
+      page: filters?.page ?? 0,
+      size: filters?.size ?? 10
+    };
+    if (filters?.firstName?.trim()) params['firstName'] = filters.firstName.trim();
+    if (filters?.lastName?.trim()) params['lastName'] = filters.lastName.trim();
+    if (filters?.email?.trim()) params['email'] = filters.email.trim();
+    if (filters?.banned != null) params['banned'] = filters.banned;
+
+    return this.http.get<any>('http://localhost:8081/api/clients', { params }).pipe(
+      map(res => {
+        const content: any[] = res.content ?? [];
+        return {
+          items: content.map(u => this.mapToUI(u)),
+          totalItems: res.totalElements ?? 0,
+          totalPages: res.totalPages ?? 0,
+          currentPage: res.number ?? 0,
+          pageSize: res.size ?? 0
+        };
+      }),
+      catchError(err => this.handleError(err, 'Failed to fetch users'))
+    );
+  }
+
+
 
   getAll(filters?: {
     firstName?: string;
@@ -106,19 +142,19 @@ export class UserFacadeService {
     );
   }
 
- uploadPfp(file: File): Observable<UserUI> {
-  if (!file) {
-    return throwError(() => new Error('No file provided'));
+  uploadPfp(file: File): Observable<UserUI> {
+    if (!file) {
+      return throwError(() => new Error('No file provided'));
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.http.put('http://localhost:8081/api/clients/me/pfp', formData,).pipe(
+      map(dto => this.mapToUI(dto as any)),
+      catchError(err => this.handleError(err, 'Failed to upload profile picture'))
+    );
   }
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  return this.http.put('http://localhost:8081/api/clients/me/pfp', formData, ).pipe(
-    map(dto => this.mapToUI(dto as any)),
-    catchError(err => this.handleError(err, 'Failed to upload profile picture'))
-  );
-}
 
 
   unban(userId: number): Observable<string> {
