@@ -144,26 +144,30 @@ export class CommunityFacadeService {
   }
 
   // Member management
-  getMembers(communityId: number, page = 0, size = 20): Observable<PaginatedMembers> {
+getMembers(communityId: number, page = 0, size = 20): Observable<PaginatedMembers> {
     return this.http.get<any>(`${this.basePath}/api/communities/${communityId}/members?page=${page}&size=${size}`).pipe(
-      map(response => ({
-        items: (response.content ?? []).map((m: any) => ({
-          userId: m.userId,
-          username: m.username,
-          fullName: m.fullName,
-          pfp: m.pfp,
-          xpPts: m.xpPts,
-          level: m.level,
-          isModerator: m.isModerator,
-          warningCount: m.warningCount
-        })),
-        totalItems: response.totalElements ?? 0,
-        totalPages: response.totalPages ?? 0,
-        currentPage: response.number ?? 0
-      })),
+      map(response => {
+        // Handle both paginated response and plain list
+        const rawList = Array.isArray(response) ? response : (response.content ?? []);
+        return {
+          items: rawList.map((m: any) => ({
+            userId: m.userId,
+            username: m.username,
+            fullName: m.fullName,
+            pfp: m.pfp,
+            xpPts: m.xpPts,
+            level: m.level,
+            isModerator: m.isModerator,
+            warningCount: m.warningCount
+          })),
+          totalItems: response.totalElements ?? rawList.length,
+          totalPages: response.totalPages ?? 1,
+          currentPage: response.number ?? 0
+        };
+      }),
       catchError(err => this.handleError(err, 'Failed to fetch members'))
     );
-  }
+}
 
   banMember(communityId: number, userId: number, reason: string): Observable<void> {
     return this.http.post<void>(`${this.basePath}/api/communities/${communityId}/ban`, { userId, reason }).pipe(
@@ -182,6 +186,21 @@ export class CommunityFacadeService {
       catchError(err => this.handleError(err, 'Failed to warn member'))
     );
   }
+  getMembersPreview(communityId: number): Observable<CommunityMemberUI[]> {
+    return this.http.get<any[]>(`${this.basePath}/api/communities/${communityId}/members/preview`).pipe(
+        map(list => list.map(m => ({
+            userId: m.userId,
+            username: m.username,
+            fullName: m.fullName,
+            pfp: m.pfp,
+            xpPts: m.xpPts,
+            level: m.level,
+            isModerator: m.isModerator,
+            warningCount: 0
+        }))),
+        catchError(err => this.handleError(err, 'Failed to fetch members preview'))
+    );
+}
 
   // Join / Leave
   join(communityId: number): Observable<void> {
@@ -234,4 +253,39 @@ export class CommunityFacadeService {
     console.groupEnd();
     return throwError(() => new Error(formatted));
   }
+ getBannedMembers(communityId: number): Observable<CommunityMemberUI[]> {
+    return this.http.get<any[]>(`${this.basePath}/api/communities/${communityId}/banned`).pipe(
+        map(list => list.map(m => ({
+            userId: m.userId,
+            username: m.username,
+            fullName: m.fullName,
+            pfp: m.pfp,
+            xpPts: m.xpPts,
+            level: m.level,
+            isModerator: false,
+            warningCount: 0
+        }))),
+        catchError(err => throwError(() => new Error(err?.error?.message || 'Failed to fetch banned members')))
+    );
+}
+getMembersPublic(communityId: number, page = 0, size = 10): Observable<PaginatedMembers> {
+    return this.http.get<any>(`${this.basePath}/api/communities/${communityId}/members/all?page=${page}&size=${size}`).pipe(
+        map(response => ({
+            items: (response.content ?? []).map((m: any) => ({
+                userId: m.userId,
+                username: m.username,
+                fullName: m.fullName,
+                pfp: m.pfp,
+                xpPts: m.xpPts,
+                level: m.level,
+                isModerator: m.isModerator,
+                warningCount: m.warningCount
+            })),
+            totalItems: response.totalElements ?? 0,
+            totalPages: response.totalPages ?? 0,
+            currentPage: response.number ?? 0
+        })),
+        catchError(err => this.handleError(err, 'Failed to fetch public members'))
+    );
+}
 }
