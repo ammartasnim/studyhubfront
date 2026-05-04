@@ -10,6 +10,7 @@ import { PageUserResDto } from '../model/pageUserResDto';
 import { UserUI, PaginatedUsers, Badge } from './models/user.model';
 import { ChangePasswordDto, UserReqDto } from '../model/models';
 import { HttpClient } from '@angular/common/http';
+import { ApiError, formatApiError } from './models/api-error.model';
 
 const JSON_ACCEPT = { httpHeaderAccept: 'application/json' } as any;
 
@@ -137,9 +138,10 @@ export class UserFacadeService {
       return throwError(() => new Error('Invalid user ID'));
     }
 
-    return this.userController.banUser(userId, 'body', false, JSON_ACCEPT).pipe(
+    // Using HttpClient directly to expect plain text, preventing JSON parse errors
+    return this.http.patch(`http://localhost:8081/api/clients/${userId}/ban`, {}, { responseType: 'text' }).pipe(
       catchError(err => this.handleError(err, `Failed to ban user ${userId}`))
-    );
+    ) as Observable<string>;
   }
 
   uploadPfp(file: File): Observable<UserUI> {
@@ -148,23 +150,23 @@ export class UserFacadeService {
     }
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', file, file.name);
 
-    return this.http.put('http://localhost:8081/api/clients/me/pfp', formData,).pipe(
+    return this.http.post('http://localhost:8081/api/clients/me/pfp', formData).pipe(
       map(dto => this.mapToUI(dto as any)),
       catchError(err => this.handleError(err, 'Failed to upload profile picture'))
     );
   }
-
 
   unban(userId: number): Observable<string> {
     if (!userId || userId <= 0) {
       return throwError(() => new Error('Invalid user ID'));
     }
 
-    return this.userController.unbanUser(userId, 'body', false, JSON_ACCEPT).pipe(
+    // Using HttpClient directly to expect plain text, preventing JSON parse errors
+    return this.http.patch(`http://localhost:8081/api/clients/${userId}/unban`, {}, { responseType: 'text' }).pipe(
       catchError(err => this.handleError(err, `Failed to unban user ${userId}`))
-    );
+    ) as Observable<string>;
   }
 
   getStats(): Observable<{ [key: string]: number }> {
@@ -230,8 +232,12 @@ export class UserFacadeService {
   }
 
   private handleError(error: any, message: string): Observable<never> {
-    console.error(`[UserFacade] ${message}:`, error);
-    const errorMsg = error?.message || error?.error?.message || message;
-    return throwError(() => new Error(errorMsg));
+    const formatted = formatApiError(error, message);
+    console.groupCollapsed(`[UserFacade] ${formatted}`);
+    console.error('Operation:', message);
+    console.error('Full Error:', error);
+    if (error?.error) console.error('Backend Response:', error.error);
+    console.groupEnd();
+    return throwError(() => new Error(formatted));
   }
 }

@@ -6,6 +6,7 @@ import { DashboardRightSidebarComponent } from './promodoro_sidebar';
 import { AiAssistant } from './ai-assistant';
 import { UserContextService } from '../../user-context.service';
 import { CommonModule } from '@angular/common';
+import { environment } from '../../../environments/environment';
 
 const AUTH_TOKEN_KEY = 'token';
  
@@ -32,7 +33,7 @@ const AUTH_TOKEN_KEY = 'token';
             [displayName]="displayName()"
             [level]="level()"
             [xp]="xp()"
-            [pfp]="'http://localhost:8081/uploads/' + pfp()"
+            [pfp]="pfpUrl()"
             (navigate)="handleSidebarNavigation($event)"
             (logout)="handleLogout()"
           />
@@ -97,6 +98,10 @@ export class DashboardComponent {
 
   readonly username  = computed(() => this.user()?.username ?? '');
   readonly pfp       = computed(() => this.user()?.pfp ?? undefined);
+  readonly pfpUrl    = computed(() => {
+    const p = this.pfp();
+    return p ? `${environment.apiBaseUrl}/uploads/${p}` : undefined;
+  });
   readonly roleLabel = computed(() => this.user()?.role ?? '');
   readonly xp        = computed(() => this.user()?.xpPts ?? 0);
   readonly level     = computed(() => this.user()?.level ?? 1);
@@ -108,7 +113,7 @@ export class DashboardComponent {
   handleLogout(): void {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     this.userContext.clear();
-    this.router.navigateByUrl('/login');
+    this.router.navigateByUrl('/auth/login');
   }
 
     handleSidebarNavigation(section: string): void {

@@ -9,6 +9,7 @@ import { LoginReqDto } from '../model/loginReqDto';
 import { RegisterReqDto } from '../model/registerReqDto';
 
 import { AuthUI, LoginRequest, RegisterRequest } from './models/auth.model';
+import { formatApiError } from './models/api-error.model';
 /*ok*/
 /**
  * Auth Facade Service
@@ -150,8 +151,12 @@ export class AuthFacadeService {
    * Handle errors with logging
    */
   private handleError(error: any, message: string): Observable<never> {
-    console.error(`[AuthFacade] ${message}:`, error);
-    const errorMsg = error?.message || error?.error?.message || message;
-    return throwError(() => new Error(errorMsg));
+    const formatted = formatApiError(error, message);
+    console.groupCollapsed(`[AuthFacade] ${formatted}`);
+    console.error('Operation:', message);
+    console.error('Full Error:', error);
+    if (error?.error) console.error('Backend Response:', error.error);
+    console.groupEnd();
+    return throwError(() => new Error(formatted));
   }
 }

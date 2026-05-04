@@ -212,21 +212,36 @@ load() {
   //   });
   // }
   toggleBan(user: UserUI) {
-  this.banningId.set(user.id);
-  const action = user.banned
-    ? this.userFacade.unban(user.id)
-    : this.userFacade.ban(user.id);
+    this.banningId.set(user.id);
+    const action = user.banned
+      ? this.userFacade.unban(user.id)
+      : this.userFacade.ban(user.id);
 
-  action.subscribe({
-    next: () => {
-      this.users.update(list =>
-        list.map(u => u.id === user.id ? { ...u, banned: !u.banned } : u)
-      );
-      this.banningId.set(null);
-    },
-    error: () => this.banningId.set(null)
-  });
-}
+    action.subscribe({
+      next: () => {
+        this.users.update(list => {
+          // If we are looking at the BANNED list and we unban them, remove them from the view
+          if (this.statusFilter() === 'BANNED' && user.banned) {
+            return list.filter(u => u.id !== user.id);
+          }
+          // If we are looking at the ACTIVE list and we ban them, remove them from the view
+          if (this.statusFilter() === 'ACTIVE' && !user.banned) {
+            return list.filter(u => u.id !== user.id);
+          }
+          // Otherwise (on the 'ALL' tab), just update their status inline
+          return list.map(u => u.id === user.id ? { ...u, banned: !u.banned } : u);
+        });
+
+        // Adjust total count if we removed an item from the current view
+        if (this.statusFilter() !== 'ALL') {
+          this.total.update(t => Math.max(0, t - 1));
+        }
+
+        this.banningId.set(null);
+      },
+      error: () => this.banningId.set(null)
+    });
+  }
 
   initials(user: UserUI): string {
     const f = user.firstName?.[0] ?? '';

@@ -2,11 +2,12 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { UserContextService } from '../../user-context.service';
-import { BadgesDisplayComponent } from '../Nav/badges-display.';
+import { BadgesDisplayComponent } from '../Nav/badges-display';
 import { UserFacadeService } from '../../api/facades/user.facade';
 import { PostFacadeService } from '../../api/facades/post.facade';
 import { PostUI } from '../../api/facades/models/post.model';
 import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-profile',
@@ -145,7 +146,7 @@ import { firstValueFrom } from 'rxjs';
                       <div class="relative bg-slate-100 overflow-hidden"
                         [class.aspect-video]="post.images.length === 1"
                         [class.aspect-square]="post.images.length > 1">
-                        <img [src]="'http://localhost:8081/uploads/' + img" [alt]="post.title" class="w-full h-full object-cover" />
+                        <img [src]="uploadUrl(img)" [alt]="post.title" class="w-full h-full object-cover" />
                         @if (i === 3 && post.images.length > 4) {
                           <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
                             <span class="text-white text-2xl font-bold">+{{ post.images.length - 4 }}</span>
@@ -343,7 +344,7 @@ export class ProfileComponent implements OnInit {
       next: (updatedUser) => {
         this.userContext.setUser(updatedUser);
         const newPfp = updatedUser.pfp
-          ? `http://localhost:8081/uploads/${updatedUser.pfp}`
+          ? `${environment.apiBaseUrl}/uploads/${updatedUser.pfp}`
           : null;
         this.localPfp.set(newPfp);
         this.uploading.set(false);
@@ -369,7 +370,7 @@ export class ProfileComponent implements OnInit {
     if (this.localPfp()) return this.localPfp()!;
     const p = this.user()?.pfp;
     if (!p) return undefined;
-    return `http://localhost:8081/uploads/${p}`;
+    return `${environment.apiBaseUrl}/uploads/${p}`;
   });
 
   readonly xp        = computed(() => this.user()?.xpPts ?? 0);
@@ -381,5 +382,9 @@ export class ProfileComponent implements OnInit {
     return parts.length >= 2
       ? (parts[0][0] + parts[1][0]).toUpperCase()
       : this.displayName().substring(0, 2).toUpperCase();
+  }
+
+  uploadUrl(img: string): string {
+    return `${environment.apiBaseUrl}/uploads/${img}`;
   }
 }

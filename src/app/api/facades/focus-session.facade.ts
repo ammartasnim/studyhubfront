@@ -11,6 +11,7 @@ import { UserFocusRankDto } from '../model/userFocusRankDto';
 import { FocusSessionUI } from './models/focus-session.model'
 import { PaginatedSessions } from './models/PaginatedSessions';
 import { UserFocusRank } from './models/user-focus-rank.model';
+import { formatApiError } from './models/api-error.model';
 
 @Injectable({ providedIn: 'root' })
 export class FocusSessionFacadeService {
@@ -237,8 +238,12 @@ export class FocusSessionFacadeService {
   }
 
   private handleError(error: any, message: string): Observable<never> {
-    console.error(`[FocusSessionFacade] ${message}:`, error);
-    const errorMsg = error?.message || error?.error?.message || message;
-    return throwError(() => new Error(errorMsg));
+    const formatted = formatApiError(error, message);
+    console.groupCollapsed(`[FocusSessionFacade] ${formatted}`);
+    console.error('Operation:', message);
+    console.error('Full Error:', error);
+    if (error?.error) console.error('Backend Response:', error.error);
+    console.groupEnd();
+    return throwError(() => new Error(formatted));
   }
 }

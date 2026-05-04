@@ -1,12 +1,12 @@
 // ai-facade.service.ts
 import { Injectable, inject } from '@angular/core';
-import { Observable, switchMap, of } from 'rxjs';
+import { Observable, switchMap, of, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 
 import { AiControllerService }    from '../../api/api/aiController.service';
 import { ChatRequest }            from '../../api/model/chatRequest';
 import { ChatWithContextRequest } from '../../api/model/chatWithContextRequest';
-import { ResponseHandlerService } from './response-handler.service'; // 👈 same as community facade
+import { formatApiError } from './models/api-error.model';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -17,7 +17,7 @@ function toText(res: any): Observable<string> {
   if (typeof res === 'string') {
     try {
       const parsed = JSON.parse(res);
-      return of(parsed.response ?? res); // 👈 unwrap if it's a JSON string
+      return of(parsed.response ?? res);
     } catch {
       return of(res);
     }
@@ -26,7 +26,7 @@ function toText(res: any): Observable<string> {
     res.text().then(t => {
       try {
         const parsed = JSON.parse(t);
-        observer.next(parsed.response ?? t); // 👈 unwrap blob JSON
+        observer.next(parsed.response ?? t);
       } catch {
         observer.next(t);
       }
@@ -39,8 +39,7 @@ function toText(res: any): Observable<string> {
 
 @Injectable({ providedIn: 'root' })
 export class AiFacadeService {
-  private readonly ai             = inject(AiControllerService);
-  private readonly responseHandler = inject(ResponseHandlerService); // 👈 added
+  private readonly ai = inject(AiControllerService);
 
   chat(message: string): Observable<string> {
      const request = { 
@@ -49,14 +48,18 @@ export class AiFacadeService {
   } as ChatRequest; 
 
     return this.ai.chat(request).pipe(
-      map(res => {
-        this.responseHandler.logResponse('chat', 'POST', res);         // 👈 added
-        return res;
-      }),
       switchMap(toText),
-      catchError(err => this.responseHandler.handleError(err, 'AI chat failed')) // 👈 added
+      catchError(err => this.handleError(err, 'AI chat failed'))
     );
   }
 
-  
+  private handleError(error: any, message: string): Observable<never> {
+    const formatted = formatApiError(error, message);
+    console.groupCollapsed(`[AiFacade] ${formatted}`);
+    console.error('Operation:', message);
+    console.error('Full Error:', error);
+    if (error?.error) console.error('Backend Response:', error.error);
+    console.groupEnd();
+    return throwError(() => new Error(formatted));
+  }
 }
