@@ -25,6 +25,7 @@ export interface PostResDto {
     createdAt?: string;
     liked?: boolean;
     flagCount?: number;
+    isFlaggedByCurrentUser: boolean;
 }
 export namespace PostResDto {
     export const StatusEnum = {

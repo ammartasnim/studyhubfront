@@ -126,25 +126,42 @@ import { firstValueFrom } from 'rxjs';
               <article class="bg-white transition-colors hover:bg-slate-50/40">
 
                 <!-- Post header -->
-                <div class="flex items-start gap-3 px-6 pt-5 pb-3">
-                  @if (post.authorPfp) {
-                    <img [src]="'http://localhost:8081/uploads/' + post.authorPfp" [alt]="post.authorFullName" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-                  } @else {
-                    <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0 select-none">
-                      {{ getInitials(post.authorFullName) }}
-                    </div>
-                  }
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-start justify-between gap-2">
-                      <p class="font-semibold text-slate-900 text-sm">{{ post.authorFullName }}</p>
-                      <span class="text-xs text-slate-400 flex-shrink-0 pt-0.5">{{ getTimeAgo(post.createdAt) }}</span>
-                    </div>
-                    <div class="flex items-center gap-1 mt-0.5">
-                      <span class="text-xs text-slate-400">in</span>
-                      <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ post.communityTitle }}</span>
-                    </div>
-                  </div>
-                </div>
+<div class="flex items-start gap-3 px-6 pt-5 pb-3">
+  @if (post.authorPfp) {
+    <img [src]="'http://localhost:8081/uploads/' + post.authorPfp" [alt]="post.authorFullName" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+  } @else {
+    <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0 select-none">
+      {{ getInitials(post.authorFullName) }}
+    </div>
+  }
+  <div class="flex-1 min-w-0">
+    <div class="flex items-start justify-between gap-2">
+      <p class="font-semibold text-slate-900 text-sm">{{ post.authorFullName }}</p>
+      
+      <!-- Time and Report Container -->
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <span class="text-xs text-slate-400 pt-0.5">{{ getTimeAgo(post.createdAt) }}</span>
+        <button
+  (click)="reportPost(post)"
+  [disabled]="post.isFlaggedByCurrentUser" 
+  class="p-1 rounded-md transition-colors"
+  [class.text-amber-500]="post.isFlaggedByCurrentUser"
+  [class.text-slate-300]="!post.isFlaggedByCurrentUser"
+  [title]="post.isFlaggedByCurrentUser ? 'Already reported' : 'Report post'"
+>
+  
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="flex items-center gap-1 mt-0.5">
+      <span class="text-xs text-slate-400">in</span>
+      <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ post.communityTitle }}</span>
+    </div>
+  </div>
+</div>
 
                 <!-- Post content -->
                 <div class="px-6 pb-3">
@@ -198,22 +215,7 @@ import { firstValueFrom } from 'rxjs';
                     </svg>
                     {{ post.commentCount }}
                   </button>
-                  <button
-  (click)="reportPost(post)"
-  [disabled]="post.status === 'FLAGGED'"
-  class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-  [class.text-amber-500]="post.status === 'FLAGGED'"
-  [class.bg-amber-50]="post.status === 'FLAGGED'"
-  [class.text-slate-400]="post.status !== 'FLAGGED'"
-  [class.hover:text-amber-500]="post.status !== 'FLAGGED'"
-  [class.hover:bg-amber-50]="post.status !== 'FLAGGED'"
-  [title]="post.status === 'FLAGGED' ? 'Already reported' : 'Report post'"
->
-  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/>
-  </svg>
-  {{ post.status === 'FLAGGED' ? 'Reported' : 'Report' }}
-</button>
+                  
                 </div>
 
                 <!-- Comments section -->
@@ -269,7 +271,7 @@ import { firstValueFrom } from 'rxjs';
                                     <svg class="w-3.5 h-3.5" [attr.fill]="comment.isLiked ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                     </svg>
-                                    {{ comment.likeCount }}
+                                    {{ comment.likeCount ?? 0 }}
                                   </button>
                                   <!-- Delete — only owner -->
                                   @if (isOwnComment(comment.userId)) {
@@ -332,7 +334,7 @@ import { firstValueFrom } from 'rxjs';
                                             <svg class="w-3 h-3" [attr.fill]="reply.isLiked ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
                                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                             </svg>
-                                            {{ reply.likeCount }}
+                                            {{ reply.likeCount ?? 0 }}
                                           </button>
                                           @if (isOwnComment(reply.userId)) {
                                               <button
@@ -510,20 +512,21 @@ export class FeedComponent implements OnInit, OnDestroy {
 
   private readonly postFacade = inject(PostFacadeService);
   reportPost(post: PostUI) {
-  this.postFacade.flag(post.id).subscribe({
-    next: () => {
-      // FIX: Reference this.feedService.posts instead of this.posts
-      this.feedService.posts.update(currentPosts =>
-        currentPosts.map(p => 
-          p.id === post.id ? { ...p, status: 'FLAGGED', flagCount: (p.flagCount ?? 0) + 1 } : p
-        )
-      );
-    },
-    error: (err) => {
-      console.error('Failed to flag post:', err);
-    }
-  });
-}
+    console.log(post.isFlaggedByCurrentUser)
+    this.postFacade.flag(post.id).subscribe({
+      next: () => {
+        // FIX: Reference this.feedService.posts instead of this.posts
+        this.feedService.posts.update(currentPosts =>
+          currentPosts.map(p =>
+            p.id === post.id ? { ...p, status: 'Flagged', flagCount: (p.flagCount ?? 0) + 1 } : p
+          )
+        );
+      },
+      error: (err) => {
+        console.error('Failed to flag post:', err);
+      }
+    });
+  }
 
   getCommentInput(postId: number): string { return this.commentInputs().get(postId) ?? ''; }
   setCommentInput(postId: number, value: string): void { this.commentInputs.update(m => new Map(m).set(postId, value)); }

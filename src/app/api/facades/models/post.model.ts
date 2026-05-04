@@ -22,6 +22,7 @@ export interface PostUI {
   createdAt: Date | null;
   status: string;
   flagCount: number;
+  isFlaggedByCurrentUser: boolean;
 }
 
 /**
