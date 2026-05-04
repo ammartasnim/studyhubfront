@@ -21,6 +21,7 @@ export interface PostUI {
   isLiked: boolean;
   createdAt: Date | null;
   status: string;
+  flagCount: number;
 }
 
 /**
