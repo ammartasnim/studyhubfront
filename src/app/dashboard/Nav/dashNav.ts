@@ -124,6 +124,7 @@ export class DashboardComponent {
         'support':     '/dashboard/support',
         'followed':    '/dashboard/followed',
         'bookmarks':   '/dashboard/bookmarks',
+        'suggestedFriends': '/dashboard/client/suggestedFriends'
     };
 
     const target = routes[section] ?? '/dashboard/feed';

@@ -5,13 +5,16 @@ import { UserContextService } from '../../user-context.service';
 import { BadgesDisplayComponent } from '../Nav/badges-display.';
 import { UserFacadeService } from '../../api/facades/user.facade';
 import { PostFacadeService } from '../../api/facades/post.facade';
+import { FriendshipFacadeService } from '../../api/facades/friendship.facade';
 import { PostUI } from '../../api/facades/models/post.model';
+import { UserSummaryUI } from '../../api/facades/models/friendship.model';
+import { PaginationComponent, PaginationConfig } from '../../shared/pagination/pagination.component';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, BadgesDisplayComponent],
+  imports: [CommonModule, BadgesDisplayComponent, PaginationComponent],
   template: `
     <article class="relative rounded-3xl overflow-hidden bg-white shadow-sm ring-1 ring-indigo-500/10 w-full">
 
@@ -90,6 +93,46 @@ import { firstValueFrom } from 'rxjs';
         <!-- Badges -->
         <div class="h-px bg-gradient-to-r from-indigo-100 via-purple-100 to-transparent my-5"></div>
         <app-badges-display [badges]="badges()" />
+
+        <!-- Friends Preview -->
+        <div class="h-px bg-gradient-to-r from-indigo-100 via-purple-100 to-transparent my-5"></div>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Friends</h3>
+          <button
+            class="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+            (click)="openFriends()"
+          >
+            View all
+          </button>
+        </div>
+
+        @if (friendsPreviewLoading()) {
+          <div class="flex justify-center py-6">
+            <div class="w-6 h-6 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+          </div>
+        } @else if (friendsPreview().length === 0) {
+          <div class="text-center py-6 bg-slate-50 rounded-2xl ring-1 ring-slate-100">
+            <p class="text-slate-400 text-sm">No friends yet.</p>
+          </div>
+        } @else {
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            @for (friend of friendsPreview(); track friend.id) {
+              <div class="flex items-center gap-3 p-3 rounded-xl bg-white ring-1 ring-slate-100">
+                <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+                  @if (friend.pfp) {
+                    <img [src]="friendAvatarUrl(friend.pfp)" [alt]="friend.fullName || friend.username || 'User'" class="w-full h-full object-cover" />
+                  } @else {
+                    <span class="text-slate-600 font-semibold text-sm">{{ friendInitials(friend) }}</span>
+                  }
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-slate-900 truncate">{{ friend.fullName || friend.username || 'User' }}</p>
+                  <p class="text-xs text-slate-500 truncate">@{{ friend.username || 'unknown' }}</p>
+                </div>
+              </div>
+            }
+          </div>
+        }
 
         <!-- ── My Posts ──────────────────────────────────────────────── -->
         <div class="h-px bg-gradient-to-r from-indigo-100 via-purple-100 to-transparent my-5"></div>
@@ -246,6 +289,82 @@ import { firstValueFrom } from 'rxjs';
         </div>
       </div>
     }
+
+    <!-- Friends Modal -->
+    @if (friendsOpen()) {
+      <div
+        class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center animate-[fadeIn_0.15s_ease]"
+        (click)="closeFriends()"
+      >
+        <div
+          class="bg-white rounded-2xl w-[min(720px,92vw)] shadow-2xl overflow-hidden animate-[slideUp_0.2s_ease]"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Friends</h3>
+              <p class="text-xs text-slate-400">{{ friendsPaginationConfig().totalElements }} total</p>
+            </div>
+            <button class="text-slate-400 hover:text-slate-600" (click)="closeFriends()">✕</button>
+          </div>
+
+          @if (friendsLoading()) {
+            <div class="p-10 flex items-center justify-center">
+              <div class="w-7 h-7 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+            </div>
+          } @else if (friendsError()) {
+            <div class="p-10 text-center text-red-600">
+              <p class="text-lg font-medium">Failed to load friends</p>
+              <p class="mt-2 text-sm">{{ friendsError() }}</p>
+            </div>
+          } @else if (friendsList().length === 0) {
+            <div class="p-10 text-center text-slate-500">
+              <p class="text-lg font-medium text-slate-700">No friends yet</p>
+              <p class="mt-1">Start adding friends from suggestions</p>
+            </div>
+          } @else {
+            <div class="divide-y divide-slate-100 max-h-[60vh] overflow-auto">
+              @for (friend of friendsList(); track friend.id) {
+                <div class="px-6 py-4 flex items-center gap-4">
+                  <div class="w-12 h-12 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+                    @if (friend.pfp) {
+                      <img [src]="friendAvatarUrl(friend.pfp)" [alt]="friend.fullName || friend.username || 'User'" class="w-full h-full object-cover" />
+                    } @else {
+                      <span class="text-slate-600 font-semibold">{{ friendInitials(friend) }}</span>
+                    }
+                  </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-semibold text-slate-900 truncate">{{ friend.fullName || friend.username || 'User' }}</p>
+                  <p class="text-sm text-slate-500 truncate">@{{ friend.username || 'unknown' }}</p>
+                </div>
+                <!-- <button
+                  class="px-4 py-2 rounded-xl bg-white border border-rose-200 text-rose-600 font-semibold hover:bg-rose-50 transition-colors"
+                  (click)="blockFriend(friend.id)"
+                >
+                  Block
+                </button> -->
+                <button
+                  class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition-colors"
+                  (click)="viewFriendProfile(friend.id)"
+                >
+                  View
+                  </button>
+                </div>
+              }
+            </div>
+          }
+
+          <div class="border-t border-slate-200 bg-slate-50 p-4">
+            <app-pagination
+              [config]="friendsPaginationConfig()"
+              [isLoading]="friendsLoading()"
+              (pageChange)="onFriendsPageChange($event)"
+              (pageSizeChange)="onFriendsPageSizeChange($event)"
+            ></app-pagination>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     @keyframes flow {
@@ -266,6 +385,8 @@ export class ProfileComponent implements OnInit {
   private readonly userContext = inject(UserContextService);
   private readonly userFacade  = inject(UserFacadeService);
   private readonly postFacade  = inject(PostFacadeService);   // ← added
+  private readonly friendshipFacade = inject(FriendshipFacadeService);
+  private readonly router = inject(Router);
   readonly user = this.userContext.user;
 
   readonly modalOpen    = signal(false);
@@ -279,8 +400,25 @@ export class ProfileComponent implements OnInit {
   readonly posts        = signal<PostUI[]>([]);
   readonly postsLoading = signal(true);
 
+  // ── Friends ──
+  readonly friendsPreview = signal<UserSummaryUI[]>([]);
+  readonly friendsPreviewLoading = signal(true);
+  readonly friendsOpen = signal(false);
+  readonly friendsList = signal<UserSummaryUI[]>([]);
+  readonly friendsLoading = signal(false);
+  readonly friendsError = signal<string | null>(null);
+  readonly friendsPaginationConfig = signal<PaginationConfig>({
+    totalPages: 0,
+    totalElements: 0,
+    currentPage: 0,
+    pageSize: 10,
+    hasNext: false,
+    hasPrevious: false
+  });
+
   ngOnInit() {
     this.loadMyPosts();
+    this.loadFriendsPreview();
   }
 
   private async loadMyPosts() {
@@ -293,6 +431,47 @@ export class ProfileComponent implements OnInit {
     } finally {
       this.postsLoading.set(false);
     }
+  }
+
+  private loadFriendsPreview() {
+    this.friendsPreviewLoading.set(true);
+    this.friendshipFacade.getFriends({ page: 0, size: 6 }).subscribe({
+      next: res => {
+        this.friendsPreview.set(res.items);
+        this.friendsPreviewLoading.set(false);
+      },
+      error: err => {
+        console.error('[Profile] Failed to load friends preview', err);
+        this.friendsPreview.set([]);
+        this.friendsPreviewLoading.set(false);
+      }
+    });
+  }
+
+  private loadFriends(page: number, size: number) {
+    const safePage = Math.max(0, page);
+    this.friendsLoading.set(true);
+    this.friendsError.set(null);
+
+    this.friendshipFacade.getFriends({ page: safePage, size }).subscribe({
+      next: res => {
+        this.friendsList.set(res.items);
+        this.friendsPaginationConfig.set({
+          currentPage: res.currentPage,
+          pageSize: res.pageSize,
+          totalElements: res.totalItems,
+          totalPages: res.totalPages,
+          hasNext: res.currentPage < res.totalPages - 1,
+          hasPrevious: res.currentPage > 0
+        });
+        this.friendsLoading.set(false);
+      },
+      error: err => {
+        console.error('[Profile] Failed to load friends list', err);
+        this.friendsError.set(err.message || 'Failed to load friends.');
+        this.friendsLoading.set(false);
+      }
+    });
   }
 
   // ── Helpers ──
@@ -311,6 +490,15 @@ export class ProfileComponent implements OnInit {
 
   openModal()  { this.modalOpen.set(true); this.errorMsg.set(null); }
   closeModal() { this.modalOpen.set(false); this.clearFile(); this.errorMsg.set(null); }
+
+  openFriends() {
+    this.friendsOpen.set(true);
+    this.loadFriends(0, this.friendsPaginationConfig().pageSize);
+  }
+
+  closeFriends() {
+    this.friendsOpen.set(false);
+  }
 
   onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -381,5 +569,67 @@ export class ProfileComponent implements OnInit {
     return parts.length >= 2
       ? (parts[0][0] + parts[1][0]).toUpperCase()
       : this.displayName().substring(0, 2).toUpperCase();
+  }
+
+  friendInitials(friend: UserSummaryUI): string {
+    const name = friend.fullName || friend.username || 'User';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  }
+
+  friendAvatarUrl(pfp?: string | null): string {
+    if (!pfp) {
+      return '';
+    }
+    if (pfp.startsWith('http://') || pfp.startsWith('https://')) {
+      return pfp;
+    }
+    if (pfp.startsWith('/uploads/')) {
+      return `http://localhost:8081${pfp}`;
+    }
+    return `http://localhost:8081/uploads/${pfp}`;
+  }
+
+  onFriendsPageChange(page: number) {
+    this.loadFriends(page, this.friendsPaginationConfig().pageSize);
+  }
+
+  onFriendsPageSizeChange(size: number) {
+    this.loadFriends(0, size);
+  }
+
+  viewFriendProfile(friendId: number) {
+    if (!friendId || friendId <= 0) {
+      return;
+    }
+    this.router.navigate(['/dashboard/client/profile', friendId]);
+    this.closeFriends();
+  }
+
+  blockFriend(friendId: number) {
+    if (!friendId || friendId <= 0) {
+      return;
+    }
+
+    if (!confirm('Block this user?')) {
+      return;
+    }
+
+    this.friendshipFacade.blockUser(friendId).subscribe({
+      next: () => {
+        this.friendsList.set(this.friendsList().filter(f => f.id !== friendId));
+        this.friendsPreview.set(this.friendsPreview().filter(f => f.id !== friendId));
+      },
+      error: err => {
+        const message = (err?.message || '').toLowerCase();
+        if (message.includes('already exists')) {
+          this.friendsList.set(this.friendsList().filter(f => f.id !== friendId));
+          this.friendsPreview.set(this.friendsPreview().filter(f => f.id !== friendId));
+          return;
+        }
+        console.error('[Profile] Failed to block friend', err);
+      }
+    });
   }
 }

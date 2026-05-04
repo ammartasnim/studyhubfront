@@ -30,6 +30,7 @@ import { Router } from '@angular/router';
 
         <!-- XP -->
         <p class="text-sm font-medium">{{ xp() }} XP</p>
+
       </div>
 
       <!-- Navigation -->
@@ -79,6 +80,20 @@ import { Router } from '@angular/router';
           </svg>
           <span class="font-medium">Created Communities</span>
         </button>
+         <button
+          (click)="navigateTo('suggestedFriends')"
+            class="w-full flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-indigo-50 transition-colors border-b border-slate-200 last:border-0"
+
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="9" cy="8" r="3"/>
+  <path d="M3 20c0-3.314 2.686-6 6-6s6 2.686 6 6"/>
+  <line x1="19" y1="8" x2="19" y2="14"/>
+  <line x1="16" y1="11" x2="22" y2="11"/>
+</svg>
+          <span class="font-medium">Friends</span>
+          
+        </button>
         <button
           (click)="navigateTo('focus')"
           class="w-full flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-indigo-50 transition-colors border-b border-slate-200 last:border-0"
@@ -100,6 +115,8 @@ import { Router } from '@angular/router';
           </svg>
           <span class="font-medium">Settings</span>
         </button>
+       
+
         <button
           (click)="handleLogout()"
           class="w-full flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-indigo-50 transition-colors border-b border-slate-200 last:border-0"

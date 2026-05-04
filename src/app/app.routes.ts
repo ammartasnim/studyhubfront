@@ -7,6 +7,7 @@ import { LoginComponent } from './auth/login/login.component';
 import { RegisterComponent } from './auth/register/register.component';
 import { AuthCallbackComponent } from './auth/auth-callback/auth-callback.component';
 import { FocusTimerComponent } from './dashboard/client/focus-timer.component';
+import { SuggestedFriendsComponent } from './dashboard/client/suggestedFriends';
 
 export const routes: Routes = [
   {
@@ -195,9 +196,20 @@ export const routes: Routes = [
        {
          path: 'settings',
          loadComponent: () => import('./dashboard/client/settings').then((m) => m.SettingsComponent)
-       }
-     ]
-   },
+        }
+        ,
+        {
+         path: 'suggestedFriends',
+         loadComponent: () => import('./dashboard/client/suggestedFriends').then((m) => m.SuggestedFriendsComponent)
+
+        }
+        ,
+        {
+         path: 'profile/:id',
+         loadComponent: () => import('./dashboard/client/profile-detail').then((m) => m.ProfileDetailComponent)
+        }
+      ]
+    },
    {
      path: '**',
      redirectTo: 'auth/login'

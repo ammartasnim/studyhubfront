@@ -15,6 +15,7 @@ export * from './user.facade';
 export * from './comment.facade';
 export * from './focus-session.facade';
 export * from './ai-service-Facade';
+export * from './friendship.facade';
 
 // UI Models
 export * from './models/auth.model';
@@ -23,3 +24,4 @@ export * from './models/post.model';
 export * from './models/user.model';
 export * from './models/comment.model';
 export * from './models/focus-session.model';
+export * from './models/friendship.model';
