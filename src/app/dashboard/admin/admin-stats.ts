@@ -139,7 +139,7 @@ export class AdminStats implements OnInit {
   ngOnInit() {
     forkJoin({
       users:       this.userFacade.getStats(),
-      posts:       this.http.get<any>('/api/posts/stats/count'),
+      posts:       this.postFacade.getPostStats(),
       comments:    this.commentFacade.getStats(),
       communities: this.communityFacade.getStats(),
       focus:       this.focusFacade.getStats(),

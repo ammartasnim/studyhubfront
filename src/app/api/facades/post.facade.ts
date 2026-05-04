@@ -315,5 +315,13 @@ private mapPagedResponse(response: any): PaginatedPosts {
         catchError(err => this.handleError(err, 'Failed to mark posts as seen'))
     );
 }
+
+getPostStats(): Observable<{ total: number; flagged: number; pending: number }> {
+  return this.http.get<{ total: number; flagged: number; pending: number }>(
+    `${this.postController['configuration'].basePath}/api/posts/stats/count`
+  ).pipe(
+    catchError(err => this.handleError(err, 'Failed to fetch post stats'))
+  );
+}
   
 }
