@@ -231,21 +231,23 @@ create(data: { title: string; description: string; category?: string }): Observa
   /**
    * Map DTO to UI Model
    */
-  private mapToUI(dto: CommunityResDto | null | undefined): CommunityUI {
-    if (!dto) {
-      throw new Error('Community data is null or undefined');
-    }
-
-    return {
-      id: dto.id ?? 0,
-      title: dto.title ?? 'Untitled Community',
-      description: dto.description ?? '',
-      nbrMembers: dto.nbrMembers ?? 0,
-      moderatorId: dto.moderatorId,
-      category: dto.category
-    };
-  }
-
+private mapToUI(dto: CommunityResDto | null | undefined): CommunityUI {
+  if (!dto) throw new Error('Community data is null or undefined');
+  return {
+    id: dto.id ?? 0,
+    title: dto.title ?? 'Untitled Community',
+    description: dto.description ?? '',
+    nbrMembers: dto.nbrMembers ?? 0,
+    ownerId: dto.ownerId ?? undefined,
+    category: dto.category ?? undefined,
+      moderators: (dto.moderators ?? []).map(m => ({
+      userId: m.userId,
+      username: m.username,
+      fullName: m.fullName,
+      permissions: m.permissions ?? []
+}))
+  };
+}
   /**
    * Map paginated response
    */
