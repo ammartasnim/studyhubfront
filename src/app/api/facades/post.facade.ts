@@ -267,7 +267,8 @@ getByCommunity(communityId: number, filters?: { page?: number; size?: number }):
       commentCount: dto.commentCount ?? 0,
       isLiked: dto.liked ?? false,
       createdAt: dto.createdAt ? new Date(dto.createdAt) : null,
-      status: dto.status ?? ''
+      status: dto.status ?? '',
+      flagCount: dto.flagCount ?? 0
     };
   }
 
@@ -321,6 +322,16 @@ getPostStats(): Observable<{ total: number; flagged: number; pending: number }> 
     `${this.postController['configuration'].basePath}/api/posts/stats/count`
   ).pipe(
     catchError(err => this.handleError(err, 'Failed to fetch post stats'))
+  );
+}
+
+getByStatus(status: string, page = 0, size = 10): Observable<PaginatedPosts> {
+  return this.http.get<any>(
+    `${this.postController['configuration'].basePath}/api/posts/status/${status}`,
+    { params: { page, size } }
+  ).pipe(
+    map(res => this.mapPagedResponse(res)),
+    catchError(err => this.handleError(err, `Failed to fetch posts with status ${status}`))
   );
 }
   
