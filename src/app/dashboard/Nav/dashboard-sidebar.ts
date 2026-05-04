@@ -14,7 +14,7 @@ import { Router } from '@angular/router';
       <div class="rounded-2xl bg-gradient-to-br from-indigo-600 to-fuchsia-600 p-5 text-white">
         <!-- Avatar -->
         <div class="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center mb-4">
-          <span class="text-2xl font-bold">{{ getInitials() }}</span>
+          <img [src]="pfp()" alt="Profile Picture" class="h-full w-full rounded-full object-cover">
         </div>
 
         <!-- User Info -->
