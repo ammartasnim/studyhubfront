@@ -269,7 +269,8 @@ getByCommunity(communityId: number, filters?: { page?: number; size?: number }):
       isLiked: dto.liked ?? false,
       createdAt: dto.createdAt ? new Date(dto.createdAt) : null,
       status: dto.status ?? '',
-      flagCount: dto.flagCount ?? 0
+      flagCount: dto.flagCount ?? 0,
+      isFlaggedByCurrentUser: dto.isFlaggedByCurrentUser ?? false
     };
   }
 

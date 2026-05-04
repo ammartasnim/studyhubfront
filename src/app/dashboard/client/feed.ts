@@ -5,7 +5,7 @@ import { CommonModule } from '@angular/common';
 import { CreatePostModalComponent } from './create-post';
 import { CreateCommunityModalComponent } from './create-community';
 import { FeedService } from '../../services/feed.service';
-import { CommentUI } from '../../api/facades';
+import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -126,25 +126,42 @@ import { firstValueFrom } from 'rxjs';
               <article class="bg-white transition-colors hover:bg-slate-50/40">
 
                 <!-- Post header -->
-                <div class="flex items-start gap-3 px-6 pt-5 pb-3">
-                  @if (post.authorPfp) {
-                    <img [src]="'http://localhost:8081/uploads/' + post.authorPfp" [alt]="post.authorFullName" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-                  } @else {
-                    <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0 select-none">
-                      {{ getInitials(post.authorFullName) }}
-                    </div>
-                  }
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-start justify-between gap-2">
-                      <p class="font-semibold text-slate-900 text-sm">{{ post.authorFullName }}</p>
-                      <span class="text-xs text-slate-400 flex-shrink-0 pt-0.5">{{ getTimeAgo(post.createdAt) }}</span>
-                    </div>
-                    <div class="flex items-center gap-1 mt-0.5">
-                      <span class="text-xs text-slate-400">in</span>
-                      <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ post.communityTitle }}</span>
-                    </div>
-                  </div>
-                </div>
+<div class="flex items-start gap-3 px-6 pt-5 pb-3">
+  @if (post.authorPfp) {
+    <img [src]="'http://localhost:8081/uploads/' + post.authorPfp" [alt]="post.authorFullName" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+  } @else {
+    <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0 select-none">
+      {{ getInitials(post.authorFullName) }}
+    </div>
+  }
+  <div class="flex-1 min-w-0">
+    <div class="flex items-start justify-between gap-2">
+      <p class="font-semibold text-slate-900 text-sm">{{ post.authorFullName }}</p>
+      
+      <!-- Time and Report Container -->
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <span class="text-xs text-slate-400 pt-0.5">{{ getTimeAgo(post.createdAt) }}</span>
+        <button
+  (click)="reportPost(post)"
+  [disabled]="post.isFlaggedByCurrentUser" 
+  class="p-1 rounded-md transition-colors"
+  [class.text-amber-500]="post.isFlaggedByCurrentUser"
+  [class.text-slate-300]="!post.isFlaggedByCurrentUser"
+  [title]="post.isFlaggedByCurrentUser ? 'Already reported' : 'Report post'"
+>
+  
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="flex items-center gap-1 mt-0.5">
+      <span class="text-xs text-slate-400">in</span>
+      <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ post.communityTitle }}</span>
+    </div>
+  </div>
+</div>
 
                 <!-- Post content -->
                 <div class="px-6 pb-3">
@@ -198,6 +215,7 @@ import { firstValueFrom } from 'rxjs';
                     </svg>
                     {{ post.commentCount }}
                   </button>
+                  
                 </div>
 
                 <!-- Comments section -->
@@ -253,7 +271,7 @@ import { firstValueFrom } from 'rxjs';
                                     <svg class="w-3.5 h-3.5" [attr.fill]="comment.isLiked ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                     </svg>
-                                    {{ comment.likeCount }}
+                                    {{ comment.likeCount ?? 0 }}
                                   </button>
                                   <!-- Delete — only owner -->
                                   @if (isOwnComment(comment.userId)) {
@@ -316,7 +334,7 @@ import { firstValueFrom } from 'rxjs';
                                             <svg class="w-3 h-3" [attr.fill]="reply.isLiked ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
                                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                             </svg>
-                                            {{ reply.likeCount }}
+                                            {{ reply.likeCount ?? 0 }}
                                           </button>
                                           @if (isOwnComment(reply.userId)) {
                                               <button
@@ -448,7 +466,7 @@ export class FeedComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void { this.feedService.init(); }
-  ngOnDestroy(): void {}
+  ngOnDestroy(): void { }
 
   @HostListener('window:scroll')
   onWindowScroll(): void {
@@ -464,19 +482,19 @@ export class FeedComponent implements OnInit, OnDestroy {
   onPostCreated(): void { this.feedService.loadFeed(); }
   onCommunityCreated(): void { this.feedService.checkCommunities(); }
 
-toggleComments(postId: number): void {
-  this.expandedPosts.update(set => {
-    const next = new Set(set);
-    if (next.has(postId)) {
-      next.delete(postId);
-      this.feedService.resetComments(postId);
-    } else {
-      next.add(postId);
-      this.feedService.loadComments(postId);
-    }
-    return next;
-  });
-}
+  toggleComments(postId: number): void {
+    this.expandedPosts.update(set => {
+      const next = new Set(set);
+      if (next.has(postId)) {
+        next.delete(postId);
+        this.feedService.resetComments(postId);
+      } else {
+        next.add(postId);
+        this.feedService.loadComments(postId);
+      }
+      return next;
+    });
+  }
   toggleReplies(commentId: number): void {
     this.expandedComments.update(set => {
       const next = new Set(set);
@@ -489,6 +507,24 @@ toggleComments(postId: number): void {
         }
       }
       return next;
+    });
+  }
+
+  private readonly postFacade = inject(PostFacadeService);
+  reportPost(post: PostUI) {
+    console.log(post.isFlaggedByCurrentUser)
+    this.postFacade.flag(post.id).subscribe({
+      next: () => {
+        // FIX: Reference this.feedService.posts instead of this.posts
+        this.feedService.posts.update(currentPosts =>
+          currentPosts.map(p =>
+            p.id === post.id ? { ...p, status: 'Flagged', flagCount: (p.flagCount ?? 0) + 1 } : p
+          )
+        );
+      },
+      error: (err) => {
+        console.error('Failed to flag post:', err);
+      }
     });
   }
 
@@ -510,7 +546,7 @@ toggleComments(postId: number): void {
   async deleteComment(postId: number, commentId: number): Promise<void> {
     await this.feedService.deleteComment(postId, commentId);
   }
-  
+
 
   getReplyInput(commentId: number): string { return this.replyInputs().get(commentId) ?? ''; }
   setReplyInput(commentId: number, value: string): void { this.replyInputs.update(m => new Map(m).set(commentId, value)); }
@@ -525,13 +561,13 @@ toggleComments(postId: number): void {
       console.error('Failed to send reply', err);
     }
   }
-async deleteReply(commentId: number, replyId: number): Promise<void> {
-  try {
-    await this.feedService.deleteReply(commentId, replyId);
-  } catch (err) {
-    console.error('Failed to delete reply', err);
+  async deleteReply(commentId: number, replyId: number): Promise<void> {
+    try {
+      await this.feedService.deleteReply(commentId, replyId);
+    } catch (err) {
+      console.error('Failed to delete reply', err);
+    }
   }
-}
 
   getReplies(commentId: number): CommentUI[] { return this.feedService.replies().get(commentId) ?? []; }
   isRepliesLoading(commentId: number): boolean { return this.feedService.repliesLoading().has(commentId); }
