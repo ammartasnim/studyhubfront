@@ -5,6 +5,7 @@ import { publicGuard } from './guards/public.guard';
 import { roleGuard } from './guards/role.guard';
 import { LoginComponent } from './auth/login/login.component';
 import { RegisterComponent } from './auth/register/register.component';
+import { AuthCallbackComponent } from './auth/auth-callback/auth-callback.component';
 import { FocusTimerComponent } from './dashboard/client/focus-timer.component';
 
 export const routes: Routes = [
@@ -24,6 +25,11 @@ export const routes: Routes = [
     canActivate: [publicGuard],
     component:RegisterComponent
     
+  },
+  {
+    path: 'auth/callback',
+    canActivate: [publicGuard],
+    component: AuthCallbackComponent
   },
   {
     path: 'dashboard',

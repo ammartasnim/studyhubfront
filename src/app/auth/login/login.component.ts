@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthFacadeService } from '../../api/facades';
 import { UserContextService } from '../../user-context.service';
+import { SupabaseService } from '../../services/supabase-service';
 
 
 
@@ -14,6 +15,38 @@ import { UserContextService } from '../../user-context.service';
   templateUrl: './login.component.html'
 })
 export class LoginComponent {
+  private readonly supabase = inject(SupabaseService);
+
+  // ... existing methods ...
+
+  async loginWithGoogle(): Promise<void> {
+    this.isSubmitting.set(true);
+    this.submitError.set(null);
+
+    try {
+      const { data, error } = await this.supabase.signInWithGoogle();
+      
+      if (error) throw error;
+  
+    } catch (err: any) {
+      this.isSubmitting.set(false);
+      this.submitError.set(err.message || 'Social login failed');
+    }
+  }
+  async loginWithGithub(): Promise<void> {
+    this.isSubmitting.set(true);
+    this.submitError.set(null);
+
+    try {
+      const { data, error } = await this.supabase.signInWithGithub();
+      
+      if (error) throw error;
+  
+    } catch (err: any) {
+      this.isSubmitting.set(false);
+      this.submitError.set(err.message || 'Social login failed');
+    }
+  }
   private readonly fb = inject(FormBuilder);
   private readonly authFacade = inject(AuthFacadeService);
   private readonly router = inject(Router);

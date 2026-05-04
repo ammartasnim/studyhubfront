@@ -65,6 +65,53 @@
       <button type="submit" [disabled]="!this.form.valid" class="mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-4 py-3 text-base font-semibold text-white shadow-md transition hover:-translate-y-0.5 enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60">
         {{ isSubmitting() ? 'Signing In...' : 'Sign In' }}
       </button>
+      <!-- Below your standard login button -->
+<div class="mt-6">
+  <div class="relative">
+    <div class="absolute inset-0 flex items-center"><span class="w-full border-t"></span></div>
+    <div class="relative flex justify-center text-xs uppercase">
+      <span class="bg-white px-2 text-gray-500">Or continue with</span>
+    </div>
+  </div>
+
+  <div class="mt-6">
+    <button 
+  type="button"
+  (click)="loginWithGoogle()"
+  [disabled]="isSubmitting()"
+  class="w-full flex justify-center items-center gap-2 py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="w-5 h-5">
+    <path fill="#EA4335" d="M24 9.5c3.14 0 5.95 1.08 8.17 2.86l6.08-6.08C34.5 3.14 29.57 1 24 1 14.82 1 7.07 6.48 3.64 14.2l7.08 5.5C12.4 13.67 17.73 9.5 24 9.5z"/>
+    <path fill="#4285F4" d="M46.5 24.5c0-1.64-.15-3.22-.43-4.75H24v9h12.7c-.55 2.96-2.2 5.48-4.67 7.17l7.18 5.57C43.36 37.77 46.5 31.57 46.5 24.5z"/>
+    <path fill="#FBBC05" d="M10.72 28.3A14.6 14.6 0 0 1 9.5 24c0-1.49.26-2.93.72-4.3l-7.08-5.5A23.93 23.93 0 0 0 0 24c0 3.86.92 7.5 2.55 10.72l7.08-5.5-.91.08z"/>
+    <path fill="#34A853" d="M24 47c5.57 0 10.24-1.84 13.65-5l-7.18-5.57C28.7 37.74 26.47 38.5 24 38.5c-6.27 0-11.6-4.17-13.28-9.8l-7.08 5.5C7.07 41.52 14.82 47 24 47z"/>
+  </svg>
+  Sign in with Google
+</button>
+<button 
+  type="button"
+  (click)="loginWithGithub()"
+  [disabled]="isSubmitting()"
+  class="w-full flex justify-center items-center gap-2 py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
+    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 
+             0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755
+             -1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 
+             3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 
+             0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 
+             3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 
+             2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 
+             1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 
+             2.22 0 1.605-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 
+             24 17.295 24 12c0-6.63-5.37-12-12-12z"/>
+  </svg>
+  Sign in with GitHub
+</button>
+  </div>
+
+</div>
     </form>
 
     <p class="mt-4 text-center text-sm text-slate-600">
