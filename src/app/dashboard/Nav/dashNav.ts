@@ -9,7 +9,7 @@ import { CommonModule } from '@angular/common';
 import { environment } from '../../../environments/environment';
 
 const AUTH_TOKEN_KEY = 'token';
- 
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -21,30 +21,42 @@ const AUTH_TOKEN_KEY = 'token';
     AiAssistant,
   ],
   template: `
-    <div class="h-screen bg-slate-50 overflow-auto">
-      <div class="w-full px-4 py-6 min-h-full">
+    <div class="min-h-screen bg-slate-50">
+      <div class="w-full px-4 py-6">
         <div
           class="grid grid-cols-1 gap-8 items-start"
           [ngClass]="isFocusRoom()
             ? 'lg:grid-cols-[280px_1fr]'
             : 'lg:grid-cols-[280px_1fr] xl:grid-cols-[280px_1fr_320px]'"
         >
-          <app-dashboard-sidebar
-            [displayName]="displayName()"
-            [level]="level()"
-            [xp]="xp()"
-            [pfp]="pfpUrl()"
-            (navigate)="handleSidebarNavigation($event)"
-            (logout)="handleLogout()"
-          />
+<!-- LEFT SIDEBAR: sticky, scrollable internally -->
+<div class="sticky top-6 self-start max-h-[calc(100vh-3rem)] overflow-y-auto
+            [&::-webkit-scrollbar]:w-1.5
+            [&::-webkit-scrollbar-track]:bg-transparent
+            [&::-webkit-scrollbar-thumb]:bg-slate-300
+            [&::-webkit-scrollbar-thumb]:rounded-full
+            hover:[&::-webkit-scrollbar-thumb]:bg-slate-400">
+  <app-dashboard-sidebar
+    [displayName]="displayName()"
+    [level]="level()"
+    [xp]="xp()"
+    [pfp]="pfpUrl()"
+    (navigate)="handleSidebarNavigation($event)"
+    (logout)="handleLogout()"
+  />
+</div>
 
+          <!-- CENTER: normal flow, page scrolls -->
           <div class="flex flex-col gap-4 w-full">
             <router-outlet />
           </div>
 
-          @if (!isFocusRoom()) {
-            <app-dashboard-right-sidebar />
-          }
+          <!-- RIGHT SIDEBAR: sticky, scrollable internally -->
+@if (!isFocusRoom()) {
+  <div class="sticky top-6">
+    <app-dashboard-right-sidebar />
+  </div>
+}
         </div>
       </div>
     </div>

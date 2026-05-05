@@ -32,7 +32,6 @@ import { PostUI } from '../../api/facades/models/post.model';
           <th class="text-left px-5 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider">Title</th>
           <th class="text-left px-5 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider">Author</th>
           <th class="text-left px-5 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider">Community</th>
-          <th class="text-left px-5 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider">Reports</th>
           <th class="text-left px-5 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
           <th class="px-5 py-3.5"></th>
         </tr>
@@ -41,14 +40,14 @@ import { PostUI } from '../../api/facades/models/post.model';
         @if (loading()) {
           @for (i of skeletons; track i) {
             <tr>
-              @for (j of [1,2,3,4,5,6]; track j) {
+              @for (j of [1,2,3,4,5]; track j) {
                 <td class="px-5 py-3.5"><div class="h-3 bg-slate-100 rounded animate-pulse w-full"></div></td>
               }
             </tr>
           }
         } @else if (posts().length === 0) {
           <tr>
-            <td colspan="6" class="text-center py-12 text-slate-400 text-sm">No posts found.</td>
+            <td colspan="5" class="text-center py-12 text-slate-400 text-sm">No posts found.</td>
           </tr>
         } @else {
           @for (post of posts(); track post.id) {
@@ -64,18 +63,6 @@ import { PostUI } from '../../api/facades/models/post.model';
                   </span>
                 } @else {
                   <span class="text-slate-300">—</span>
-                }
-              </td>
-              <td class="px-5 py-3.5">
-                @if ((post.flagCount ?? 0) > 0) {
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
-                    [class]="(post.flagCount ?? 0) >= 3
-                      ? 'bg-red-50 text-red-600 ring-1 ring-red-200'
-                      : 'bg-amber-50 text-amber-600 ring-1 ring-amber-200'">
-                    ⚑ {{ post.flagCount }}
-                  </span>
-                } @else {
-                  <span class="text-slate-300 text-xs">—</span>
                 }
               </td>
               <td class="px-5 py-3.5">

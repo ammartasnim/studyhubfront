@@ -3,17 +3,16 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PostFacadeService, ReportReqDto } from '../../facades/post.facade';
 import { firstValueFrom } from 'rxjs';
-import { HttpClient } from '@angular/common/http';
 
 export type ReportTargetType = 'POST' | 'COMMENT';
 
 const REASONS: { value: ReportReqDto['reason']; label: string }[] = [
-  { value: 'SPAM',                 label: 'Spam' },
-  { value: 'HARASSMENT',          label: 'Harassment' },
-  { value: 'INAPPROPRIATE_CONTENT', label: 'Inappropriate Content' },
-  { value: 'MISINFORMATION',      label: 'Misinformation' },
-  { value: 'HATE_SPEECH',         label: 'Hate Speech' },
-  { value: 'OTHER',               label: 'Other' },
+  { value: 'SPAM',                   label: 'Spam' },
+  { value: 'HARASSMENT',             label: 'Harassment' },
+  { value: 'INAPPROPRIATE_CONTENT',  label: 'Inappropriate Content' },
+  { value: 'MISINFORMATION',         label: 'Misinformation' },
+  { value: 'HATE_SPEECH',            label: 'Hate Speech' },
+  { value: 'OTHER',                  label: 'Other' },
 ];
 
 @Component({
@@ -22,7 +21,6 @@ const REASONS: { value: ReportReqDto['reason']; label: string }[] = [
   imports: [CommonModule, FormsModule],
   template: `
     @if (isOpen()) {
-      <!-- Backdrop -->
       <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" (click)="close()">
         <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-[slideUp_0.2s_ease]" (click)="$event.stopPropagation()">
 
@@ -40,26 +38,41 @@ const REASONS: { value: ReportReqDto['reason']; label: string }[] = [
           </div>
 
           <!-- Reason selection -->
-          <div class="space-y-2 mb-4">
+          <div class="space-y-2 mb-1">
             <p class="text-sm font-semibold text-slate-700 mb-2">Select a reason</p>
             @for (r of reasons; track r.value) {
-              <label class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors"
+              <label
+                class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors"
                 [class.border-indigo-300]="selectedReason() === r.value"
                 [class.bg-indigo-50]="selectedReason() === r.value"
-                [class.border-slate-200]="selectedReason() !== r.value"
+                [class.border-red-300]="noReasonError() && selectedReason() !== r.value"
+                [class.border-slate-200]="!noReasonError() && selectedReason() !== r.value"
                 [class.hover:bg-slate-50]="selectedReason() !== r.value"
+                (click)="selectedReason.set(r.value); noReasonError.set(false)"
               >
                 <input
                   type="radio"
                   [value]="r.value"
                   [checked]="selectedReason() === r.value"
-                  (change)="selectedReason.set(r.value)"
+                  (change)="selectedReason.set(r.value); noReasonError.set(false)"
                   class="accent-indigo-600"
                 />
                 <span class="text-sm font-medium text-slate-800">{{ r.label }}</span>
               </label>
             }
           </div>
+
+          <!-- No reason error -->
+          @if (noReasonError()) {
+            <p class="text-xs text-red-500 mt-2 mb-2 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z"/>
+              </svg>
+              Please select a reason before submitting.
+            </p>
+          } @else {
+            <div class="mb-4"></div>
+          }
 
           <!-- Additional context -->
           <div class="mb-5">
@@ -74,7 +87,7 @@ const REASONS: { value: ReportReqDto['reason']; label: string }[] = [
             ></textarea>
           </div>
 
-          <!-- Error -->
+          <!-- Submit error -->
           @if (error()) {
             <div class="mb-4 px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600">
               {{ error() }}
@@ -88,7 +101,7 @@ const REASONS: { value: ReportReqDto['reason']; label: string }[] = [
             </button>
             <button
               (click)="submit()"
-              [disabled]="!selectedReason() || submitting()"
+              [disabled]="submitting()"
               class="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               @if (submitting()) {
@@ -102,6 +115,7 @@ const REASONS: { value: ReportReqDto['reason']; label: string }[] = [
               }
             </button>
           </div>
+
         </div>
       </div>
     }
@@ -116,16 +130,16 @@ const REASONS: { value: ReportReqDto['reason']; label: string }[] = [
 export class ReportModalComponent {
   private readonly postFacade = inject(PostFacadeService);
 
-  readonly isOpen       = signal(false);
-  readonly submitting   = signal(false);
-  readonly error        = signal<string | null>(null);
+  readonly isOpen         = signal(false);
+  readonly submitting     = signal(false);
+  readonly error          = signal<string | null>(null);
   readonly selectedReason = signal<ReportReqDto['reason'] | null>(null);
-  readonly targetType   = signal<ReportTargetType>('POST');
-  readonly targetId     = signal<number>(0);
+  readonly targetType     = signal<ReportTargetType>('POST');
+  readonly targetId       = signal<number>(0);
+  readonly noReasonError  = signal(false);
 
   additionalContext = '';
   readonly reasons = REASONS;
-
   readonly reported = output<void>();
 
   open(targetType: ReportTargetType, targetId: number): void {
@@ -134,6 +148,7 @@ export class ReportModalComponent {
     this.selectedReason.set(null);
     this.additionalContext = '';
     this.error.set(null);
+    this.noReasonError.set(false);
     this.isOpen.set(true);
   }
 
@@ -143,7 +158,10 @@ export class ReportModalComponent {
 
   async submit(): Promise<void> {
     const reason = this.selectedReason();
-    if (!reason) return;
+    if (!reason) {
+      this.noReasonError.set(true);
+      return;
+    }
 
     this.submitting.set(true);
     this.error.set(null);

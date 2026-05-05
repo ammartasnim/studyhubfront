@@ -253,4 +253,16 @@ export class PostFacadeService {
     console.groupEnd();
     return throwError(() => new Error(formatted));
   }
+  getMyReports(page = 0, size = 10): Observable<{ items: ReportResDto[]; totalItems: number; totalPages: number; currentPage: number; pageSize: number }> {
+  return this.http.get<any>(`${this.basePath}/api/reports/my`, { params: { page, size } }).pipe(
+    map(res => ({
+      items: res.content ?? [],
+      totalItems: res.totalElements ?? 0,
+      totalPages: res.totalPages ?? 0,
+      currentPage: res.number ?? 0,
+      pageSize: res.size ?? size
+    })),
+    catchError(err => this.handleError(err, 'Failed to fetch your reports'))
+  );
+}
 }

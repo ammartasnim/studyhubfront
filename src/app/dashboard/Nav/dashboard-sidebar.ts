@@ -8,7 +8,10 @@ import { Router } from '@angular/router';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <aside class="hidden lg:flex flex-col gap-6 sticky top-6 h-fit">
+ <aside class="hidden lg:flex flex-col gap-6 max-h-[calc(100vh-3rem)] overflow-y-auto
+              [&::-webkit-scrollbar]:w-1.5
+              [&::-webkit-scrollbar-thumb]:bg-slate-300
+              [&::-webkit-scrollbar-thumb]:rounded-full">
       <!-- Profile Card -->
       <div class="rounded-2xl bg-gradient-to-br from-indigo-600 to-fuchsia-600 p-5 text-white">
         <!-- Avatar -->
