@@ -10,5 +10,6 @@ export interface CommentResDto {
     createdAt?: string;
     likeCount?: number;
     isLiked?: boolean;
+    isReportedByCurrentUser?: boolean;
     
 }

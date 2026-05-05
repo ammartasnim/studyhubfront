@@ -8,8 +8,9 @@ export interface CommentUI {
   authorFullName?: string;
   authorPfp?: string;
   createdAt?: Date;
-   likeCount: number;
+  likeCount: number;
   isLiked: boolean;
+  isReportedByCurrentUser: boolean;
 }
 
 export interface PaginatedComments {

@@ -287,33 +287,32 @@ export class CommunityFacadeService {
     };
   }
 
-  private mapPostToUI(dto: any): PostUI {
-    const firstName = dto.userFirstName ?? '';
-    const lastName = dto.userLastName ?? '';
-    const fullName = `${firstName} ${lastName}`.trim() || dto.userUsername || 'Unknown Author';
-    const images = Array.isArray(dto.imgs) ? dto.imgs.filter((img: any) => !!img) : [];
-    return {
-      id: dto.id ?? 0,
-      title: dto.title ?? 'Untitled Post',
-      content: dto.content ?? '',
-      images,
-      authorUsername: dto.userUsername ?? 'unknown',
-      authorFirstName: firstName,
-      authorLastName: lastName,
-      authorPfp: dto.userPfp ?? undefined,
-      communityTitle: dto.communityTitle ?? '',
-      authorFullName: fullName,
-      previewText: (dto.content ?? '').length > 100 ? dto.content.substring(0, 100) + '...' : (dto.content ?? ''),
-      imageCount: images.length,
-      likeCount: dto.likeCount ?? 0,
-      commentCount: dto.commentCount ?? 0,
-      isLiked: dto.liked ?? false,
-      createdAt: dto.createdAt ? new Date(dto.createdAt) : null,
-      status: dto.status ?? '',
-      flagCount: dto.flagCount ?? 0,
-      isFlaggedByCurrentUser: dto.isFlaggedByCurrentUser ?? false
-    };
-  }
+private mapPostToUI(dto: any): PostUI {
+  const firstName = dto.userFirstName ?? '';
+  const lastName = dto.userLastName ?? '';
+  const fullName = `${firstName} ${lastName}`.trim() || dto.userUsername || 'Unknown Author';
+  const images = Array.isArray(dto.imgs) ? dto.imgs.filter((img: any) => !!img) : [];
+  return {
+    id: dto.id ?? 0,
+    title: dto.title ?? 'Untitled Post',
+    content: dto.content ?? '',
+    images,
+    authorUsername: dto.userUsername ?? 'unknown',
+    authorFirstName: firstName,
+    authorLastName: lastName,
+    authorPfp: dto.userPfp ?? undefined,
+    communityTitle: dto.communityTitle ?? '',
+    authorFullName: fullName,
+    previewText: (dto.content ?? '').length > 100 ? dto.content.substring(0, 100) + '...' : (dto.content ?? ''),
+    imageCount: images.length,
+    likeCount: dto.likeCount ?? 0,
+    commentCount: dto.commentCount ?? 0,
+    isLiked: dto.liked ?? false,
+    createdAt: dto.createdAt ? new Date(dto.createdAt) : null,
+    status: dto.status ?? '',
+    isReportedByCurrentUser: dto.isReportedByCurrentUser ?? false
+  };
+}
 
   private mapPagedResponse(response: PageCommunityResDto | null | undefined): PaginatedCommunities {
     if (!response) return { items: [], totalItems: 0, totalPages: 0, currentPage: 0, pageSize: 0 };

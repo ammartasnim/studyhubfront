@@ -126,27 +126,28 @@ export class CommentFacadeService {
       );
   }
 
-  mapToUI(dto: CommentResDto | null | undefined): CommentUI {
-    if (!dto) throw new Error('Comment data is null or undefined');
+ mapToUI(dto: CommentResDto | null | undefined): CommentUI {
+  if (!dto) throw new Error('Comment data is null or undefined');
 
-    const firstName = dto.authorFirstName ?? '';
-    const lastName = dto.authorLastName ?? '';
-    const fullName = `${firstName} ${lastName}`.trim() || dto.authorUsername || `User #${dto.userId}`;
+  const firstName = dto.authorFirstName ?? '';
+  const lastName = dto.authorLastName ?? '';
+  const fullName = `${firstName} ${lastName}`.trim() || dto.authorUsername || `User #${dto.userId}`;
 
-    return {
-      id: dto.id ?? 0,
-      content: dto.content ?? '',
-      postId: dto.postId ?? 0,
-      userId: dto.userId ?? 0,
-      previewText: (dto.content ?? '').length > 50 ? dto.content!.substring(0, 50) + '...' : (dto.content ?? ''),
-      authorUsername: dto.authorUsername,
-      authorFullName: fullName,
-      authorPfp: dto.authorPfp,
-      createdAt: dto.createdAt ? new Date(dto.createdAt) : undefined,
-      likeCount: dto.likeCount ?? 0,
-      isLiked: dto.isLiked ?? false
-    };
-  }
+  return {
+    id: dto.id ?? 0,
+    content: dto.content ?? '',
+    postId: dto.postId ?? 0,
+    userId: dto.userId ?? 0,
+    previewText: (dto.content ?? '').length > 50 ? dto.content!.substring(0, 50) + '...' : (dto.content ?? ''),
+    authorUsername: dto.authorUsername,
+    authorFullName: fullName,
+    authorPfp: dto.authorPfp,
+    createdAt: dto.createdAt ? new Date(dto.createdAt) : undefined,
+    likeCount: dto.likeCount ?? 0,
+    isLiked: dto.isLiked ?? false,
+    isReportedByCurrentUser: dto.isReportedByCurrentUser ?? false  
+  };
+}
 
   private mapPagedResponse(response: PageCommentResDto | null | undefined): PaginatedComments {
     if (!response) return { items: [], totalItems: 0, totalPages: 0, currentPage: 0, pageSize: 0 };

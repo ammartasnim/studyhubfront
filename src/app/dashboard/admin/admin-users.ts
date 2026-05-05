@@ -170,7 +170,7 @@ load() {
     size: this.size
   }).subscribe({
     next: res => {
-      this.users.set(res.items);
+      this.users.set(res.items.filter(u => u.role !== 'Admin'));
       this.total.set(res.totalItems);
       this.loading.set(false);
     },

@@ -1,20 +1,22 @@
 import {
-  Component, ViewChild, OnInit, OnDestroy, inject, signal, computed, HostListener, ElementRef, AfterViewInit
+  Component, ViewChild, OnInit, OnDestroy, inject, signal, computed, ElementRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CreatePostModalComponent } from './create-post';
 import { CreateCommunityModalComponent } from './create-community';
 import { FeedService } from '../../services/feed.service';
 import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
-
+import { firstValueFrom } from 'rxjs';
+import { ReportModalComponent } from '../../api/facades/models/report.model';
 
 @Component({
   selector: 'app-academic-feed',
   standalone: true,
-  imports: [CommonModule, CreatePostModalComponent, CreateCommunityModalComponent],
+  imports: [CommonModule, CreatePostModalComponent, CreateCommunityModalComponent, ReportModalComponent],
   template: `
     <app-create-post-modal #createPostModal (postCreated)="onPostCreated()" />
     <app-create-community-modal #createCommunityModal (communityCreated)="onCommunityCreated()" />
+    <app-report-modal #reportModal (reported)="onReported()" />
 
     <div class="flex flex-col gap-5">
       <!-- Header -->
@@ -63,7 +65,6 @@ import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div class="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-slate-50">
           <h2 class="text-xl font-bold text-slate-900">Academic Feed</h2>
-         
         </div>
 
         @if (feedService.isLoading()) {
@@ -126,42 +127,41 @@ import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
               <article class="bg-white transition-colors hover:bg-slate-50/40">
 
                 <!-- Post header -->
-<div class="flex items-start gap-3 px-6 pt-5 pb-3">
-  @if (post.authorPfp) {
-    <img [src]="'http://localhost:8081/uploads/' + post.authorPfp" [alt]="post.authorFullName" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-  } @else {
-    <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0 select-none">
-      {{ getInitials(post.authorFullName) }}
-    </div>
-  }
-  <div class="flex-1 min-w-0">
-    <div class="flex items-start justify-between gap-2">
-      <p class="font-semibold text-slate-900 text-sm">{{ post.authorFullName }}</p>
-      
-      <!-- Time and Report Container -->
-      <div class="flex items-center gap-2 flex-shrink-0">
-        <span class="text-xs text-slate-400 pt-0.5">{{ getTimeAgo(post.createdAt) }}</span>
-        <button
-  (click)="reportPost(post)"
-  [disabled]="post.isFlaggedByCurrentUser" 
-  class="p-1 rounded-md transition-colors"
-  [class.text-amber-500]="post.isFlaggedByCurrentUser"
-  [class.text-slate-300]="!post.isFlaggedByCurrentUser"
-  [title]="post.isFlaggedByCurrentUser ? 'Already reported' : 'Report post'"
->
-  
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-    <div class="flex items-center gap-1 mt-0.5">
-      <span class="text-xs text-slate-400">in</span>
-      <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ post.communityTitle }}</span>
-    </div>
-  </div>
-</div>
+                <div class="flex items-start gap-3 px-6 pt-5 pb-3">
+                  @if (post.authorPfp) {
+                    <img [src]="'http://localhost:8081/uploads/' + post.authorPfp" [alt]="post.authorFullName" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                  } @else {
+                    <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0 select-none">
+                      {{ getInitials(post.authorFullName) }}
+                    </div>
+                  }
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-start justify-between gap-2">
+                      <p class="font-semibold text-slate-900 text-sm">{{ post.authorFullName }}</p>
+                      <div class="flex items-center gap-2 flex-shrink-0">
+                        <span class="text-xs text-slate-400 pt-0.5">{{ getTimeAgo(post.createdAt) }}</span>
+                        <!-- Report button -->
+                        <button
+                          (click)="openReportPost(post)"
+                          [disabled]="post.isReportedByCurrentUser"
+                          class="p-1 rounded-md transition-colors"
+                          [class.text-amber-500]="post.isReportedByCurrentUser"
+                          [class.text-slate-300]="!post.isReportedByCurrentUser"
+                          [class.hover:text-red-400]="!post.isReportedByCurrentUser"
+                          [title]="post.isReportedByCurrentUser ? 'Already reported' : 'Report post'"
+                        >
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-1 mt-0.5">
+                      <span class="text-xs text-slate-400">in</span>
+                      <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ post.communityTitle }}</span>
+                    </div>
+                  </div>
+                </div>
 
                 <!-- Post content -->
                 <div class="px-6 pb-3">
@@ -215,7 +215,6 @@ import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
                     </svg>
                     {{ post.commentCount }}
                   </button>
-                  
                 </div>
 
                 <!-- Comments section -->
@@ -238,10 +237,7 @@ import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
                       }
 
                       @for (comment of postComments; track comment.id) {
-                        <!-- Comment row -->
                         <div class="flex items-start gap-2 mb-3">
-
-                          <!-- Avatar -->
                           @if (comment.authorPfp) {
                             <img [src]="'http://localhost:8081/uploads/' + comment.authorPfp" [alt]="comment.authorFullName" class="w-7 h-7 rounded-full object-cover flex-shrink-0" />
                           } @else {
@@ -250,10 +246,7 @@ import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
                             </div>
                           }
 
-                          <!-- Comment bubble + replies all inside one column -->
                           <div class="flex-1">
-
-                            <!-- Bubble -->
                             <div class="bg-white rounded-xl px-3 py-2 text-sm border border-slate-100 shadow-sm">
                               <div class="flex items-center justify-between gap-2 mb-0.5">
                                 <p class="font-semibold text-slate-800 text-xs">{{ comment.authorFullName }}</p>
@@ -261,7 +254,7 @@ import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
                                   @if (comment.createdAt) {
                                     <span class="text-xs text-slate-400">{{ getTimeAgo(comment.createdAt) }}</span>
                                   }
-                                  <!-- Like button — visible to everyone -->
+                                  <!-- Like comment -->
                                   <button
                                     (click)="toggleCommentLike(post.id, comment.id)"
                                     class="flex items-center gap-1 text-xs transition-colors"
@@ -273,7 +266,21 @@ import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
                                     </svg>
                                     {{ comment.likeCount ?? 0 }}
                                   </button>
-                                  <!-- Delete — only owner -->
+                                  <!-- Report comment -->
+                                  <button
+                                    (click)="openReportComment(comment)"
+                                    [disabled]="comment.isReportedByCurrentUser"
+                                    class="transition-colors"
+                                    [class.text-amber-500]="comment.isReportedByCurrentUser"
+                                    [class.text-slate-300]="!comment.isReportedByCurrentUser"
+                                    [class.hover:text-red-400]="!comment.isReportedByCurrentUser"
+                                    [title]="comment.isReportedByCurrentUser ? 'Already reported' : 'Report comment'"
+                                  >
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/>
+                                    </svg>
+                                  </button>
+                                  <!-- Delete comment -->
                                   @if (isOwnComment(comment.userId)) {
                                     <button
                                       (click)="deleteComment(post.id, comment.id)"
@@ -288,27 +295,18 @@ import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
                                 </div>
                               </div>
                               <p class="text-slate-700">{{ comment.content }}</p>
-
-                              <!-- Reply toggle link -->
                               <div class="flex items-center justify-between mt-1">
-  <button
-    (click)="toggleReplies(comment.id)"
-    class="text-xs text-indigo-500 hover:text-indigo-700 font-medium"
-  >
-    @if (expandedComments().has(comment.id)) { Hide replies } @else { View replies }
-  </button>
-
-</div>
+                                <button (click)="toggleReplies(comment.id)" class="text-xs text-indigo-500 hover:text-indigo-700 font-medium">
+                                  @if (expandedComments().has(comment.id)) { Hide replies } @else { View replies }
+                                </button>
+                              </div>
                             </div>
 
-                            <!-- Replies section — directly below bubble, same column -->
                             @if (expandedComments().has(comment.id)) {
                               <div class="ml-4 mt-2 border-l-2 border-slate-200 pl-3 space-y-2">
-
                                 @if (isRepliesLoading(comment.id)) {
                                   <p class="text-xs text-slate-400 py-1">Loading replies...</p>
                                 }
-
                                 @for (reply of getReplies(comment.id); track reply.id) {
                                   <div class="flex items-start gap-2">
                                     @if (reply.authorPfp) {
@@ -337,25 +335,18 @@ import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
                                             {{ reply.likeCount ?? 0 }}
                                           </button>
                                           @if (isOwnComment(reply.userId)) {
-                                              <button
-                                                (click)="deleteReply(comment.id, reply.id)"
-                                                class="text-red-400 hover:text-red-600 transition-colors"
-                                                title="Delete reply"
-                                              >
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                              </button>
-                                            }
-                                                                                  
+                                            <button (click)="deleteReply(comment.id, reply.id)" class="text-red-400 hover:text-red-600 transition-colors" title="Delete reply">
+                                              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                              </svg>
+                                            </button>
+                                          }
                                         </div>
                                       </div>
                                       <p class="text-slate-700">{{ reply.content }}</p>
                                     </div>
                                   </div>
                                 }
-
-                                <!-- Reply input -->
                                 <div class="flex items-center gap-2 mt-1">
                                   <input
                                     type="text"
@@ -365,34 +356,24 @@ import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
                                     (keyup.enter)="submitReply(comment.id)"
                                     class="flex-1 px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white"
                                   />
-                                  <button
-                                    (click)="submitReply(comment.id)"
-                                    class="text-xs px-2 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                                  >
+                                  <button (click)="submitReply(comment.id)" class="text-xs px-2 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
                                     Send
                                   </button>
                                 </div>
-
                               </div>
                             }
-
                           </div>
                         </div>
                       }
 
-                      <!-- Load more comments -->
                       @if (feedService.commentHasMore().get(post.id)) {
                         <div class="text-center mt-2 mb-3">
-                          <button
-                            (click)="feedService.loadMoreComments(post.id)"
-                            class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
-                          >
+                          <button (click)="feedService.loadMoreComments(post.id)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
                             Load more comments
                           </button>
                         </div>
                       }
 
-                      <!-- Add comment -->
                       <div class="flex items-center gap-2 mt-3">
                         <input
                           type="text"
@@ -412,15 +393,12 @@ import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
                               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                             </svg>
-                          } @else {
-                            Post
-                          }
+                          } @else { Post }
                         </button>
                       </div>
                     }
                   </div>
                 }
-
               </article>
             }
           </div>
@@ -441,20 +419,23 @@ import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
   `
 })
 export class FeedComponent implements OnInit, OnDestroy {
-  @ViewChild('createPostModal') createPostModal!: CreatePostModalComponent;
+  @ViewChild('createPostModal')    createPostModal!: CreatePostModalComponent;
   @ViewChild('createCommunityModal') createCommunityModal!: CreateCommunityModalComponent;
+  @ViewChild('reportModal')        reportModal!: ReportModalComponent;
 
   readonly feedService = inject(FeedService);
+  private readonly postFacade = inject(PostFacadeService);
+  private readonly elementRef = inject(ElementRef);
 
-  readonly searchQuery = signal('');
-  readonly expandedPosts = signal<Set<number>>(new Set());
-  readonly commentInputs = signal<Map<number, string>>(new Map());
+  readonly searchQuery        = signal('');
+  readonly expandedPosts      = signal<Set<number>>(new Set());
+  readonly commentInputs      = signal<Map<number, string>>(new Map());
   readonly submittingComments = signal<Set<number>>(new Set());
-  readonly expandedComments = signal<Set<number>>(new Set());
-  readonly replyInputs = signal<Map<number, string>>(new Map());
+  readonly expandedComments   = signal<Set<number>>(new Set());
+  readonly replyInputs        = signal<Map<number, string>>(new Map());
+
   private scrollContainer: HTMLElement | null = null;
   private scrollListener = () => this.checkScroll();
-  private readonly elementRef = inject(ElementRef);
 
   readonly filteredPosts = computed(() => {
     const q = this.searchQuery().toLowerCase().trim();
@@ -467,49 +448,61 @@ export class FeedComponent implements OnInit, OnDestroy {
       p.communityTitle.toLowerCase().includes(q)
     );
   });
-ngOnInit(): void {
-  this.feedService.init();
-  let el = this.elementRef.nativeElement.parentElement;
-  while (el) {
-    const overflow = getComputedStyle(el).overflowY;
-    if (overflow === 'auto' || overflow === 'scroll') {
-      this.scrollContainer = el;
-      break;
+
+  ngOnInit(): void {
+    this.feedService.init();
+    let el = this.elementRef.nativeElement.parentElement;
+    while (el) {
+      const overflow = getComputedStyle(el).overflowY;
+      if (overflow === 'auto' || overflow === 'scroll') {
+        this.scrollContainer = el;
+        break;
+      }
+      el = el.parentElement;
     }
-    el = el.parentElement;
+    if (this.scrollContainer) {
+      this.scrollContainer.addEventListener('scroll', this.scrollListener);
+    }
   }
-  if (this.scrollContainer) {
-    this.scrollContainer.addEventListener('scroll', this.scrollListener);
-  }
-}
 
-ngOnDestroy(): void {
-  if (this.scrollContainer) {
-    this.scrollContainer.removeEventListener('scroll', this.scrollListener);
+  ngOnDestroy(): void {
+    if (this.scrollContainer) {
+      this.scrollContainer.removeEventListener('scroll', this.scrollListener);
+    }
   }
-}
 
-private checkScroll(): void {
-  if (this.feedService.isLoading() || this.feedService.isLoadingMore() || !this.feedService.hasMore()) return;
-  const el = this.scrollContainer!;
-  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
-    this.feedService.loadMorePosts();
-  }
-}
-
-  
-  onWindowScroll(): void {
+  private checkScroll(): void {
     if (this.feedService.isLoading() || this.feedService.isLoadingMore() || !this.feedService.hasMore()) return;
-    const scrolled = window.scrollY + window.innerHeight;
-    if (scrolled >= document.documentElement.scrollHeight - 300) {
+    const el = this.scrollContainer!;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
       this.feedService.loadMorePosts();
     }
   }
 
-  openCreatePost(): void { this.createPostModal.open(); }
+  openCreatePost():    void { this.createPostModal.open(); }
   openCreateCommunity(): void { this.createCommunityModal.open(); }
-  onPostCreated(): void { this.feedService.loadFeed(); }
+  onPostCreated():     void { this.feedService.loadFeed(); }
   onCommunityCreated(): void { this.feedService.checkCommunities(); }
+
+  // ─── REPORT ───────────────────────────────────────────────────────────────
+
+  openReportPost(post: PostUI): void {
+    if (post.isReportedByCurrentUser) return;
+    this.reportModal.open('POST', post.id);
+  }
+
+  openReportComment(comment: CommentUI): void {
+    if (comment.isReportedByCurrentUser) return;
+    this.reportModal.open('COMMENT', comment.id);
+  }
+
+  onReported(): void {
+    // Mark the reported item reactively without reloading the whole feed
+    // The modal already closed — just refresh feed to get updated isReportedByCurrentUser
+    this.feedService.loadFeed();
+  }
+
+  // ─── COMMENTS ─────────────────────────────────────────────────────────────
 
   toggleComments(postId: number): void {
     this.expandedPosts.update(set => {
@@ -524,6 +517,7 @@ private checkScroll(): void {
       return next;
     });
   }
+
   toggleReplies(commentId: number): void {
     this.expandedComments.update(set => {
       const next = new Set(set);
@@ -536,24 +530,6 @@ private checkScroll(): void {
         }
       }
       return next;
-    });
-  }
-
-  private readonly postFacade = inject(PostFacadeService);
-  reportPost(post: PostUI) {
-    console.log(post.isFlaggedByCurrentUser)
-    this.postFacade.flag(post.id).subscribe({
-      next: () => {
-        // FIX: Reference this.feedService.posts instead of this.posts
-        this.feedService.posts.update(currentPosts =>
-          currentPosts.map(p =>
-            p.id === post.id ? { ...p, status: 'Flagged', flagCount: (p.flagCount ?? 0) + 1 } : p
-          )
-        );
-      },
-      error: (err) => {
-        console.error('Failed to flag post:', err);
-      }
     });
   }
 
@@ -576,7 +552,6 @@ private checkScroll(): void {
     await this.feedService.deleteComment(postId, commentId);
   }
 
-
   getReplyInput(commentId: number): string { return this.replyInputs().get(commentId) ?? ''; }
   setReplyInput(commentId: number, value: string): void { this.replyInputs.update(m => new Map(m).set(commentId, value)); }
 
@@ -586,16 +561,13 @@ private checkScroll(): void {
     try {
       await this.feedService.createReply(commentId, content);
       this.replyInputs.update(m => { const n = new Map(m); n.delete(commentId); return n; });
-    } catch (err) {
-      console.error('Failed to send reply', err);
-    }
+    } catch (err) { console.error('Failed to send reply', err); }
   }
+
   async deleteReply(commentId: number, replyId: number): Promise<void> {
     try {
       await this.feedService.deleteReply(commentId, replyId);
-    } catch (err) {
-      console.error('Failed to delete reply', err);
-    }
+    } catch (err) { console.error('Failed to delete reply', err); }
   }
 
   getReplies(commentId: number): CommentUI[] { return this.feedService.replies().get(commentId) ?? []; }
@@ -625,5 +597,4 @@ private checkScroll(): void {
     if (!name?.trim()) return '?';
     return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
   }
-
 }

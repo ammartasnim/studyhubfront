@@ -6,20 +6,37 @@ import { throwError } from 'rxjs';
 import { PostControllerService } from '../api/postController.service';
 import { PostReqDto } from '../model/postReqDto';
 import { PostResDto } from '../model/postResDto';
-import { PagePostResDto } from '../model/pagePostResDto';
 import { Pageable } from '../model/pageable';
 import { PostUI, PaginatedPosts } from './models/post.model';
 import { HttpClient } from '@angular/common/http';
 import { formatApiError } from './models/api-error.model';
+
+export interface ReportReqDto {
+  reason: 'SPAM' | 'HARASSMENT' | 'INAPPROPRIATE_CONTENT' | 'MISINFORMATION' | 'HATE_SPEECH' | 'OTHER';
+  additionalContext?: string;
+}
+
+export interface ReportResDto {
+  id: number;
+  reporterId: number;
+  reporterUsername: string;
+  targetType: 'POST' | 'COMMENT';
+  targetId: number;
+  targetPreview: string;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  additionalContext?: string;
+  createdAt: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class PostFacadeService {
   private readonly postController = inject(PostControllerService);
   private readonly http = inject(HttpClient);
 
-private get basePath(): string {
-  return this.postController['configuration'].basePath ?? 'http://localhost:8081';
-}
+  private get basePath(): string {
+    return this.postController['configuration'].basePath ?? 'http://localhost:8081';
+  }
 
   // ─── READ ─────────────────────────────────────────────────────────────────
 
@@ -85,8 +102,8 @@ private get basePath(): string {
     );
   }
 
-  getPostStats(): Observable<{ total: number; flagged: number; pending: number }> {
-    return this.http.get<{ total: number; flagged: number; pending: number }>(
+  getPostStats(): Observable<{ total: number; pending: number }> {
+    return this.http.get<{ total: number; pending: number }>(
       `${this.basePath}/api/posts/stats/count`
     ).pipe(catchError(err => this.handleError(err, 'Failed to fetch post stats')));
   }
@@ -115,24 +132,23 @@ private get basePath(): string {
     );
   }
 
-update(id: number, data: { title: string; content: string; imgs?: File[] }): Observable<PostUI> {
-  if (!id || id <= 0) return throwError(() => new Error('Invalid post ID'));
-  if (!data?.title?.trim() || !data?.content?.trim()) {
-    return throwError(() => new Error('Title and content are required'));
+  update(id: number, data: { title: string; content: string; imgs?: File[] }): Observable<PostUI> {
+    if (!id || id <= 0) return throwError(() => new Error('Invalid post ID'));
+    if (!data?.title?.trim() || !data?.content?.trim()) {
+      return throwError(() => new Error('Title and content are required'));
+    }
+    const formData = new FormData();
+    formData.append('title', data.title.trim());
+    formData.append('content', data.content.trim());
+    if (data.imgs?.length) {
+      data.imgs.forEach(img => formData.append('imgs', img));
+    }
+    return this.http.put<any>(`${this.basePath}/api/posts/${id}`, formData).pipe(
+      map(dto => this.mapToUI(dto)),
+      catchError(err => this.handleError(err, `Failed to update post ${id}`))
+    );
   }
 
-  const formData = new FormData();
-  formData.append('title', data.title.trim());
-  formData.append('content', data.content.trim());
-  if (data.imgs?.length) {
-    data.imgs.forEach(img => formData.append('imgs', img));
-  }
-
-  return this.http.put<any>(`${this.basePath}/api/posts/${id}`, formData).pipe(
-    map(dto => this.mapToUI(dto)),
-    catchError(err => this.handleError(err, `Failed to update post ${id}`))
-  );
-}
   delete(id: number): Observable<void> {
     if (!id || id <= 0) return throwError(() => new Error('Invalid post ID'));
     return this.postController.deletePost(id).pipe(
@@ -157,11 +173,19 @@ update(id: number, data: { title: string; content: string; imgs?: File[] }): Obs
     );
   }
 
-  flag(id: number): Observable<PostUI> {
-    if (!id || id <= 0) return throwError(() => new Error('Invalid post ID'));
-    return this.postController.flagPost(id).pipe(
-      map(dto => this.mapToUI(dto)),
-      catchError(err => this.handleError(err, `Failed to flag post ${id}`))
+  // ─── REPORTS ──────────────────────────────────────────────────────────────
+
+  reportPost(postId: number, request: ReportReqDto): Observable<ReportResDto> {
+    if (!postId || postId <= 0) return throwError(() => new Error('Invalid post ID'));
+    return this.http.post<ReportResDto>(`${this.basePath}/api/reports/post/${postId}`, request).pipe(
+      catchError(err => this.handleError(err, `Failed to report post ${postId}`))
+    );
+  }
+
+  reportComment(commentId: number, request: ReportReqDto): Observable<ReportResDto> {
+    if (!commentId || commentId <= 0) return throwError(() => new Error('Invalid comment ID'));
+    return this.http.post<ReportResDto>(`${this.basePath}/api/reports/comment/${commentId}`, request).pipe(
+      catchError(err => this.handleError(err, `Failed to report comment ${commentId}`))
     );
   }
 
@@ -182,7 +206,7 @@ update(id: number, data: { title: string; content: string; imgs?: File[] }): Obs
 
   // ─── MAPPERS ──────────────────────────────────────────────────────────────
 
-  private mapToUI(dto: PostResDto | null | undefined): PostUI {
+  mapToUI(dto: PostResDto | null | undefined): PostUI {
     if (!dto) throw new Error('Post data is null or undefined');
     const images = Array.isArray(dto.imgs) ? dto.imgs.filter(img => !!img) : [];
     const firstName = dto.userFirstName ?? '';
@@ -205,9 +229,8 @@ update(id: number, data: { title: string; content: string; imgs?: File[] }): Obs
       commentCount: dto.commentCount ?? 0,
       isLiked: dto.liked ?? false,
       createdAt: dto.createdAt ? new Date(dto.createdAt) : null,
-      status: dto.status ?? '',
-      flagCount: dto.flagCount ?? 0,
-      isFlaggedByCurrentUser: dto.isFlaggedByCurrentUser ?? false
+      status: (dto.status as string) ?? '',
+      isReportedByCurrentUser: dto.isReportedByCurrentUser ?? false
     };
   }
 
