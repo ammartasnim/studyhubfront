@@ -1,12 +1,12 @@
+
 import { Component, inject, OnInit, signal, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { FormBuilder } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, Validators, FormBuilder } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 
-import { CommunityFacadeService, CommunityMemberUI, PostFacadeService, CommunityUI, PostUI } from '../../api/facades';
+import { CommunityFacadeService, CommunityMemberUI, PostFacadeService, CommunityUI, PostUI, CommentFacadeService, CommentUI } from '../../api/facades';
 import { UserContextService } from '../../user-context.service';
 import { CreatePostModalComponent } from './create-post';
 
@@ -15,6 +15,15 @@ const ALL_PERMISSIONS = [
   'VIEW_MEMBERS', 'BAN_MEMBER', 'WARN_MEMBER',
   'DELETE_POST', 'DELETE_COMMENT'
 ];
+
+const COMMENT_PAGE_SIZE = 5;
+
+interface CommentState {
+  items: CommentUI[];
+  page: number;
+  hasMore: boolean;
+  loading: boolean;
+}
 
 @Component({
   selector: 'app-community-detail',
@@ -27,26 +36,35 @@ const ALL_PERMISSIONS = [
 
       <!-- Back Button -->
       <button (click)="goBack()" class="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors font-medium w-fit">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
         Back to Communities
       </button>
 
+      <!-- Loading -->
       @if (loading()) {
         <div class="p-10 flex justify-center">
           <div class="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
         </div>
+
+      <!-- Error -->
       } @else if (error()) {
         <div class="p-10 text-center bg-white rounded-2xl border border-red-200">
           <h2 class="text-xl font-bold text-slate-900">Community Not Found</h2>
           <p class="mt-2 text-slate-500">{{ error() }}</p>
           <button (click)="goBack()" class="mt-6 px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl">Go Back</button>
         </div>
+
+      <!-- Main Content -->
       } @else if (community()) {
 
         <!-- Banner Header -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div class="h-32 bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500"></div>
           <div class="px-6 sm:px-8 pb-6">
+
+            <!-- Title + Actions Row -->
             <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12">
               <div class="flex items-end gap-5">
                 <div class="w-24 h-24 rounded-2xl bg-white border-4 border-white shadow-md flex items-center justify-center flex-shrink-0 text-3xl font-bold text-indigo-600">
@@ -54,19 +72,24 @@ const ALL_PERMISSIONS = [
                 </div>
                 <div class="mb-1">
                   <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">{{ community()!.title }}</h1>
-                  <p class="text-slate-500 font-medium mt-1">c/{{ community()!.title.toLowerCase().replace(' ', '') }} • {{ community()!.nbrMembers }} members</p>
+                  <p class="text-slate-500 font-medium mt-1">
+                    c/{{ community()!.title.toLowerCase().replace(' ', '') }} •
+                    {{ community()!.nbrMembers }} {{ community()!.nbrMembers === 1 ? 'member' : 'members' }}
+                  </p>
                 </div>
               </div>
+
+              <!-- Action Buttons -->
               <div class="flex gap-3 mb-1 flex-wrap">
                 @if (isOwner()) {
-                  <button (click)="activeTab.set('settings')" class="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors border border-slate-200">
+                  <button (click)="activeTab.set('settings'); loadSettingsData()" class="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors border border-slate-200">
                     ⚙ Settings
                   </button>
                   <button (click)="confirmDelete()" class="px-4 py-2 bg-red-50 text-red-600 font-semibold rounded-xl hover:bg-red-100 transition-colors border border-red-200">
                     Delete
                   </button>
                 } @else if (isModerator()) {
-                  <button (click)="activeTab.set('settings')" class="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors border border-slate-200">
+                  <button (click)="activeTab.set('settings'); loadSettingsData()" class="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors border border-slate-200">
                     ⚙ Mod Panel
                   </button>
                   @if (!isMember()) {
@@ -89,53 +112,94 @@ const ALL_PERMISSIONS = [
                 }
               </div>
             </div>
+
+            <!-- About + Members Preview -->
             <div class="mt-6">
+
+              <!-- Members Preview -->
+              @if (previewMembers().length > 0) {
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="flex -space-x-2">
+                    @for (m of previewMembers(); track m.userId) {
+                      @if (m.pfp) {
+                        <img
+                          [src]="'http://localhost:8081/uploads/' + m.pfp"
+                          [title]="m.fullName"
+                          class="w-8 h-8 rounded-full object-cover border-2 border-white"
+                        />
+                      } @else {
+                        <div
+                          class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold border-2 border-white select-none"
+                          [title]="m.fullName"
+                        >
+                          {{ getInitials(m.fullName) }}
+                        </div>
+                      }
+                    }
+                  </div>
+                  <button (click)="openMembersModal()" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
+                    View all {{ community()!.nbrMembers }} {{ community()!.nbrMembers === 1 ? 'member' : 'members' }}
+                  </button>
+                </div>
+              }
+
               <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2">About Community</h3>
               <p class="text-slate-700 leading-relaxed whitespace-pre-line">{{ community()!.description }}</p>
               @if (community()!.category) {
-                <span class="mt-2 inline-block text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ community()!.category }}</span>
+                <span class="mt-2 inline-block text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                  {{ community()!.category }}
+                </span>
               }
             </div>
           </div>
         </div>
 
-        <!-- Tabs -->
-        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-          <button (click)="activeTab.set('feed')" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors" [class.bg-white]="activeTab() === 'feed'" [class.text-slate-900]="activeTab() === 'feed'" [class.text-slate-500]="activeTab() !== 'feed'">Feed</button>
-          @if (isOwner() || isModerator()) {
-            <button (click)="activeTab.set('settings'); loadSettingsData()" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors" [class.bg-white]="activeTab() === 'settings'" [class.text-slate-900]="activeTab() === 'settings'" [class.text-slate-500]="activeTab() !== 'settings'">Settings</button>
-          }
-        </div>
-
-        <!-- Feed Tab -->
+        <!-- ==================== FEED TAB ==================== -->
         @if (activeTab() === 'feed') {
+
+          <!-- Create Post Bar -->
           @if (isMember() || isOwner() || isModerator()) {
-            <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center gap-4">
-              <div class="w-10 h-10 rounded-full bg-slate-200 flex-shrink-0"></div>
-              <input type="text" readonly (click)="openCreatePost()" placeholder="Create a post..." class="flex-1 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-full px-4 py-2.5 cursor-text text-slate-600 focus:outline-none transition-colors" />
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex-shrink-0 flex items-center justify-center text-white font-bold text-sm select-none">
+                {{ getInitials((userContext.user()?.firstName ?? '') + ' ' + (userContext.user()?.lastName ?? '')) }}
+              </div>
+              <button (click)="openCreatePost()" class="flex-1 text-left bg-slate-50 border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 rounded-full px-4 py-2.5 text-slate-400 hover:text-indigo-500 focus:outline-none transition-all duration-200 text-sm font-medium">
+                What's on your mind? Share with the community...
+              </button>
+              <button (click)="openCreatePost()" class="flex-shrink-0 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-full hover:bg-indigo-700 transition-colors shadow-sm">
+                Post
+              </button>
             </div>
           }
 
+          <!-- Posts -->
           <div class="flex flex-col gap-4">
             <h2 class="text-xl font-bold text-slate-900 px-1">Community Feed</h2>
+
             @if (postsLoading()) {
               <div class="p-10 flex justify-center">
                 <div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
               </div>
+
             } @else if (posts().length === 0) {
               <div class="bg-white rounded-2xl border border-slate-200 p-10 text-center">
                 <h3 class="text-lg font-semibold text-slate-900">No posts yet</h3>
                 <p class="text-slate-500 mt-1 mb-4">Be the first to share something!</p>
                 @if (isMember() || isOwner() || isModerator()) {
-                  <button (click)="openCreatePost()" class="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700">Create Post</button>
+                  <button (click)="openCreatePost()" class="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700">
+                    Create Post
+                  </button>
                 }
               </div>
+
             } @else {
               <div class="divide-y divide-slate-100 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 @for (post of posts(); track post.id) {
                   <article class="p-6 transition-colors hover:bg-slate-50">
+
+                    <!-- Post Header -->
                     <div class="flex items-start gap-3 mb-3">
-                      <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm select-none">
+                      <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm select-none flex-shrink-0">
                         {{ getInitials(post.authorFullName) }}
                       </div>
                       <div class="flex-1">
@@ -143,21 +207,36 @@ const ALL_PERMISSIONS = [
                           <p class="font-semibold text-slate-900 text-sm">{{ post.authorFullName }}</p>
                           <div class="flex items-center gap-2">
                             <span class="text-xs text-slate-400">{{ getTimeAgo(post.createdAt) }}</span>
-                            @if (canModerateContent()) {
-                              <button (click)="moderatorDeletePost(post.id)" class="text-red-400 hover:text-red-600 transition-colors" title="Moderator delete">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            @if (canModeratePost()) {
+                              <button (click)="moderatorDeletePost(post.id)" class="text-red-400 hover:text-red-600 transition-colors" title="Delete post">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
                               </button>
                             }
                           </div>
                         </div>
                       </div>
                     </div>
+
+                    <!-- Post Content -->
                     <h3 class="font-bold text-slate-900 mb-2">{{ post.title }}</h3>
                     <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{{ post.content }}</p>
+
+                    <!-- Post Images -->
                     @if (post.images.length > 0) {
-                      <div class="mt-3 rounded-xl overflow-hidden" [class.grid]="post.images.length > 1" [class.grid-cols-2]="post.images.length > 1" [class.gap-0.5]="post.images.length > 1">
+                      <div
+                        class="mt-3 rounded-xl overflow-hidden"
+                        [class.grid]="post.images.length > 1"
+                        [class.grid-cols-2]="post.images.length > 1"
+                        [class.gap-0.5]="post.images.length > 1"
+                      >
                         @for (img of post.images.slice(0, 4); track img; let i = $index) {
-                          <div class="relative bg-slate-100 overflow-hidden" [class.aspect-video]="post.images.length === 1" [class.aspect-square]="post.images.length > 1">
+                          <div
+                            class="relative bg-slate-100 overflow-hidden"
+                            [class.aspect-video]="post.images.length === 1"
+                            [class.aspect-square]="post.images.length > 1"
+                          >
                             <img [src]="'http://localhost:8081/uploads/' + img" [alt]="post.title" class="w-full h-full object-cover" />
                             @if (i === 3 && post.images.length > 4) {
                               <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -168,16 +247,132 @@ const ALL_PERMISSIONS = [
                         }
                       </div>
                     }
+
+                    <!-- Post Actions -->
                     <div class="mt-4 flex items-center gap-4">
-                      <button (click)="toggleLike(post)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" [class.text-rose-600]="post.isLiked" [class.bg-rose-50]="post.isLiked" [class.text-slate-600]="!post.isLiked" [class.hover:bg-slate-100]="!post.isLiked">
-                        <svg class="w-4 h-4" [attr.fill]="post.isLiked ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                      <button
+                        (click)="toggleLike(post)"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                        [class.text-rose-600]="post.isLiked"
+                        [class.bg-rose-50]="post.isLiked"
+                        [class.text-slate-600]="!post.isLiked"
+                      >
+                        <svg class="w-4 h-4" [attr.fill]="post.isLiked ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
                         {{ post.likeCount }}
                       </button>
-                      <span class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-600">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                      <button
+                        (click)="toggleComments(post.id)"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                        [class.text-indigo-600]="expandedPosts().has(post.id)"
+                        [class.bg-indigo-50]="expandedPosts().has(post.id)"
+                        [class.text-slate-600]="!expandedPosts().has(post.id)"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
                         {{ post.commentCount }}
-                      </span>
+                      </button>
                     </div>
+
+                    <!-- Comments Section -->
+                    @if (expandedPosts().has(post.id)) {
+                      <div class="mt-4 border-t border-slate-100 pt-4">
+
+                        @if (commentsLoadingFor(post.id)) {
+                          <div class="flex items-center gap-2 text-sm text-slate-500 py-2">
+                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Loading comments...
+                          </div>
+                        } @else {
+                          @let postComments = getComments(post.id);
+
+                          @if (postComments.length === 0) {
+                            <p class="text-sm text-slate-400 text-center py-2 mb-3">No comments yet. Be the first!</p>
+                          }
+
+                          @for (comment of postComments; track comment.id) {
+                            <div class="flex items-start gap-2 mb-3">
+                              <!-- Comment Avatar -->
+                              @if (comment.authorPfp) {
+                                <img [src]="'http://localhost:8081/uploads/' + comment.authorPfp" class="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                              } @else {
+                                <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold flex-shrink-0 select-none">
+                                  {{ getInitials(comment.authorFullName ?? '?') }}
+                                </div>
+                              }
+
+                              <!-- Comment Bubble -->
+                              <div class="flex-1">
+                                <div class="bg-white rounded-xl px-3 py-2 text-sm border border-slate-100 shadow-sm">
+                                  <div class="flex items-center justify-between gap-2 mb-0.5">
+                                    <p class="font-semibold text-slate-800 text-xs">{{ comment.authorFullName }}</p>
+                                    <div class="flex items-center gap-2">
+                                      @if (comment.createdAt) {
+                                        <span class="text-xs text-slate-400">{{ getTimeAgo(comment.createdAt) }}</span>
+                                      }
+                                      @if (isOwnComment(comment.userId)) {
+                                        <button (click)="deleteComment(post.id, comment.id)" class="text-xs text-red-400 hover:text-red-600 transition-colors" title="Delete comment">
+                                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                          </svg>
+                                        </button>
+                                      } @else if (canModerateComment()) {
+                                        <button (click)="moderatorDeleteComment(post.id, comment.id)" class="text-xs text-orange-400 hover:text-orange-600 transition-colors" title="Moderator delete">
+                                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                          </svg>
+                                        </button>
+                                      }
+                                    </div>
+                                  </div>
+                                  <p class="text-slate-700">{{ comment.content }}</p>
+                                </div>
+                              </div>
+                            </div>
+                          }
+
+                          <!-- Load More Comments -->
+                          @if (commentHasMore(post.id)) {
+                            <div class="text-center mt-2 mb-3">
+                              <button (click)="loadMoreComments(post.id)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
+                                Load more comments
+                              </button>
+                            </div>
+                          }
+
+                          <!-- Add Comment -->
+                          <div class="flex items-center gap-2 mt-3">
+                            <input
+                              type="text"
+                              placeholder="Write a comment..."
+                              [value]="getCommentInput(post.id)"
+                              (input)="setCommentInput(post.id, $any($event.target).value)"
+                              (keyup.enter)="submitComment(post.id)"
+                              class="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                            />
+                            <button
+                              (click)="submitComment(post.id)"
+                              [disabled]="!getCommentInput(post.id).trim() || submittingComments().has(post.id)"
+                              class="px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 transition-colors flex items-center justify-center min-w-[52px]"
+                            >
+                              @if (submittingComments().has(post.id)) {
+                                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                              } @else {
+                                Post
+                              }
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    }
                   </article>
                 }
               </div>
@@ -185,11 +380,11 @@ const ALL_PERMISSIONS = [
           </div>
         }
 
-        <!-- Settings Tab -->
+        <!-- ==================== SETTINGS TAB ==================== -->
         @if (activeTab() === 'settings') {
           <div class="flex flex-col gap-6">
 
-            <!-- Edit Community Info — owner or EDIT_COMMUNITY permission -->
+            <!-- Community Info -->
             @if (isOwner() || hasPermission('EDIT_COMMUNITY')) {
               <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                 <h3 class="text-lg font-bold text-slate-900 mb-4">Community Info</h3>
@@ -220,12 +415,11 @@ const ALL_PERMISSIONS = [
               </div>
             }
 
-            <!-- Moderator Management — owner only -->
+            <!-- Moderators -->
             @if (isOwner() || hasPermission('ADD_MODERATOR')) {
               <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                 <h3 class="text-lg font-bold text-slate-900 mb-4">Moderators</h3>
 
-                <!-- Current moderators -->
                 @if (community()!.moderators && community()!.moderators!.length > 0) {
                   <div class="space-y-3 mb-6">
                     @for (mod of community()!.moderators!; track mod.userId) {
@@ -249,18 +443,23 @@ const ALL_PERMISSIONS = [
                   <p class="text-sm text-slate-400 mb-4">No moderators yet.</p>
                 }
 
-                <!-- Add moderator -->
                 @if (isOwner()) {
                   <div class="border-t border-slate-100 pt-4">
                     <h4 class="text-sm font-bold text-slate-700 mb-3">Add Moderator</h4>
-                    <div class="flex gap-2 mb-3">
-                      <input type="text" [(ngModel)]="modSearchQuery"  (input)="searchUsers()" placeholder="Search by username..." class="flex-1 px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-                    </div>
+                    <input
+                      type="text"
+                      [(ngModel)]="modSearchQuery"
+                      (input)="searchUsers()"
+                      placeholder="Search by username..."
+                      class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-3"
+                    />
                     @if (userSearchResults().length > 0) {
                       <div class="border border-slate-200 rounded-xl overflow-hidden mb-3">
                         @for (user of userSearchResults(); track user.id) {
                           <button (click)="selectUserForMod(user)" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-50 transition-colors text-left border-b border-slate-100 last:border-0">
-                            <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">{{ getInitials(user.firstName + ' ' + user.lastName) }}</div>
+                            <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                              {{ getInitials(user.firstName + ' ' + user.lastName) }}
+                            </div>
                             <div>
                               <p class="text-sm font-medium text-slate-900">{{ user.firstName }} {{ user.lastName }}</p>
                               <p class="text-xs text-slate-500">&#64;{{ user.username }}</p>
@@ -292,7 +491,7 @@ const ALL_PERMISSIONS = [
               </div>
             }
 
-            <!-- Member Management — owner or VIEW_MEMBERS permission -->
+            <!-- Members List -->
             @if (isOwner() || hasPermission('VIEW_MEMBERS')) {
               <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                 <h3 class="text-lg font-bold text-slate-900 mb-4">Members</h3>
@@ -307,9 +506,13 @@ const ALL_PERMISSIONS = [
                     @for (member of members(); track member.userId) {
                       <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
                         <div class="flex items-center gap-3">
-                          <div class="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold">
-                            {{ getInitials(member.fullName) }}
-                          </div>
+                          @if (member.pfp) {
+                            <img [src]="'http://localhost:8081/uploads/' + member.pfp" class="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                          } @else {
+                            <div class="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                              {{ getInitials(member.fullName) }}
+                            </div>
+                          }
                           <div>
                             <p class="text-sm font-semibold text-slate-900">{{ member.fullName }}</p>
                             <div class="flex items-center gap-2">
@@ -318,16 +521,18 @@ const ALL_PERMISSIONS = [
                                 <span class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">Mod</span>
                               }
                               @if (member.warningCount > 0) {
-                                <span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">{{ member.warningCount }} warning{{ member.warningCount > 1 ? 's' : '' }}</span>
+                                <span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                                  {{ member.warningCount }} warning{{ member.warningCount > 1 ? 's' : '' }}
+                                </span>
                               }
                             </div>
                           </div>
                         </div>
                         <div class="flex items-center gap-2">
-                          @if (isOwner() || hasPermission('WARN_MEMBER')) {
+                          @if (canWarnMember(member)) {
                             <button (click)="openWarnModal(member)" class="text-xs px-2 py-1 text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors border border-amber-200">Warn</button>
                           }
-                          @if (isOwner() || hasPermission('BAN_MEMBER')) {
+                          @if (canBanMember(member)) {
                             <button (click)="openBanModal(member)" class="text-xs px-2 py-1 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors border border-red-200">Ban</button>
                           }
                         </div>
@@ -338,15 +543,77 @@ const ALL_PERMISSIONS = [
               </div>
             }
 
-            <!-- Transfer Ownership — owner only -->
+            <!-- Banned Members -->
+            @if (isOwner() || hasPermission('BAN_MEMBER')) {
+              <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <h3 class="text-lg font-bold text-slate-900 mb-4">Banned Members</h3>
+                @if (bannedLoading()) {
+                  <div class="flex justify-center py-4">
+                    <div class="w-6 h-6 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                  </div>
+                } @else if (bannedMembers().length === 0) {
+                  <p class="text-sm text-slate-400">No banned members.</p>
+                } @else {
+                  <div class="space-y-3">
+                    @for (member of bannedMembers(); track member.userId) {
+                      <div class="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
+                        <div class="flex items-center gap-3">
+                          @if (member.pfp) {
+                            <img [src]="'http://localhost:8081/uploads/' + member.pfp" class="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                          } @else {
+                            <div class="w-9 h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                              {{ getInitials(member.fullName) }}
+                            </div>
+                          }
+                          <div>
+                            <p class="text-sm font-semibold text-slate-900">{{ member.fullName }}</p>
+                            <p class="text-xs text-slate-500">&#64;{{ member.username }}</p>
+                          </div>
+                        </div>
+                        <button (click)="unbanMember(member.userId)" class="text-xs px-2 py-1 text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors border border-green-200">Unban</button>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Danger Zone — Transfer Ownership -->
             @if (isOwner()) {
               <div class="bg-white rounded-2xl border border-red-100 shadow-sm p-6">
                 <h3 class="text-lg font-bold text-red-700 mb-2">Danger Zone</h3>
                 <p class="text-sm text-slate-500 mb-4">Transfer ownership to another member. You will lose owner privileges.</p>
-                <div class="flex gap-2">
-                  <input type="number" [(ngModel)]="transferToUserId"  placeholder="User ID to transfer to" class="flex-1 px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-red-400 focus:outline-none" />
-                  <button (click)="transferOwnership()" class="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors">Transfer</button>
-                </div>
+                <input
+                  type="text"
+                  [(ngModel)]="transferSearchQuery"
+                  (input)="searchTransferUsers()"
+                  placeholder="Search by username..."
+                  class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-red-400 focus:outline-none mb-3"
+                />
+                @if (transferSearchResults().length > 0) {
+                  <div class="border border-slate-200 rounded-xl overflow-hidden mb-3">
+                    @for (user of transferSearchResults(); track user.id) {
+                      <button (click)="selectTransferUser(user)" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-50 transition-colors text-left border-b border-slate-100 last:border-0">
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          {{ getInitials(user.firstName + ' ' + user.lastName) }}
+                        </div>
+                        <div>
+                          <p class="text-sm font-medium text-slate-900">{{ user.firstName }} {{ user.lastName }}</p>
+                          <p class="text-xs text-slate-500">&#64;{{ user.username }}</p>
+                        </div>
+                      </button>
+                    }
+                  </div>
+                }
+                @if (selectedTransferUser()) {
+                  <div class="bg-red-50 border border-red-200 rounded-xl p-3 mb-3">
+                    <p class="text-sm font-semibold text-red-900">Transfer to: {{ selectedTransferUser()!.firstName }} {{ selectedTransferUser()!.lastName }}</p>
+                    <p class="text-xs text-red-600">&#64;{{ selectedTransferUser()!.username }}</p>
+                  </div>
+                  <button (click)="transferOwnership()" class="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors">
+                    Confirm Transfer
+                  </button>
+                }
               </div>
             }
 
@@ -354,6 +621,83 @@ const ALL_PERMISSIONS = [
         }
       }
     </div>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Members Modal -->
+    @if (showMembersModal()) {
+      <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
+          <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <h2 class="text-lg font-bold text-slate-900">
+              Members · {{ community()!.nbrMembers }}
+            </h2>
+            <button (click)="showMembersModal.set(false)" class="text-slate-400 hover:text-slate-600">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="overflow-y-auto p-4">
+  @if (allMembersLoading()) {
+    <div class="flex justify-center py-6">
+      <div class="w-6 h-6 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+    </div>
+  } @else if (allMembersForModal().length === 0) {
+    <p class="text-sm text-slate-400 text-center py-4">No members found.</p>
+  } @else {
+    <div class="space-y-3">
+      @for (member of allMembersForModal(); track member.userId) {
+        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+          @if (member.pfp) {
+            <img [src]="'http://localhost:8081/uploads/' + member.pfp" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+          } @else {
+            <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm select-none flex-shrink-0">
+              {{ getInitials(member.fullName) }}
+            </div>
+          }
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-slate-900 truncate">{{ member.fullName }}</p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <p class="text-xs text-slate-500">&#64;{{ member.username }}</p>
+              @if (member.userId === community()!.ownerId) {
+                <span class="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">Owner</span>
+              }
+              @if (member.isModerator) {
+                <span class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">Mod</span>
+              }
+            </div>
+          </div>
+          <span class="text-xs text-slate-400 flex-shrink-0">Lv {{ member.level }}</span>
+        </div>
+      }
+    </div>
+
+    <!-- Load More -->
+    @if ( allMembersPage() < allMembersTotalPages() - 1) {
+      <div class="mt-4 text-center">
+        <button
+          (click)="loadMoreModalMembers()"
+          [disabled]="allMembersLoadingMore()"
+          class="px-4 py-2 text-sm text-indigo-600 font-medium hover:text-indigo-700 transition-colors disabled:opacity-50"
+        >
+          @if (allMembersLoadingMore()) {
+            <svg class="w-4 h-4 animate-spin inline mr-1" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            Loading...
+          } @else {
+            Load more members
+          }
+        </button>
+      </div>
+    }
+  }
+</div>
+        </div>
+      </div>
+    }
 
     <!-- Delete Confirmation Modal -->
     @if (showDeleteModal()) {
@@ -376,8 +720,8 @@ const ALL_PERMISSIONS = [
       <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
           <h2 class="text-xl font-bold text-slate-900 mb-2">Ban {{ banTarget()?.fullName }}?</h2>
-          <p class="text-sm text-slate-500 mb-4">They will be removed from the community and cannot rejoin.</p>
-          <textarea [(ngModel)]="banReason"  placeholder="Reason for ban..." rows="3" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-red-400 focus:outline-none mb-4 resize-none"></textarea>
+          <p class="text-sm text-slate-500 mb-4">They will be removed and cannot rejoin.</p>
+          <textarea [(ngModel)]="banReason" placeholder="Reason for ban..." rows="3" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-red-400 focus:outline-none mb-4 resize-none"></textarea>
           <div class="flex gap-3">
             <button (click)="showBanModal.set(false)" class="flex-1 px-4 py-2 border rounded-xl font-semibold hover:bg-slate-50">Cancel</button>
             <button (click)="executeBan()" [disabled]="actionLoading()" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 disabled:opacity-50">
@@ -393,7 +737,7 @@ const ALL_PERMISSIONS = [
       <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
           <h2 class="text-xl font-bold text-slate-900 mb-2">Warn {{ warnTarget()?.fullName }}?</h2>
-          <p class="text-sm text-slate-500 mb-4">They will receive a warning. After 3 warnings they will be auto-banned.</p>
+          <p class="text-sm text-slate-500 mb-4">After 3 warnings they will be auto-banned.</p>
           <textarea [(ngModel)]="warnReason" placeholder="Reason for warning..." rows="3" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none mb-4 resize-none"></textarea>
           <div class="flex gap-3">
             <button (click)="showWarnModal.set(false)" class="flex-1 px-4 py-2 border rounded-xl font-semibold hover:bg-slate-50">Cancel</button>
@@ -413,36 +757,69 @@ export class CommunityDetailComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly communityFacade = inject(CommunityFacadeService);
   private readonly postFacade = inject(PostFacadeService);
-  private readonly userContext = inject(UserContextService);
+  private readonly commentFacade = inject(CommentFacadeService);
+  readonly userContext = inject(UserContextService);
   private readonly http = inject(HttpClient);
   private readonly fb = inject(FormBuilder);
 
+  // Core state
   readonly communityId = signal<number>(0);
   readonly community = signal<CommunityUI | null>(null);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  readonly activeTab = signal<'feed' | 'settings'>('feed');
+  private readonly _isMember = signal(false);
+
+  // Posts
   readonly posts = signal<PostUI[]>([]);
   readonly postsLoading = signal(true);
-  readonly activeTab = signal<'feed' | 'settings'>('feed');
+
+  // Comments
+  private readonly commentStates = signal<Map<number, CommentState>>(new Map());
+  private readonly commentInputs = signal<Map<number, string>>(new Map());
+  readonly expandedPosts = signal<Set<number>>(new Set());
+  readonly submittingComments = signal<Set<number>>(new Set());
+
+  // Members
   readonly members = signal<CommunityMemberUI[]>([]);
   readonly membersLoading = signal(false);
-  readonly savingEdit = signal(false);
+  readonly previewMembers = signal<CommunityMemberUI[]>([]);
+  readonly bannedMembers = signal<CommunityMemberUI[]>([]);
+  readonly bannedLoading = signal(false);
+
+  // Members Modal
+ readonly showMembersModal = signal(false);
+readonly allMembersForModal = signal<CommunityMemberUI[]>([]);
+readonly allMembersLoading = signal(false);
+readonly allMembersPage = signal(0);
+readonly allMembersTotalPages = signal(0);
+readonly allMembersLoadingMore = signal(false);
+
+  // Moderator Management
+  readonly userSearchResults = signal<any[]>([]);
+  readonly selectedModUser = signal<any | null>(null);
+  readonly selectedPermissions = signal<Set<string>>(new Set());
+  readonly addingMod = signal(false);
+
+  // Transfer Ownership
+  readonly transferSearchResults = signal<any[]>([]);
+  readonly selectedTransferUser = signal<any | null>(null);
+
+  // Modals
   readonly showDeleteModal = signal(false);
   readonly deletingCommunity = signal(false);
-  readonly addingMod = signal(false);
-  readonly actionLoading = signal(false);
   readonly showBanModal = signal(false);
   readonly showWarnModal = signal(false);
   readonly banTarget = signal<CommunityMemberUI | null>(null);
   readonly warnTarget = signal<CommunityMemberUI | null>(null);
-  readonly userSearchResults = signal<any[]>([]);
-  readonly selectedModUser = signal<any | null>(null);
-  readonly selectedPermissions = signal<Set<string>>(new Set());
+  readonly actionLoading = signal(false);
+  readonly savingEdit = signal(false);
 
+  // Form inputs
   banReason = '';
   warnReason = '';
   modSearchQuery = '';
-  transferToUserId: number | null = null;
+  transferSearchQuery = '';
   allPermissions = ALL_PERMISSIONS;
 
   readonly editForm = this.fb.nonNullable.group({
@@ -451,6 +828,7 @@ export class CommunityDetailComponent implements OnInit {
     category: ['']
   });
 
+  // Computed
   readonly isOwner = computed(() => {
     const user = this.userContext.user();
     const comm = this.community();
@@ -465,16 +843,11 @@ export class CommunityDetailComponent implements OnInit {
     return (comm.moderators ?? []).some(m => m.userId === user.id);
   });
 
-  readonly isMember = computed(() => {
-    // We track this via a separate signal since CommunityUI doesn't include membership
-    return this._isMember();
-  });
+  readonly isMember = computed(() => this._isMember());
+  readonly canModeratePost = computed(() => this.isOwner() || this.hasPermission('DELETE_POST'));
+  readonly canModerateComment = computed(() => this.isOwner() || this.hasPermission('DELETE_COMMENT'));
 
-  private readonly _isMember = signal(false);
-
-  readonly canModerateContent = computed(() => {
-    return this.isOwner() || this.hasPermission('DELETE_POST');
-  });
+  // ==================== PERMISSION HELPERS ====================
 
   hasPermission(perm: string): boolean {
     const user = this.userContext.user();
@@ -483,6 +856,55 @@ export class CommunityDetailComponent implements OnInit {
     const mod = (comm.moderators ?? []).find(m => m.userId === user.id);
     return mod?.permissions?.includes(perm) ?? false;
   }
+
+  canBanMember(member: CommunityMemberUI): boolean {
+    const user = this.userContext.user();
+    if (!user) return false;
+    if (member.userId === user.id) return false;
+    if (member.userId === this.community()?.ownerId) return false;
+    if (this.isOwner()) return true;
+    if (member.isModerator) return false;
+    return this.hasPermission('BAN_MEMBER');
+  }
+
+  canWarnMember(member: CommunityMemberUI): boolean {
+    const user = this.userContext.user();
+    if (!user) return false;
+    if (member.userId === user.id) return false;
+    if (member.userId === this.community()?.ownerId) return false;
+    if (this.isOwner()) return true;
+    if (member.isModerator) return false;
+    return this.hasPermission('WARN_MEMBER');
+  }
+
+  isOwnComment(commentUserId: number | undefined): boolean {
+    const user = this.userContext.user();
+    return !!user && !!commentUserId && user.id === commentUserId;
+  }
+
+  // ==================== COMMENT HELPERS ====================
+
+  getComments(postId: number): CommentUI[] {
+    return this.commentStates().get(postId)?.items ?? [];
+  }
+
+  commentsLoadingFor(postId: number): boolean {
+    return this.commentStates().get(postId)?.loading ?? false;
+  }
+
+  commentHasMore(postId: number): boolean {
+    return this.commentStates().get(postId)?.hasMore ?? false;
+  }
+
+  getCommentInput(postId: number): string {
+    return this.commentInputs().get(postId) ?? '';
+  }
+
+  setCommentInput(postId: number, value: string): void {
+    this.commentInputs.update(m => new Map(m).set(postId, value));
+  }
+
+  // ==================== LIFECYCLE ====================
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
@@ -496,6 +918,8 @@ export class CommunityDetailComponent implements OnInit {
       }
     });
   }
+
+  // ==================== DATA LOADING ====================
 
   async loadData(id: number) {
     this.loading.set(true);
@@ -511,6 +935,7 @@ export class CommunityDetailComponent implements OnInit {
     } finally {
       this.loading.set(false);
     }
+    await this.loadPreviewMembers(id);
   }
 
   async checkMembership(communityId: number) {
@@ -534,6 +959,15 @@ export class CommunityDetailComponent implements OnInit {
     }
   }
 
+  async loadPreviewMembers(communityId: number): Promise<void> {
+    try {
+      const list = await firstValueFrom(this.communityFacade.getMembersPreview(communityId));
+      this.previewMembers.set(list);
+    } catch {
+      this.previewMembers.set([]);
+    }
+  }
+
   async loadSettingsData() {
     if (this.isOwner() || this.hasPermission('VIEW_MEMBERS')) {
       this.membersLoading.set(true);
@@ -546,7 +980,61 @@ export class CommunityDetailComponent implements OnInit {
         this.membersLoading.set(false);
       }
     }
+    await this.loadBannedMembers();
   }
+
+  async loadBannedMembers(): Promise<void> {
+    if (!this.isOwner() && !this.hasPermission('BAN_MEMBER')) return;
+    this.bannedLoading.set(true);
+    try {
+      const list = await firstValueFrom(this.communityFacade.getBannedMembers(this.communityId()));
+      this.bannedMembers.set(list);
+    } catch (err) {
+      console.error('Failed to load banned members', err);
+    } finally {
+      this.bannedLoading.set(false);
+    }
+  }
+
+  // ==================== MEMBERS MODAL ====================
+
+async openMembersModal(): Promise<void> {
+    this.showMembersModal.set(true);
+    this.allMembersPage.set(0);
+    this.allMembersForModal.set([]);
+    this.allMembersLoading.set(true);
+    try {
+        const result = await firstValueFrom(this.communityFacade.getMembersPublic(this.communityId(), 0, 5));
+        this.allMembersForModal.set(result.items);
+        this.allMembersTotalPages.set(result.totalPages);
+        console.log('totalPages:', result.totalPages, 'totalItems:', result.totalItems, 'items:', result.items.length);
+    } catch (err) {
+        console.error('Failed to load members for modal', err);
+    } finally {
+        this.allMembersLoading.set(false);
+    }
+}
+// ================= LOAD MORE MEMEBERS ============== //
+async loadMoreModalMembers(): Promise<void> {
+    if (this.allMembersLoadingMore()) return;
+    this.allMembersLoadingMore.set(true);
+    try {
+        const nextPage = this.allMembersPage() + 1;
+        console.log('Loading page:', nextPage);
+        const result = await firstValueFrom(this.communityFacade.getMembersPublic(this.communityId(), nextPage, 5));
+        console.log('Got items:', result.items.length, 'items:', result.items);
+        const current = this.allMembersForModal();
+        this.allMembersForModal.set([...current, ...result.items]);
+        this.allMembersPage.set(nextPage);
+        this.allMembersTotalPages.set(result.totalPages);
+    } catch (err) {
+        console.error('Failed to load more members', err);
+    } finally {
+        this.allMembersLoadingMore.set(false);
+    }
+}
+
+  // ==================== JOIN / LEAVE ====================
 
   async joinCommunity() {
     try {
@@ -568,6 +1056,135 @@ export class CommunityDetailComponent implements OnInit {
     }
   }
 
+  // ==================== COMMENTS ====================
+
+  toggleComments(postId: number): void {
+    this.expandedPosts.update(set => {
+      const next = new Set(set);
+      if (next.has(postId)) {
+        next.delete(postId);
+        this.commentStates.update(m => { const n = new Map(m); n.delete(postId); return n; });
+      } else {
+        next.add(postId);
+        this.loadComments(postId);
+      }
+      return next;
+    });
+  }
+
+  async loadComments(postId: number): Promise<void> {
+    this.commentStates.update(m => new Map(m).set(postId, { items: [], page: 0, hasMore: false, loading: true }));
+    try {
+      const result = await firstValueFrom(this.commentFacade.getByPostPaged(postId, 0, COMMENT_PAGE_SIZE));
+      this.commentStates.update(m => new Map(m).set(postId, {
+        items: result.items,
+        page: 0,
+        hasMore: result.totalItems > result.items.length,
+        loading: false
+      }));
+    } catch (err) {
+      console.error('Failed to load comments:', err);
+      this.commentStates.update(m => new Map(m).set(postId, { items: [], page: 0, hasMore: false, loading: false }));
+    }
+  }
+
+  async loadMoreComments(postId: number): Promise<void> {
+    const state = this.commentStates().get(postId);
+    if (!state || state.loading || !state.hasMore) return;
+    this.commentStates.update(m => new Map(m).set(postId, { ...state, loading: true }));
+    try {
+      const nextPage = state.page + 1;
+      const result = await firstValueFrom(this.commentFacade.getByPostPaged(postId, nextPage, COMMENT_PAGE_SIZE));
+      const existingIds = new Set(state.items.map(c => c.id));
+      const newItems = result.items.filter(c => !existingIds.has(c.id));
+      this.commentStates.update(m => new Map(m).set(postId, {
+        items: [...state.items, ...newItems],
+        page: nextPage,
+        hasMore: state.items.length + newItems.length < result.totalItems,
+        loading: false
+      }));
+    } catch (err) {
+      console.error('Failed to load more comments:', err);
+      this.commentStates.update(m => new Map(m).set(postId, { ...state, loading: false }));
+    }
+  }
+
+  async submitComment(postId: number): Promise<void> {
+    const content = this.getCommentInput(postId).trim();
+    if (!content) return;
+    this.submittingComments.update(s => new Set(s).add(postId));
+    try {
+      const comment = await firstValueFrom(this.commentFacade.create({ content, postId }));
+      const state = this.commentStates().get(postId);
+      this.commentStates.update(m => new Map(m).set(postId, {
+        ...(state ?? { page: 0, hasMore: false, loading: false }),
+        items: [...(state?.items ?? []), comment]
+      }));
+      this.posts.update(list => list.map(p => p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p));
+      this.commentInputs.update(m => { const n = new Map(m); n.delete(postId); return n; });
+    } catch (err) {
+      console.error('Failed to submit comment:', err);
+    } finally {
+      this.submittingComments.update(s => { const n = new Set(s); n.delete(postId); return n; });
+    }
+  }
+
+  async deleteComment(postId: number, commentId: number): Promise<void> {
+    try {
+      await firstValueFrom(this.commentFacade.delete(commentId));
+      const state = this.commentStates().get(postId);
+      if (state) {
+        this.commentStates.update(m => new Map(m).set(postId, {
+          ...state, items: state.items.filter(c => c.id !== commentId)
+        }));
+      }
+      this.posts.update(list => list.map(p => p.id === postId ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p));
+    } catch (err) {
+      console.error('Failed to delete comment:', err);
+    }
+  }
+
+  async moderatorDeleteComment(postId: number, commentId: number): Promise<void> {
+    if (!confirm('Delete this comment as moderator?')) return;
+    try {
+      await firstValueFrom(this.http.delete(`http://localhost:8081/api/comments/${commentId}/moderate`));
+      const state = this.commentStates().get(postId);
+      if (state) {
+        this.commentStates.update(m => new Map(m).set(postId, {
+          ...state, items: state.items.filter(c => c.id !== commentId)
+        }));
+      }
+      this.posts.update(list => list.map(p => p.id === postId ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p));
+    } catch (err: any) {
+      alert(err?.message || 'Failed to delete comment');
+    }
+  }
+
+  // ==================== POSTS ====================
+
+  async toggleLike(post: PostUI) {
+    try {
+      await firstValueFrom(this.postFacade.toggleLike(post.id));
+      post.isLiked = !post.isLiked;
+      post.likeCount += post.isLiked ? 1 : -1;
+      this.posts.set([...this.posts()]);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async moderatorDeletePost(postId: number) {
+    if (!confirm('Delete this post as moderator?')) return;
+    try {
+      await firstValueFrom(this.http.delete(`http://localhost:8081/api/posts/${postId}/moderate`));
+      this.posts.update(list => list.filter(p => p.id !== postId));
+    } catch (err: any) {
+      alert(err?.message || 'Failed to delete post');
+    }
+  }
+
+  // ==================== SETTINGS ====================
+
   async saveEdit() {
     if (this.editForm.invalid) return;
     this.savingEdit.set(true);
@@ -581,6 +1198,8 @@ export class CommunityDetailComponent implements OnInit {
       this.savingEdit.set(false);
     }
   }
+
+  // ==================== MODERATOR MANAGEMENT ====================
 
   async searchUsers() {
     if (!this.modSearchQuery.trim() || this.modSearchQuery.length < 2) {
@@ -616,9 +1235,7 @@ export class CommunityDetailComponent implements OnInit {
     if (!user) return;
     this.addingMod.set(true);
     try {
-      await firstValueFrom(this.communityFacade.addModerator(
-        this.communityId(), user.id, [...this.selectedPermissions()]
-      ));
+      await firstValueFrom(this.communityFacade.addModerator(this.communityId(), user.id, [...this.selectedPermissions()]));
       await this.loadData(this.communityId());
       this.selectedModUser.set(null);
       this.selectedPermissions.set(new Set());
@@ -640,6 +1257,45 @@ export class CommunityDetailComponent implements OnInit {
       alert(err?.message || 'Failed to remove moderator');
     }
   }
+
+  // ==================== TRANSFER OWNERSHIP ====================
+
+  async searchTransferUsers() {
+    if (!this.transferSearchQuery.trim() || this.transferSearchQuery.length < 2) {
+      this.transferSearchResults.set([]);
+      return;
+    }
+    try {
+      const result: any = await firstValueFrom(
+        this.http.get(`http://localhost:8081/api/clients/search?username=${encodeURIComponent(this.transferSearchQuery)}&size=5`)
+      );
+      this.transferSearchResults.set(result.content ?? []);
+    } catch {
+      this.transferSearchResults.set([]);
+    }
+  }
+
+  selectTransferUser(user: any) {
+    this.selectedTransferUser.set(user);
+    this.transferSearchResults.set([]);
+    this.transferSearchQuery = user.username;
+  }
+
+  async transferOwnership() {
+    const target = this.selectedTransferUser();
+    if (!target) return;
+    if (!confirm(`Transfer ownership to ${target.firstName} ${target.lastName}? You will lose owner privileges.`)) return;
+    try {
+      await firstValueFrom(this.communityFacade.transferOwnership(this.communityId(), target.id));
+      await this.loadData(this.communityId());
+      this.selectedTransferUser.set(null);
+      this.transferSearchQuery = '';
+    } catch (err: any) {
+      alert(err?.message || 'Failed to transfer ownership');
+    }
+  }
+
+  // ==================== BAN / WARN ====================
 
   openBanModal(member: CommunityMemberUI) {
     this.banTarget.set(member);
@@ -683,26 +1339,16 @@ export class CommunityDetailComponent implements OnInit {
     }
   }
 
-  async moderatorDeletePost(postId: number) {
-    if (!confirm('Delete this post as moderator?')) return;
+  async unbanMember(userId: number): Promise<void> {
     try {
-      await firstValueFrom(this.http.delete(`http://localhost:8081/api/posts/${postId}/moderate`));
-      this.posts.update(list => list.filter(p => p.id !== postId));
+      await firstValueFrom(this.communityFacade.unbanMember(this.communityId(), userId));
+      this.bannedMembers.update(list => list.filter(m => m.userId !== userId));
     } catch (err: any) {
-      alert(err?.message || 'Failed to delete post');
+      alert(err?.message || 'Failed to unban member');
     }
   }
 
-  async transferOwnership() {
-    if (!this.transferToUserId) return;
-    if (!confirm('Transfer ownership? You will lose owner privileges.')) return;
-    try {
-      await firstValueFrom(this.communityFacade.transferOwnership(this.communityId(), this.transferToUserId));
-      await this.loadData(this.communityId());
-    } catch (err: any) {
-      alert(err?.message || 'Failed to transfer ownership');
-    }
-  }
+  // ==================== DELETE COMMUNITY ====================
 
   confirmDelete() { this.showDeleteModal.set(true); }
   closeDeleteModal() { this.showDeleteModal.set(false); }
@@ -719,18 +1365,11 @@ export class CommunityDetailComponent implements OnInit {
     }
   }
 
+  // ==================== UTILS ====================
+
   goBack() { this.router.navigate(['/dashboard/client/communities']); }
   openCreatePost() { this.createPostModal.open(); }
   onPostCreated() { this.loadPosts(this.communityId()); }
-
-  async toggleLike(post: PostUI) {
-    try {
-      await firstValueFrom(this.postFacade.toggleLike(post.id));
-      post.isLiked = !post.isLiked;
-      post.likeCount += post.isLiked ? 1 : -1;
-      this.posts.set([...this.posts()]);
-    } catch (e) { console.error(e); }
-  }
 
   getInitials(name: string): string {
     if (!name?.trim()) return '?';
@@ -739,7 +1378,7 @@ export class CommunityDetailComponent implements OnInit {
     return name.substring(0, 2).toUpperCase();
   }
 
-  getTimeAgo(date: Date | null): string {
+  getTimeAgo(date: Date | string | null | undefined): string {
     if (!date) return '';
     const diff = Date.now() - new Date(date).getTime();
     const mins = Math.floor(diff / 60000);
