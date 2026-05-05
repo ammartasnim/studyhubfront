@@ -73,6 +73,10 @@ export const routes: Routes = [
       {
         path: 'settings',
         loadComponent: () => import('./dashboard/client/settings').then((m) => m.SettingsComponent)
+      },
+      {
+        path: 'chat',
+        loadComponent: () => import('./dashboard/client/chat').then((m) => m.ChatComponent)
       }
     ]
   },
@@ -193,11 +197,15 @@ export const routes: Routes = [
          path: 'focus-room',
          component:FocusTimerComponent
        },
-       {
-         path: 'settings',
-         loadComponent: () => import('./dashboard/client/settings').then((m) => m.SettingsComponent)
-        }
-        ,
+        {
+          path: 'settings',
+          loadComponent: () => import('./dashboard/client/settings').then((m) => m.SettingsComponent)
+         },
+         {
+          path: 'chat',
+          loadComponent: () => import('./dashboard/client/chat').then((m) => m.ChatComponent)
+         }
+         ,
         {
          path: 'suggestedFriends',
          loadComponent: () => import('./dashboard/client/suggestedFriends').then((m) => m.SuggestedFriendsComponent)

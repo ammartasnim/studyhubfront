@@ -21,10 +21,10 @@ const AUTH_TOKEN_KEY = 'token';
     AiAssistant,
   ],
   template: `
-    <div class="min-h-screen bg-slate-50">
-      <div class="w-full px-4 py-6">
+    <div class="h-screen bg-slate-50 overflow-hidden">
+      <div class="w-full px-4 py-6 h-full">
         <div
-          class="grid grid-cols-1 gap-8"
+          class="grid grid-cols-1 gap-8 h-full items-stretch"
           [ngClass]="isFocusRoom()
             ? 'lg:grid-cols-[280px_1fr]'
             : 'lg:grid-cols-[280px_1fr] xl:grid-cols-[280px_1fr_320px]'"
@@ -38,8 +38,10 @@ const AUTH_TOKEN_KEY = 'token';
             (logout)="handleLogout()"
           />
 
-          <div class="flex flex-col gap-4 w-full">
-            <router-outlet />
+          <div class="flex flex-col gap-4 w-full h-full min-h-0 overflow-hidden">
+            <div class="flex-1 min-h-0">
+              <router-outlet />
+            </div>
           </div>
 
           @if (!isFocusRoom()) {
@@ -129,7 +131,8 @@ export class DashboardComponent {
         'support':     '/dashboard/support',
         'followed':    '/dashboard/followed',
         'bookmarks':   '/dashboard/bookmarks',
-        'suggestedFriends': '/dashboard/client/suggestedFriends'
+        'suggestedFriends': '/dashboard/client/suggestedFriends',
+        'chat': '/dashboard/chat'
     };
 
     const target = routes[section] ?? '/dashboard/feed';

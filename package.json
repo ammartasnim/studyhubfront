@@ -29,8 +29,10 @@
     "@angular/forms": "^20.3.0",
     "@angular/platform-browser": "^20.3.0",
     "@angular/router": "^20.3.0",
+    "@stomp/stompjs": "^7.3.0",
     "@supabase/supabase-js": "^2.105.1",
     "rxjs": "~7.8.0",
+    "sockjs-client": "^1.6.1",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
@@ -40,6 +42,7 @@
     "@openapitools/openapi-generator-cli": "^2.31.1",
     "@tailwindcss/postcss": "^4.2.4",
     "@types/jasmine": "~5.1.0",
+    "@types/sockjs-client": "^1.5.4",
     "jasmine-core": "~5.9.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
