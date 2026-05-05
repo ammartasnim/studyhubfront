@@ -8,6 +8,7 @@ import { CommunityReqDto } from '../model/communityReqDto';
 import { CommunityResDto } from '../model/communityResDto';
 import { PageCommunityResDto } from '../model/pageCommunityResDto';
 import { CommunityUI, PaginatedCommunities, ModeratorInfo } from './models/community.model';
+import { PostUI } from './models/post.model';
 import { formatApiError } from './models/api-error.model';
 
 export interface CommunityMemberUI {
@@ -36,6 +37,8 @@ export class CommunityFacadeService {
   private get basePath(): string {
     return (this.communityController as any)['configuration']?.basePath ?? 'http://localhost:8081';
   }
+
+  // ─── COMMUNITY CRUD ───────────────────────────────────────────────────────
 
   getAll(filters?: { title?: string; description?: string; minMembers?: number; page?: number; size?: number; sortBy?: string; sortDir?: string }): Observable<PaginatedCommunities> {
     const page = filters?.page ?? 0;
@@ -118,7 +121,8 @@ export class CommunityFacadeService {
     );
   }
 
-  // Moderator management
+  // ─── MODERATOR MANAGEMENT ─────────────────────────────────────────────────
+
   addModerator(communityId: number, userId: number, permissions: string[]): Observable<void> {
     return this.http.post<void>(`${this.basePath}/api/communities/${communityId}/moderators`, { userId, permissions }).pipe(
       catchError(err => this.handleError(err, 'Failed to add moderator'))
@@ -143,11 +147,11 @@ export class CommunityFacadeService {
     );
   }
 
-  // Member management
-getMembers(communityId: number, page = 0, size = 20): Observable<PaginatedMembers> {
+  // ─── MEMBER MANAGEMENT ────────────────────────────────────────────────────
+
+  getMembers(communityId: number, page = 0, size = 20): Observable<PaginatedMembers> {
     return this.http.get<any>(`${this.basePath}/api/communities/${communityId}/members?page=${page}&size=${size}`).pipe(
       map(response => {
-        // Handle both paginated response and plain list
         const rawList = Array.isArray(response) ? response : (response.content ?? []);
         return {
           items: rawList.map((m: any) => ({
@@ -167,7 +171,60 @@ getMembers(communityId: number, page = 0, size = 20): Observable<PaginatedMember
       }),
       catchError(err => this.handleError(err, 'Failed to fetch members'))
     );
-}
+  }
+
+  getMembersPreview(communityId: number): Observable<CommunityMemberUI[]> {
+    return this.http.get<any[]>(`${this.basePath}/api/communities/${communityId}/members/preview`).pipe(
+      map(list => list.map(m => ({
+        userId: m.userId,
+        username: m.username,
+        fullName: m.fullName,
+        pfp: m.pfp,
+        xpPts: m.xpPts,
+        level: m.level,
+        isModerator: m.isModerator,
+        warningCount: 0
+      }))),
+      catchError(err => this.handleError(err, 'Failed to fetch members preview'))
+    );
+  }
+
+  getMembersPublic(communityId: number, page = 0, size = 10): Observable<PaginatedMembers> {
+    return this.http.get<any>(`${this.basePath}/api/communities/${communityId}/members/all?page=${page}&size=${size}`).pipe(
+      map(response => ({
+        items: (response.content ?? []).map((m: any) => ({
+          userId: m.userId,
+          username: m.username,
+          fullName: m.fullName,
+          pfp: m.pfp,
+          xpPts: m.xpPts,
+          level: m.level,
+          isModerator: m.isModerator,
+          warningCount: m.warningCount
+        })),
+        totalItems: response.totalElements ?? 0,
+        totalPages: response.totalPages ?? 0,
+        currentPage: response.number ?? 0
+      })),
+      catchError(err => this.handleError(err, 'Failed to fetch public members'))
+    );
+  }
+
+  getBannedMembers(communityId: number): Observable<CommunityMemberUI[]> {
+    return this.http.get<any[]>(`${this.basePath}/api/communities/${communityId}/banned`).pipe(
+      map(list => list.map(m => ({
+        userId: m.userId,
+        username: m.username,
+        fullName: m.fullName,
+        pfp: m.pfp,
+        xpPts: m.xpPts,
+        level: m.level,
+        isModerator: false,
+        warningCount: 0
+      }))),
+      catchError(err => throwError(() => new Error(err?.error?.message || 'Failed to fetch banned members')))
+    );
+  }
 
   banMember(communityId: number, userId: number, reason: string): Observable<void> {
     return this.http.post<void>(`${this.basePath}/api/communities/${communityId}/ban`, { userId, reason }).pipe(
@@ -186,23 +243,9 @@ getMembers(communityId: number, page = 0, size = 20): Observable<PaginatedMember
       catchError(err => this.handleError(err, 'Failed to warn member'))
     );
   }
-  getMembersPreview(communityId: number): Observable<CommunityMemberUI[]> {
-    return this.http.get<any[]>(`${this.basePath}/api/communities/${communityId}/members/preview`).pipe(
-        map(list => list.map(m => ({
-            userId: m.userId,
-            username: m.username,
-            fullName: m.fullName,
-            pfp: m.pfp,
-            xpPts: m.xpPts,
-            level: m.level,
-            isModerator: m.isModerator,
-            warningCount: 0
-        }))),
-        catchError(err => this.handleError(err, 'Failed to fetch members preview'))
-    );
-}
 
-  // Join / Leave
+  // ─── JOIN / LEAVE ─────────────────────────────────────────────────────────
+
   join(communityId: number): Observable<void> {
     return this.http.post<void>(`${this.basePath}/api/communities/${communityId}/join`, {}).pipe(
       catchError(err => this.handleError(err, 'Failed to join community'))
@@ -214,6 +257,17 @@ getMembers(communityId: number, page = 0, size = 20): Observable<PaginatedMember
       catchError(err => this.handleError(err, 'Failed to leave community'))
     );
   }
+
+  // ─── POST APPROVAL ────────────────────────────────────────────────────────
+
+  getPendingPosts(communityId: number): Observable<PostUI[]> {
+    return this.http.get<any[]>(`${this.basePath}/api/posts/community/${communityId}/pending`).pipe(
+      map(list => list.map(dto => this.mapPostToUI(dto))),
+      catchError(err => this.handleError(err, 'Failed to fetch pending posts'))
+    );
+  }
+
+  // ─── MAPPERS ──────────────────────────────────────────────────────────────
 
   private mapToUI(dto: CommunityResDto | null | undefined): CommunityUI {
     if (!dto) throw new Error('Community data is null or undefined');
@@ -230,6 +284,34 @@ getMembers(communityId: number, page = 0, size = 20): Observable<PaginatedMember
         fullName: m.fullName,
         permissions: m.permissions ?? []
       }))
+    };
+  }
+
+  private mapPostToUI(dto: any): PostUI {
+    const firstName = dto.userFirstName ?? '';
+    const lastName = dto.userLastName ?? '';
+    const fullName = `${firstName} ${lastName}`.trim() || dto.userUsername || 'Unknown Author';
+    const images = Array.isArray(dto.imgs) ? dto.imgs.filter((img: any) => !!img) : [];
+    return {
+      id: dto.id ?? 0,
+      title: dto.title ?? 'Untitled Post',
+      content: dto.content ?? '',
+      images,
+      authorUsername: dto.userUsername ?? 'unknown',
+      authorFirstName: firstName,
+      authorLastName: lastName,
+      authorPfp: dto.userPfp ?? undefined,
+      communityTitle: dto.communityTitle ?? '',
+      authorFullName: fullName,
+      previewText: (dto.content ?? '').length > 100 ? dto.content.substring(0, 100) + '...' : (dto.content ?? ''),
+      imageCount: images.length,
+      likeCount: dto.likeCount ?? 0,
+      commentCount: dto.commentCount ?? 0,
+      isLiked: dto.liked ?? false,
+      createdAt: dto.createdAt ? new Date(dto.createdAt) : null,
+      status: dto.status ?? '',
+      flagCount: dto.flagCount ?? 0,
+      isFlaggedByCurrentUser: dto.isFlaggedByCurrentUser ?? false
     };
   }
 
@@ -253,39 +335,4 @@ getMembers(communityId: number, page = 0, size = 20): Observable<PaginatedMember
     console.groupEnd();
     return throwError(() => new Error(formatted));
   }
- getBannedMembers(communityId: number): Observable<CommunityMemberUI[]> {
-    return this.http.get<any[]>(`${this.basePath}/api/communities/${communityId}/banned`).pipe(
-        map(list => list.map(m => ({
-            userId: m.userId,
-            username: m.username,
-            fullName: m.fullName,
-            pfp: m.pfp,
-            xpPts: m.xpPts,
-            level: m.level,
-            isModerator: false,
-            warningCount: 0
-        }))),
-        catchError(err => throwError(() => new Error(err?.error?.message || 'Failed to fetch banned members')))
-    );
-}
-getMembersPublic(communityId: number, page = 0, size = 10): Observable<PaginatedMembers> {
-    return this.http.get<any>(`${this.basePath}/api/communities/${communityId}/members/all?page=${page}&size=${size}`).pipe(
-        map(response => ({
-            items: (response.content ?? []).map((m: any) => ({
-                userId: m.userId,
-                username: m.username,
-                fullName: m.fullName,
-                pfp: m.pfp,
-                xpPts: m.xpPts,
-                level: m.level,
-                isModerator: m.isModerator,
-                warningCount: m.warningCount
-            })),
-            totalItems: response.totalElements ?? 0,
-            totalPages: response.totalPages ?? 0,
-            currentPage: response.number ?? 0
-        })),
-        catchError(err => this.handleError(err, 'Failed to fetch public members'))
-    );
-}
 }

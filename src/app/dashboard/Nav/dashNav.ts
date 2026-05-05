@@ -21,10 +21,10 @@ const AUTH_TOKEN_KEY = 'token';
     AiAssistant,
   ],
   template: `
-    <div class="h-screen bg-slate-50 overflow-hidden">
-      <div class="w-full px-4 py-6 h-full">
+    <div class="h-screen bg-slate-50 overflow-auto">
+      <div class="w-full px-4 py-6 min-h-full">
         <div
-          class="grid grid-cols-1 gap-8 h-full items-stretch"
+          class="grid grid-cols-1 gap-8 items-start"
           [ngClass]="isFocusRoom()
             ? 'lg:grid-cols-[280px_1fr]'
             : 'lg:grid-cols-[280px_1fr] xl:grid-cols-[280px_1fr_320px]'"
@@ -38,10 +38,8 @@ const AUTH_TOKEN_KEY = 'token';
             (logout)="handleLogout()"
           />
 
-          <div class="flex flex-col gap-4 w-full h-full min-h-0 overflow-hidden">
-            <div class="flex-1 min-h-0">
-              <router-outlet />
-            </div>
+          <div class="flex flex-col gap-4 w-full">
+            <router-outlet />
           </div>
 
           @if (!isFocusRoom()) {
@@ -93,7 +91,6 @@ export class DashboardComponent {
 
   readonly displayName = computed(() => {
     const user = this.user();
-    console.log('User data in displayName computed:', user);
     const fullName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
     return fullName || user?.username || 'Student';
   });
@@ -118,24 +115,24 @@ export class DashboardComponent {
     this.router.navigateByUrl('/auth/login');
   }
 
-    handleSidebarNavigation(section: string): void {
+  handleSidebarNavigation(section: string): void {
     const routes: Record<string, string> = {
-        'dashboard':   '/dashboard/feed',
-        'feed':        '/dashboard/feed',
-        'explore':     '/dashboard/explore',
-        'communities': '/dashboard/communities',
-        'my-created':  '/dashboard/my-created',
-        'focus':       '/dashboard/focus-room',
-        'profile':     '/dashboard/profile',
-        'settings':    '/dashboard/settings',
-        'support':     '/dashboard/support',
-        'followed':    '/dashboard/followed',
-        'bookmarks':   '/dashboard/bookmarks',
-        'suggestedFriends': '/dashboard/client/suggestedFriends',
-        'chat': '/dashboard/chat'
+      'dashboard':        '/dashboard/feed',
+      'feed':             '/dashboard/feed',
+      'explore':          '/dashboard/explore',
+      'communities':      '/dashboard/communities',
+      'my-created':       '/dashboard/my-created',
+      'focus':            '/dashboard/focus-room',
+      'profile':          '/dashboard/profile',
+      'settings':         '/dashboard/settings',
+      'support':          '/dashboard/support',
+      'followed':         '/dashboard/followed',
+      'bookmarks':        '/dashboard/bookmarks',
+      'suggestedFriends': '/dashboard/client/suggestedFriends',
+      'chat':             '/dashboard/chat'
     };
 
     const target = routes[section] ?? '/dashboard/feed';
     this.router.navigateByUrl(target);
-}
+  }
 }

@@ -8,249 +8,186 @@ import { PostReqDto } from '../model/postReqDto';
 import { PostResDto } from '../model/postResDto';
 import { PagePostResDto } from '../model/pagePostResDto';
 import { Pageable } from '../model/pageable';
-
 import { PostUI, PaginatedPosts } from './models/post.model';
 import { HttpClient } from '@angular/common/http';
 import { formatApiError } from './models/api-error.model';
 
-/**
- * Post Facade Service
- * 
- * Wraps the generated PostControllerService with:
- * - Clean method names (getAll, getById, create, update, delete)
- * - DTO to UI Model mapping
- * - Null/undefined safety
- * - Consistent error handling
- * - Image array handling
- */
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class PostFacadeService {
   private readonly postController = inject(PostControllerService);
   private readonly http = inject(HttpClient);
 
-  /**
-   * Get all posts with pagination
-   */
+private get basePath(): string {
+  return this.postController['configuration'].basePath ?? 'http://localhost:8081';
+}
+
+  // ─── READ ─────────────────────────────────────────────────────────────────
+
   getAll(filters?: { page?: number; size?: number; title?: string }): Observable<PaginatedPosts> {
-    const page = filters?.page ?? 0;
-    const size = filters?.size ?? 10;
-
-    const pageable: Pageable = {
-      page: page,
-      size: size
-    };
-
+    const pageable: Pageable = { page: filters?.page ?? 0, size: filters?.size ?? 10 };
     return this.postController.getAllPosts(pageable, filters?.title).pipe(
       map(response => this.mapPagedResponse(response)),
       catchError(err => this.handleError(err, 'Failed to fetch posts'))
     );
   }
 
-  /**
-   * Get post by ID
-   */
   getById(id: number): Observable<PostUI> {
-    if (!id || id <= 0) {
-      return throwError(() => new Error('Invalid post ID'));
-    }
-
+    if (!id || id <= 0) return throwError(() => new Error('Invalid post ID'));
     return this.postController.getPostById(id).pipe(
       map(dto => this.mapToUI(dto)),
-      catchError(err => this.handleError(err, `Failed to fetch post with ID ${id}`))
+      catchError(err => this.handleError(err, `Failed to fetch post ${id}`))
     );
   }
 
-  /**
-   * Create a new post
-   */
-create(data: { title: string; content: string; imgs?: Blob[]; communityId?: number }): Observable<PostUI> {
-  if (!data?.title?.trim() || !data?.content?.trim()) {
-    return throwError(() => new Error('Title and content are required'));
-  }
-
-  return this.postController.createPost(
-    data.title.trim(),
-    data.content.trim(),
-    data.imgs,
-    data.communityId != null ? String(data.communityId) : undefined
-  ).pipe(
-    map(dto => this.mapToUI(dto)),
-    catchError(err => this.handleError(err, 'Failed to create post'))
-  );
-}
-
-  /**
-   * Update a post
-   */
-  update(id: number, data: { title: string; content: string; communityId?: number }): Observable<PostUI> {
-    if (!id || id <= 0) {
-      return throwError(() => new Error('Invalid post ID'));
-    }
-
-    if (!data?.title?.trim() || !data?.content?.trim()) {
-      return throwError(() => new Error('Title and content are required'));
-    }
-
-    const req: PostReqDto = {
-      title: data.title.trim(),
-      content: data.content.trim(),
-      communityId: data.communityId
-    };
-
-    return this.postController.updatePost(id, req).pipe(
-      map(dto => this.mapToUI(dto)),
-      catchError(err => this.handleError(err, `Failed to update post with ID ${id}`))
+  getMy(filters?: { page?: number; size?: number }): Observable<PaginatedPosts> {
+    const pageable: Pageable = { page: filters?.page ?? 0, size: filters?.size ?? 10 };
+    return this.postController.getMyPosts(pageable).pipe(
+      map(response => this.mapPagedResponse(response)),
+      catchError(err => this.handleError(err, 'Failed to fetch your posts'))
     );
   }
 
-  /**
-   * Delete a post
-   */
-  delete(id: number): Observable<void> {
-    if (!id || id <= 0) {
-      return throwError(() => new Error('Invalid post ID'));
-    }
-
-    return this.postController.deletePost(id).pipe(
-      catchError(err => this.handleError(err, `Failed to delete post with ID ${id}`))
+  getByCommunity(communityId: number, filters?: { page?: number; size?: number }): Observable<PaginatedPosts> {
+    const pageable: Pageable = { page: filters?.page ?? 0, size: filters?.size ?? 10 };
+    return this.postController.getPostsByCommunity(communityId, pageable).pipe(
+      switchMap((response: any) => {
+        if (response instanceof Blob) {
+          return from(response.text()).pipe(map(text => JSON.parse(text)));
+        }
+        return from([response]);
+      }),
+      map(jsonResponse => this.mapPagedResponse(jsonResponse)),
+      catchError(err => this.handleError(err, 'Failed to fetch posts'))
     );
   }
 
-   /**
-    * Get current user's posts
-    */
-   getMy(filters?: { page?: number; size?: number }): Observable<PaginatedPosts> {
-     const page = filters?.page ?? 0;
-     const size = filters?.size ?? 10;
+  getByUser(userId: number, filters?: { page?: number; size?: number }): Observable<PaginatedPosts> {
+    if (!userId || userId <= 0) return throwError(() => new Error('Invalid user ID'));
+    const pageable: Pageable = { page: filters?.page ?? 0, size: filters?.size ?? 10 };
+    return this.postController.getPostsByUser(userId, pageable).pipe(
+      map(response => this.mapPagedResponse(response)),
+      catchError(err => this.handleError(err, `Failed to fetch posts for user ${userId}`))
+    );
+  }
 
-     const pageable: Pageable = {
-       page: page,
-       size: size
-     };
-
-     return this.postController.getMyPosts(pageable).pipe(
-       map(response => this.mapPagedResponse(response)),
-       catchError(err => this.handleError(err, 'Failed to fetch your posts'))
-     );
-   }
-
-   /**
-    * Get posts by community
-    */
-getByCommunity(communityId: number, filters?: { page?: number; size?: number }): Observable<PaginatedPosts> {
-  const pageable: Pageable = {
-    page: filters?.page ?? 0,
-    size: filters?.size ?? 10
-  };
-
-  return this.postController.getPostsByCommunity(communityId, pageable).pipe(
-    switchMap((response: any) => {
-      // If the response is a Blob, we must read it as text and parse it
-      if (response instanceof Blob) {
-        return from(response.text()).pipe(
-          map(text => JSON.parse(text))
-        );
-      }
-      // If it's already JSON, just wrap it back in an observable
-      return from([response]);
-    }),
-    map(jsonResponse => this.mapPagedResponse(jsonResponse)),
-    catchError(err => this.handleError(err, `Failed to fetch posts`))
-  );
-}
-   /**
-    * Get posts by user
-    */
-   getByUser(userId: number, filters?: { page?: number; size?: number }): Observable<PaginatedPosts> {
-     if (!userId || userId <= 0) {
-       return throwError(() => new Error('Invalid user ID'));
-     }
-
-     const page = filters?.page ?? 0;
-     const size = filters?.size ?? 10;
-
-     const pageable: Pageable = {
-       page: page,
-       size: size
-     };
-
-     return this.postController.getPostsByUser(userId, pageable).pipe(
-       map(response => this.mapPagedResponse(response)),
-       catchError(err => this.handleError(err, `Failed to fetch posts for user ${userId}`))
-     );
-   }
-
-  /**
-   * Get the feed: posts from communities the current user is a member of
-   */
   getFeed(filters?: { page?: number; size?: number }): Observable<PaginatedPosts> {
-    const pageable: Pageable = {
-      page: filters?.page ?? 0,
-      size: filters?.size ?? 20
-    };
-
+    const pageable: Pageable = { page: filters?.page ?? 0, size: filters?.size ?? 20 };
     return this.postController.getFeed(pageable).pipe(
       map(response => this.mapPagedResponse(response)),
       catchError(err => this.handleError(err, 'Failed to fetch feed'))
     );
   }
 
-  /**
-   * Toggle like on a post
-   */
-  toggleLike(postId: number): Observable<void> {
-    if (!postId || postId <= 0) {
-      return throwError(() => new Error('Invalid post ID'));
-    }
-
-    return this.postController.toggleLike(postId).pipe(
-      catchError(err => this.handleError(err, `Failed to toggle like on post ${postId}`))
+  getPendingPosts(communityId: number): Observable<PostUI[]> {
+    return this.http.get<any[]>(`${this.basePath}/api/posts/community/${communityId}/pending`).pipe(
+      map(list => list.map(dto => this.mapToUI(dto))),
+      catchError(err => this.handleError(err, 'Failed to fetch pending posts'))
     );
   }
 
-  /**
-   * Approve a post (admin/moderator)
-   */
-  approve(id: number): Observable<PostUI> {
-    if (!id || id <= 0) {
-      return throwError(() => new Error('Invalid post ID'));
-    }
+  getPostStats(): Observable<{ total: number; flagged: number; pending: number }> {
+    return this.http.get<{ total: number; flagged: number; pending: number }>(
+      `${this.basePath}/api/posts/stats/count`
+    ).pipe(catchError(err => this.handleError(err, 'Failed to fetch post stats')));
+  }
 
+  getByStatus(status: string, page = 0, size = 10): Observable<PaginatedPosts> {
+    return this.http.get<any>(`${this.basePath}/api/posts/status/${status}`, { params: { page, size } }).pipe(
+      map(res => this.mapPagedResponse(res)),
+      catchError(err => this.handleError(err, `Failed to fetch posts with status ${status}`))
+    );
+  }
+
+  // ─── CREATE / UPDATE / DELETE ─────────────────────────────────────────────
+
+  create(data: { title: string; content: string; imgs?: Blob[]; communityId?: number }): Observable<PostUI> {
+    if (!data?.title?.trim() || !data?.content?.trim()) {
+      return throwError(() => new Error('Title and content are required'));
+    }
+    return this.postController.createPost(
+      data.title.trim(),
+      data.content.trim(),
+      data.imgs,
+      data.communityId != null ? String(data.communityId) : undefined
+    ).pipe(
+      map(dto => this.mapToUI(dto)),
+      catchError(err => this.handleError(err, 'Failed to create post'))
+    );
+  }
+
+update(id: number, data: { title: string; content: string; imgs?: File[] }): Observable<PostUI> {
+  if (!id || id <= 0) return throwError(() => new Error('Invalid post ID'));
+  if (!data?.title?.trim() || !data?.content?.trim()) {
+    return throwError(() => new Error('Title and content are required'));
+  }
+
+  const formData = new FormData();
+  formData.append('title', data.title.trim());
+  formData.append('content', data.content.trim());
+  if (data.imgs?.length) {
+    data.imgs.forEach(img => formData.append('imgs', img));
+  }
+
+  return this.http.put<any>(`${this.basePath}/api/posts/${id}`, formData).pipe(
+    map(dto => this.mapToUI(dto)),
+    catchError(err => this.handleError(err, `Failed to update post ${id}`))
+  );
+}
+  delete(id: number): Observable<void> {
+    if (!id || id <= 0) return throwError(() => new Error('Invalid post ID'));
+    return this.postController.deletePost(id).pipe(
+      catchError(err => this.handleError(err, `Failed to delete post ${id}`))
+    );
+  }
+
+  // ─── MODERATION ───────────────────────────────────────────────────────────
+
+  approve(id: number): Observable<PostUI> {
+    if (!id || id <= 0) return throwError(() => new Error('Invalid post ID'));
     return this.postController.approvePost(id).pipe(
       map(dto => this.mapToUI(dto)),
       catchError(err => this.handleError(err, `Failed to approve post ${id}`))
     );
   }
 
-  /**
-   * Flag a post as inappropriate
-   */
-  flag(id: number): Observable<PostUI> {
-    if (!id || id <= 0) {
-      return throwError(() => new Error('Invalid post ID'));
-    }
+  reject(id: number): Observable<void> {
+    if (!id || id <= 0) return throwError(() => new Error('Invalid post ID'));
+    return this.http.delete<void>(`${this.basePath}/api/posts/${id}/reject`).pipe(
+      catchError(err => this.handleError(err, `Failed to reject post ${id}`))
+    );
+  }
 
+  flag(id: number): Observable<PostUI> {
+    if (!id || id <= 0) return throwError(() => new Error('Invalid post ID'));
     return this.postController.flagPost(id).pipe(
       map(dto => this.mapToUI(dto)),
       catchError(err => this.handleError(err, `Failed to flag post ${id}`))
     );
   }
 
-  /**
-   * Map DTO to UI Model
-   */
-  private mapToUI(dto: PostResDto | null | undefined): PostUI {
-    if (!dto) {
-      throw new Error('Post data is null or undefined');
-    }
+  // ─── INTERACTIONS ─────────────────────────────────────────────────────────
 
+  toggleLike(postId: number): Observable<void> {
+    if (!postId || postId <= 0) return throwError(() => new Error('Invalid post ID'));
+    return this.postController.toggleLike(postId).pipe(
+      catchError(err => this.handleError(err, `Failed to toggle like on post ${postId}`))
+    );
+  }
+
+  markSeen(postIds: number[]): Observable<void> {
+    return this.http.post<void>(`${this.basePath}/api/posts/seen`, postIds).pipe(
+      catchError(err => this.handleError(err, 'Failed to mark posts as seen'))
+    );
+  }
+
+  // ─── MAPPERS ──────────────────────────────────────────────────────────────
+
+  private mapToUI(dto: PostResDto | null | undefined): PostUI {
+    if (!dto) throw new Error('Post data is null or undefined');
     const images = Array.isArray(dto.imgs) ? dto.imgs.filter(img => !!img) : [];
     const firstName = dto.userFirstName ?? '';
     const lastName = dto.userLastName ?? '';
     const fullName = `${firstName} ${lastName}`.trim() || dto.userUsername || 'Unknown Author';
-
     return {
       id: dto.id ?? 0,
       title: dto.title ?? 'Untitled Post',
@@ -262,7 +199,7 @@ getByCommunity(communityId: number, filters?: { page?: number; size?: number }):
       authorPfp: dto.userPfp ?? undefined,
       communityTitle: dto.communityTitle ?? 'General',
       authorFullName: fullName,
-      previewText: this.truncate(dto.content ?? '', 100),
+      previewText: (dto.content ?? '').length > 100 ? dto.content!.substring(0, 100) + '...' : (dto.content ?? ''),
       imageCount: images.length,
       likeCount: dto.likeCount ?? 0,
       commentCount: dto.commentCount ?? 0,
@@ -274,37 +211,16 @@ getByCommunity(communityId: number, filters?: { page?: number; size?: number }):
     };
   }
 
-  /**
-   * Map paginated response
-   */
-private mapPagedResponse(response: any): PaginatedPosts {
-  // 1. Extract the raw list from Spring's 'content' key
-  const rawContent = response.content || [];
-
-  // 2. Transform each DTO into the PostUI model
-  // This ensures authorFullName, previewText, and Dates are correctly set
-  const mappedItems = rawContent.map((dto: PostResDto) => this.mapToUI(dto));
-
-  return {
-    items: mappedItems,
-    totalItems: response.totalElements ?? 0,
-    totalPages: response.totalPages ?? 0,
-    currentPage: response.number ?? 0,
-    pageSize: response.size ?? 10
-  };
-}
-
-  /**
-   * Truncate string to specified length
-   */
-  private truncate(text: string, length: number): string {
-    if (!text) return '';
-    return text.length > length ? text.substring(0, length) + '...' : text;
+  private mapPagedResponse(response: any): PaginatedPosts {
+    return {
+      items: (response.content ?? []).map((dto: PostResDto) => this.mapToUI(dto)),
+      totalItems: response.totalElements ?? 0,
+      totalPages: response.totalPages ?? 0,
+      currentPage: response.number ?? 0,
+      pageSize: response.size ?? 10
+    };
   }
 
-  /**
-   * Handle errors with logging
-   */
   private handleError(error: any, message: string): Observable<never> {
     const formatted = formatApiError(error, message);
     console.groupCollapsed(`[PostFacade] ${formatted}`);
@@ -314,31 +230,4 @@ private mapPagedResponse(response: any): PaginatedPosts {
     console.groupEnd();
     return throwError(() => new Error(formatted));
   }
-  markSeen(postIds: number[]): Observable<void> {
-    return this.http.post<void>(
-        `${this.postController['configuration'].basePath}/api/posts/seen`,
-        postIds
-    ).pipe(
-        catchError(err => this.handleError(err, 'Failed to mark posts as seen'))
-    );
-}
-
-getPostStats(): Observable<{ total: number; flagged: number; pending: number }> {
-  return this.http.get<{ total: number; flagged: number; pending: number }>(
-    `${this.postController['configuration'].basePath}/api/posts/stats/count`
-  ).pipe(
-    catchError(err => this.handleError(err, 'Failed to fetch post stats'))
-  );
-}
-
-getByStatus(status: string, page = 0, size = 10): Observable<PaginatedPosts> {
-  return this.http.get<any>(
-    `${this.postController['configuration'].basePath}/api/posts/status/${status}`,
-    { params: { page, size } }
-  ).pipe(
-    map(res => this.mapPagedResponse(res)),
-    catchError(err => this.handleError(err, `Failed to fetch posts with status ${status}`))
-  );
-}
-  
 }

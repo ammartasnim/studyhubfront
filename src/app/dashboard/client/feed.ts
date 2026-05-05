@@ -1,12 +1,12 @@
 import {
-  Component, ViewChild, OnInit, OnDestroy, inject, signal, computed, HostListener
+  Component, ViewChild, OnInit, OnDestroy, inject, signal, computed, HostListener, ElementRef, AfterViewInit
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CreatePostModalComponent } from './create-post';
 import { CreateCommunityModalComponent } from './create-community';
 import { FeedService } from '../../services/feed.service';
 import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
-import { firstValueFrom } from 'rxjs';
+
 
 @Component({
   selector: 'app-academic-feed',
@@ -452,6 +452,9 @@ export class FeedComponent implements OnInit, OnDestroy {
   readonly submittingComments = signal<Set<number>>(new Set());
   readonly expandedComments = signal<Set<number>>(new Set());
   readonly replyInputs = signal<Map<number, string>>(new Map());
+  private scrollContainer: HTMLElement | null = null;
+  private scrollListener = () => this.checkScroll();
+  private readonly elementRef = inject(ElementRef);
 
   readonly filteredPosts = computed(() => {
     const q = this.searchQuery().toLowerCase().trim();
@@ -464,11 +467,37 @@ export class FeedComponent implements OnInit, OnDestroy {
       p.communityTitle.toLowerCase().includes(q)
     );
   });
+ngOnInit(): void {
+  this.feedService.init();
+  let el = this.elementRef.nativeElement.parentElement;
+  while (el) {
+    const overflow = getComputedStyle(el).overflowY;
+    if (overflow === 'auto' || overflow === 'scroll') {
+      this.scrollContainer = el;
+      break;
+    }
+    el = el.parentElement;
+  }
+  if (this.scrollContainer) {
+    this.scrollContainer.addEventListener('scroll', this.scrollListener);
+  }
+}
 
-  ngOnInit(): void { this.feedService.init(); }
-  ngOnDestroy(): void { }
+ngOnDestroy(): void {
+  if (this.scrollContainer) {
+    this.scrollContainer.removeEventListener('scroll', this.scrollListener);
+  }
+}
 
-  @HostListener('window:scroll')
+private checkScroll(): void {
+  if (this.feedService.isLoading() || this.feedService.isLoadingMore() || !this.feedService.hasMore()) return;
+  const el = this.scrollContainer!;
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
+    this.feedService.loadMorePosts();
+  }
+}
+
+  
   onWindowScroll(): void {
     if (this.feedService.isLoading() || this.feedService.isLoadingMore() || !this.feedService.hasMore()) return;
     const scrolled = window.scrollY + window.innerHeight;

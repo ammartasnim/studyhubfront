@@ -1,4 +1,3 @@
-
 import { Component, inject, OnInit, signal, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, Validators, FormBuilder } from '@angular/forms';
@@ -13,7 +12,7 @@ import { CreatePostModalComponent } from './create-post';
 const ALL_PERMISSIONS = [
   'EDIT_COMMUNITY', 'ADD_MODERATOR', 'REMOVE_MODERATOR',
   'VIEW_MEMBERS', 'BAN_MEMBER', 'WARN_MEMBER',
-  'DELETE_POST', 'DELETE_COMMENT'
+  'DELETE_POST', 'DELETE_COMMENT', 'APPROVE_POST'
 ];
 
 const COMMENT_PAGE_SIZE = 5;
@@ -82,6 +81,14 @@ interface CommentState {
               <!-- Action Buttons -->
               <div class="flex gap-3 mb-1 flex-wrap">
                 @if (isOwner()) {
+                  <button (click)="activeTab.set('pending'); loadPendingPosts()" class="px-4 py-2 bg-amber-50 text-amber-700 font-semibold rounded-xl hover:bg-amber-100 transition-colors border border-amber-200 relative">
+                    Pending
+                    @if (pendingPosts().length > 0) {
+                      <span class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {{ pendingPosts().length }}
+                      </span>
+                    }
+                  </button>
                   <button (click)="activeTab.set('settings'); loadSettingsData()" class="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors border border-slate-200">
                     ⚙ Settings
                   </button>
@@ -89,6 +96,16 @@ interface CommentState {
                     Delete
                   </button>
                 } @else if (isModerator()) {
+                  @if (canApprovePosts()) {
+                    <button (click)="activeTab.set('pending'); loadPendingPosts()" class="px-4 py-2 bg-amber-50 text-amber-700 font-semibold rounded-xl hover:bg-amber-100 transition-colors border border-amber-200 relative">
+                      Pending
+                      @if (pendingPosts().length > 0) {
+                        <span class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                          {{ pendingPosts().length }}
+                        </span>
+                      }
+                    </button>
+                  }
                   <button (click)="activeTab.set('settings'); loadSettingsData()" class="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors border border-slate-200">
                     ⚙ Mod Panel
                   </button>
@@ -115,23 +132,14 @@ interface CommentState {
 
             <!-- About + Members Preview -->
             <div class="mt-6">
-
-              <!-- Members Preview -->
               @if (previewMembers().length > 0) {
                 <div class="flex items-center gap-3 mb-4">
                   <div class="flex -space-x-2">
                     @for (m of previewMembers(); track m.userId) {
                       @if (m.pfp) {
-                        <img
-                          [src]="'http://localhost:8081/uploads/' + m.pfp"
-                          [title]="m.fullName"
-                          class="w-8 h-8 rounded-full object-cover border-2 border-white"
-                        />
+                        <img [src]="'http://localhost:8081/uploads/' + m.pfp" [title]="m.fullName" class="w-8 h-8 rounded-full object-cover border-2 border-white" />
                       } @else {
-                        <div
-                          class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold border-2 border-white select-none"
-                          [title]="m.fullName"
-                        >
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold border-2 border-white select-none" [title]="m.fullName">
                           {{ getInitials(m.fullName) }}
                         </div>
                       }
@@ -142,7 +150,6 @@ interface CommentState {
                   </button>
                 </div>
               }
-
               <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2">About Community</h3>
               <p class="text-slate-700 leading-relaxed whitespace-pre-line">{{ community()!.description }}</p>
               @if (community()!.category) {
@@ -154,10 +161,48 @@ interface CommentState {
           </div>
         </div>
 
+        <!-- ==================== TAB NAV ==================== -->
+        <div class="flex gap-2">
+          <button
+            (click)="activeTab.set('feed')"
+            class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+            [class.bg-indigo-600]="activeTab() === 'feed'"
+            [class.text-white]="activeTab() === 'feed'"
+            [class.bg-slate-100]="activeTab() !== 'feed'"
+            [class.text-slate-600]="activeTab() !== 'feed'"
+          >Feed</button>
+          @if (isOwner() || canApprovePosts()) {
+            <button
+              (click)="activeTab.set('pending'); loadPendingPosts()"
+              class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative"
+              [class.bg-amber-500]="activeTab() === 'pending'"
+              [class.text-white]="activeTab() === 'pending'"
+              [class.bg-slate-100]="activeTab() !== 'pending'"
+              [class.text-slate-600]="activeTab() !== 'pending'"
+            >
+              Pending
+              @if (pendingPosts().length > 0) {
+                <span class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {{ pendingPosts().length }}
+                </span>
+              }
+            </button>
+          }
+          @if (isOwner() || isModerator()) {
+            <button
+              (click)="activeTab.set('settings'); loadSettingsData()"
+              class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+              [class.bg-indigo-600]="activeTab() === 'settings'"
+              [class.text-white]="activeTab() === 'settings'"
+              [class.bg-slate-100]="activeTab() !== 'settings'"
+              [class.text-slate-600]="activeTab() !== 'settings'"
+            >Settings</button>
+          }
+        </div>
+
         <!-- ==================== FEED TAB ==================== -->
         @if (activeTab() === 'feed') {
 
-          <!-- Create Post Bar -->
           @if (isMember() || isOwner() || isModerator()) {
             <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center gap-3">
               <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex-shrink-0 flex items-center justify-center text-white font-bold text-sm select-none">
@@ -172,7 +217,6 @@ interface CommentState {
             </div>
           }
 
-          <!-- Posts -->
           <div class="flex flex-col gap-4">
             <h2 class="text-xl font-bold text-slate-900 px-1">Community Feed</h2>
 
@@ -180,24 +224,18 @@ interface CommentState {
               <div class="p-10 flex justify-center">
                 <div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
               </div>
-
             } @else if (posts().length === 0) {
               <div class="bg-white rounded-2xl border border-slate-200 p-10 text-center">
                 <h3 class="text-lg font-semibold text-slate-900">No posts yet</h3>
                 <p class="text-slate-500 mt-1 mb-4">Be the first to share something!</p>
                 @if (isMember() || isOwner() || isModerator()) {
-                  <button (click)="openCreatePost()" class="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700">
-                    Create Post
-                  </button>
+                  <button (click)="openCreatePost()" class="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700">Create Post</button>
                 }
               </div>
-
             } @else {
               <div class="divide-y divide-slate-100 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 @for (post of posts(); track post.id) {
                   <article class="p-6 transition-colors hover:bg-slate-50">
-
-                    <!-- Post Header -->
                     <div class="flex items-start gap-3 mb-3">
                       <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm select-none flex-shrink-0">
                         {{ getInitials(post.authorFullName) }}
@@ -218,25 +256,12 @@ interface CommentState {
                         </div>
                       </div>
                     </div>
-
-                    <!-- Post Content -->
                     <h3 class="font-bold text-slate-900 mb-2">{{ post.title }}</h3>
                     <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{{ post.content }}</p>
-
-                    <!-- Post Images -->
                     @if (post.images.length > 0) {
-                      <div
-                        class="mt-3 rounded-xl overflow-hidden"
-                        [class.grid]="post.images.length > 1"
-                        [class.grid-cols-2]="post.images.length > 1"
-                        [class.gap-0.5]="post.images.length > 1"
-                      >
+                      <div class="mt-3 rounded-xl overflow-hidden" [class.grid]="post.images.length > 1" [class.grid-cols-2]="post.images.length > 1" [class.gap-0.5]="post.images.length > 1">
                         @for (img of post.images.slice(0, 4); track img; let i = $index) {
-                          <div
-                            class="relative bg-slate-100 overflow-hidden"
-                            [class.aspect-video]="post.images.length === 1"
-                            [class.aspect-square]="post.images.length > 1"
-                          >
+                          <div class="relative bg-slate-100 overflow-hidden" [class.aspect-video]="post.images.length === 1" [class.aspect-square]="post.images.length > 1">
                             <img [src]="'http://localhost:8081/uploads/' + img" [alt]="post.title" class="w-full h-full object-cover" />
                             @if (i === 3 && post.images.length > 4) {
                               <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -247,39 +272,22 @@ interface CommentState {
                         }
                       </div>
                     }
-
-                    <!-- Post Actions -->
                     <div class="mt-4 flex items-center gap-4">
-                      <button
-                        (click)="toggleLike(post)"
-                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                        [class.text-rose-600]="post.isLiked"
-                        [class.bg-rose-50]="post.isLiked"
-                        [class.text-slate-600]="!post.isLiked"
-                      >
+                      <button (click)="toggleLike(post)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" [class.text-rose-600]="post.isLiked" [class.bg-rose-50]="post.isLiked" [class.text-slate-600]="!post.isLiked">
                         <svg class="w-4 h-4" [attr.fill]="post.isLiked ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                         {{ post.likeCount }}
                       </button>
-                      <button
-                        (click)="toggleComments(post.id)"
-                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                        [class.text-indigo-600]="expandedPosts().has(post.id)"
-                        [class.bg-indigo-50]="expandedPosts().has(post.id)"
-                        [class.text-slate-600]="!expandedPosts().has(post.id)"
-                      >
+                      <button (click)="toggleComments(post.id)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" [class.text-indigo-600]="expandedPosts().has(post.id)" [class.bg-indigo-50]="expandedPosts().has(post.id)" [class.text-slate-600]="!expandedPosts().has(post.id)">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                         {{ post.commentCount }}
                       </button>
                     </div>
-
-                    <!-- Comments Section -->
                     @if (expandedPosts().has(post.id)) {
                       <div class="mt-4 border-t border-slate-100 pt-4">
-
                         @if (commentsLoadingFor(post.id)) {
                           <div class="flex items-center gap-2 text-sm text-slate-500 py-2">
                             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -290,14 +298,11 @@ interface CommentState {
                           </div>
                         } @else {
                           @let postComments = getComments(post.id);
-
                           @if (postComments.length === 0) {
                             <p class="text-sm text-slate-400 text-center py-2 mb-3">No comments yet. Be the first!</p>
                           }
-
                           @for (comment of postComments; track comment.id) {
                             <div class="flex items-start gap-2 mb-3">
-                              <!-- Comment Avatar -->
                               @if (comment.authorPfp) {
                                 <img [src]="'http://localhost:8081/uploads/' + comment.authorPfp" class="w-7 h-7 rounded-full object-cover flex-shrink-0" />
                               } @else {
@@ -305,8 +310,6 @@ interface CommentState {
                                   {{ getInitials(comment.authorFullName ?? '?') }}
                                 </div>
                               }
-
-                              <!-- Comment Bubble -->
                               <div class="flex-1">
                                 <div class="bg-white rounded-xl px-3 py-2 text-sm border border-slate-100 shadow-sm">
                                   <div class="flex items-center justify-between gap-2 mb-0.5">
@@ -335,39 +338,20 @@ interface CommentState {
                               </div>
                             </div>
                           }
-
-                          <!-- Load More Comments -->
                           @if (commentHasMore(post.id)) {
                             <div class="text-center mt-2 mb-3">
-                              <button (click)="loadMoreComments(post.id)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
-                                Load more comments
-                              </button>
+                              <button (click)="loadMoreComments(post.id)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">Load more comments</button>
                             </div>
                           }
-
-                          <!-- Add Comment -->
                           <div class="flex items-center gap-2 mt-3">
-                            <input
-                              type="text"
-                              placeholder="Write a comment..."
-                              [value]="getCommentInput(post.id)"
-                              (input)="setCommentInput(post.id, $any($event.target).value)"
-                              (keyup.enter)="submitComment(post.id)"
-                              class="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                            />
-                            <button
-                              (click)="submitComment(post.id)"
-                              [disabled]="!getCommentInput(post.id).trim() || submittingComments().has(post.id)"
-                              class="px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 transition-colors flex items-center justify-center min-w-[52px]"
-                            >
+                            <input type="text" placeholder="Write a comment..." [value]="getCommentInput(post.id)" (input)="setCommentInput(post.id, $any($event.target).value)" (keyup.enter)="submitComment(post.id)" class="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" />
+                            <button (click)="submitComment(post.id)" [disabled]="!getCommentInput(post.id).trim() || submittingComments().has(post.id)" class="px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 transition-colors flex items-center justify-center min-w-[52px]">
                               @if (submittingComments().has(post.id)) {
                                 <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                 </svg>
-                              } @else {
-                                Post
-                              }
+                              } @else { Post }
                             </button>
                           </div>
                         }
@@ -380,11 +364,96 @@ interface CommentState {
           </div>
         }
 
+        <!-- ==================== PENDING TAB ==================== -->
+        @if (activeTab() === 'pending') {
+          <div class="flex flex-col gap-4">
+            <h2 class="text-xl font-bold text-slate-900 px-1">Pending Posts</h2>
+
+            @if (pendingLoading()) {
+              <div class="p-10 flex justify-center">
+                <div class="w-8 h-8 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin"></div>
+              </div>
+            } @else if (pendingPosts().length === 0) {
+              <div class="bg-white rounded-2xl border border-slate-200 p-10 text-center">
+                <div class="text-4xl mb-3">✅</div>
+                <h3 class="text-lg font-semibold text-slate-900">No pending posts</h3>
+                <p class="text-slate-500 mt-1">All caught up!</p>
+              </div>
+            } @else {
+              <div class="divide-y divide-slate-100 bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
+                @for (post of pendingPosts(); track post.id) {
+                  <article class="p-6">
+                    <!-- Post Header -->
+                    <div class="flex items-start gap-3 mb-3">
+                      <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm select-none flex-shrink-0">
+                        {{ getInitials(post.authorFullName) }}
+                      </div>
+                      <div class="flex-1">
+                        <div class="flex justify-between items-start">
+                          <div>
+                            <p class="font-semibold text-slate-900 text-sm">{{ post.authorFullName }}</p>
+                            <p class="text-xs text-slate-400">&#64;{{ post.authorUsername }} · {{ getTimeAgo(post.createdAt) }}</p>
+                          </div>
+                          <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Pending</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Post Content -->
+                    <h3 class="font-bold text-slate-900 mb-2">{{ post.title }}</h3>
+                    <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{{ post.content }}</p>
+
+                    <!-- Post Images -->
+                    @if (post.images.length > 0) {
+                      <div class="mt-3 rounded-xl overflow-hidden" [class.grid]="post.images.length > 1" [class.grid-cols-2]="post.images.length > 1" [class.gap-0.5]="post.images.length > 1">
+                        @for (img of post.images.slice(0, 4); track img; let i = $index) {
+                          <div class="relative bg-slate-100 overflow-hidden" [class.aspect-video]="post.images.length === 1" [class.aspect-square]="post.images.length > 1">
+                            <img [src]="'http://localhost:8081/uploads/' + img" [alt]="post.title" class="w-full h-full object-cover" />
+                            @if (i === 3 && post.images.length > 4) {
+                              <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                <span class="text-white text-2xl font-bold">+{{ post.images.length - 4 }}</span>
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+
+                    <!-- Approve / Reject Actions -->
+                    <div class="mt-4 flex items-center gap-3">
+                      <button
+                        (click)="approvePost(post)"
+                        [disabled]="pendingActionIds().has(post.id)"
+                        class="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      >
+                        @if (pendingActionIds().has(post.id)) {
+                          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                          </svg>
+                        } @else {
+                          ✓ Approve
+                        }
+                      </button>
+                      <button
+                        (click)="rejectPost(post)"
+                        [disabled]="pendingActionIds().has(post.id)"
+                        class="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 text-sm font-semibold rounded-xl hover:bg-red-100 border border-red-200 disabled:opacity-50 transition-colors"
+                      >
+                        ✕ Reject
+                      </button>
+                    </div>
+                  </article>
+                }
+              </div>
+            }
+          </div>
+        }
+
         <!-- ==================== SETTINGS TAB ==================== -->
         @if (activeTab() === 'settings') {
           <div class="flex flex-col gap-6">
 
-            <!-- Community Info -->
             @if (isOwner() || hasPermission('EDIT_COMMUNITY')) {
               <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                 <h3 class="text-lg font-bold text-slate-900 mb-4">Community Info</h3>
@@ -415,11 +484,9 @@ interface CommentState {
               </div>
             }
 
-            <!-- Moderators -->
             @if (isOwner() || hasPermission('ADD_MODERATOR')) {
               <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                 <h3 class="text-lg font-bold text-slate-900 mb-4">Moderators</h3>
-
                 @if (community()!.moderators && community()!.moderators!.length > 0) {
                   <div class="space-y-3 mb-6">
                     @for (mod of community()!.moderators!; track mod.userId) {
@@ -442,17 +509,10 @@ interface CommentState {
                 } @else {
                   <p class="text-sm text-slate-400 mb-4">No moderators yet.</p>
                 }
-
                 @if (isOwner()) {
                   <div class="border-t border-slate-100 pt-4">
                     <h4 class="text-sm font-bold text-slate-700 mb-3">Add Moderator</h4>
-                    <input
-                      type="text"
-                      [(ngModel)]="modSearchQuery"
-                      (input)="searchUsers()"
-                      placeholder="Search by username..."
-                      class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-3"
-                    />
+                    <input type="text" [(ngModel)]="modSearchQuery" (input)="searchUsers()" placeholder="Search by username..." class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-3" />
                     @if (userSearchResults().length > 0) {
                       <div class="border border-slate-200 rounded-xl overflow-hidden mb-3">
                         @for (user of userSearchResults(); track user.id) {
@@ -491,7 +551,6 @@ interface CommentState {
               </div>
             }
 
-            <!-- Members List -->
             @if (isOwner() || hasPermission('VIEW_MEMBERS')) {
               <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                 <h3 class="text-lg font-bold text-slate-900 mb-4">Members</h3>
@@ -521,9 +580,7 @@ interface CommentState {
                                 <span class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">Mod</span>
                               }
                               @if (member.warningCount > 0) {
-                                <span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
-                                  {{ member.warningCount }} warning{{ member.warningCount > 1 ? 's' : '' }}
-                                </span>
+                                <span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">{{ member.warningCount }} warning{{ member.warningCount > 1 ? 's' : '' }}</span>
                               }
                             </div>
                           </div>
@@ -543,7 +600,6 @@ interface CommentState {
               </div>
             }
 
-            <!-- Banned Members -->
             @if (isOwner() || hasPermission('BAN_MEMBER')) {
               <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                 <h3 class="text-lg font-bold text-slate-900 mb-4">Banned Members</h3>
@@ -578,18 +634,11 @@ interface CommentState {
               </div>
             }
 
-            <!-- Danger Zone — Transfer Ownership -->
             @if (isOwner()) {
               <div class="bg-white rounded-2xl border border-red-100 shadow-sm p-6">
                 <h3 class="text-lg font-bold text-red-700 mb-2">Danger Zone</h3>
                 <p class="text-sm text-slate-500 mb-4">Transfer ownership to another member. You will lose owner privileges.</p>
-                <input
-                  type="text"
-                  [(ngModel)]="transferSearchQuery"
-                  (input)="searchTransferUsers()"
-                  placeholder="Search by username..."
-                  class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-red-400 focus:outline-none mb-3"
-                />
+                <input type="text" [(ngModel)]="transferSearchQuery" (input)="searchTransferUsers()" placeholder="Search by username..." class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-red-400 focus:outline-none mb-3" />
                 @if (transferSearchResults().length > 0) {
                   <div class="border border-slate-200 rounded-xl overflow-hidden mb-3">
                     @for (user of transferSearchResults(); track user.id) {
@@ -610,13 +659,10 @@ interface CommentState {
                     <p class="text-sm font-semibold text-red-900">Transfer to: {{ selectedTransferUser()!.firstName }} {{ selectedTransferUser()!.lastName }}</p>
                     <p class="text-xs text-red-600">&#64;{{ selectedTransferUser()!.username }}</p>
                   </div>
-                  <button (click)="transferOwnership()" class="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors">
-                    Confirm Transfer
-                  </button>
+                  <button (click)="transferOwnership()" class="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors">Confirm Transfer</button>
                 }
               </div>
             }
-
           </div>
         }
       }
@@ -629,9 +675,7 @@ interface CommentState {
       <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
           <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-            <h2 class="text-lg font-bold text-slate-900">
-              Members · {{ community()!.nbrMembers }}
-            </h2>
+            <h2 class="text-lg font-bold text-slate-900">Members · {{ community()!.nbrMembers }}</h2>
             <button (click)="showMembersModal.set(false)" class="text-slate-400 hover:text-slate-600">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -639,62 +683,54 @@ interface CommentState {
             </button>
           </div>
           <div class="overflow-y-auto p-4">
-  @if (allMembersLoading()) {
-    <div class="flex justify-center py-6">
-      <div class="w-6 h-6 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-    </div>
-  } @else if (allMembersForModal().length === 0) {
-    <p class="text-sm text-slate-400 text-center py-4">No members found.</p>
-  } @else {
-    <div class="space-y-3">
-      @for (member of allMembersForModal(); track member.userId) {
-        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-          @if (member.pfp) {
-            <img [src]="'http://localhost:8081/uploads/' + member.pfp" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-          } @else {
-            <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm select-none flex-shrink-0">
-              {{ getInitials(member.fullName) }}
-            </div>
-          }
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-slate-900 truncate">{{ member.fullName }}</p>
-            <div class="flex items-center gap-2 flex-wrap">
-              <p class="text-xs text-slate-500">&#64;{{ member.username }}</p>
-              @if (member.userId === community()!.ownerId) {
-                <span class="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">Owner</span>
+            @if (allMembersLoading()) {
+              <div class="flex justify-center py-6">
+                <div class="w-6 h-6 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+              </div>
+            } @else if (allMembersForModal().length === 0) {
+              <p class="text-sm text-slate-400 text-center py-4">No members found.</p>
+            } @else {
+              <div class="space-y-3">
+                @for (member of allMembersForModal(); track member.userId) {
+                  <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    @if (member.pfp) {
+                      <img [src]="'http://localhost:8081/uploads/' + member.pfp" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                    } @else {
+                      <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm select-none flex-shrink-0">
+                        {{ getInitials(member.fullName) }}
+                      </div>
+                    }
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-semibold text-slate-900 truncate">{{ member.fullName }}</p>
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <p class="text-xs text-slate-500">&#64;{{ member.username }}</p>
+                        @if (member.userId === community()!.ownerId) {
+                          <span class="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">Owner</span>
+                        }
+                        @if (member.isModerator) {
+                          <span class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">Mod</span>
+                        }
+                      </div>
+                    </div>
+                    <span class="text-xs text-slate-400 flex-shrink-0">Lv {{ member.level }}</span>
+                  </div>
+                }
+              </div>
+              @if (allMembersPage() < allMembersTotalPages() - 1) {
+                <div class="mt-4 text-center">
+                  <button (click)="loadMoreModalMembers()" [disabled]="allMembersLoadingMore()" class="px-4 py-2 text-sm text-indigo-600 font-medium hover:text-indigo-700 transition-colors disabled:opacity-50">
+                    @if (allMembersLoadingMore()) {
+                      <svg class="w-4 h-4 animate-spin inline mr-1" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                      </svg>
+                      Loading...
+                    } @else { Load more members }
+                  </button>
+                </div>
               }
-              @if (member.isModerator) {
-                <span class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">Mod</span>
-              }
-            </div>
+            }
           </div>
-          <span class="text-xs text-slate-400 flex-shrink-0">Lv {{ member.level }}</span>
-        </div>
-      }
-    </div>
-
-    <!-- Load More -->
-    @if ( allMembersPage() < allMembersTotalPages() - 1) {
-      <div class="mt-4 text-center">
-        <button
-          (click)="loadMoreModalMembers()"
-          [disabled]="allMembersLoadingMore()"
-          class="px-4 py-2 text-sm text-indigo-600 font-medium hover:text-indigo-700 transition-colors disabled:opacity-50"
-        >
-          @if (allMembersLoadingMore()) {
-            <svg class="w-4 h-4 animate-spin inline mr-1" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-            </svg>
-            Loading...
-          } @else {
-            Load more members
-          }
-        </button>
-      </div>
-    }
-  }
-</div>
         </div>
       </div>
     }
@@ -767,12 +803,17 @@ export class CommunityDetailComponent implements OnInit {
   readonly community = signal<CommunityUI | null>(null);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
-  readonly activeTab = signal<'feed' | 'settings'>('feed');
+  readonly activeTab = signal<'feed' | 'pending' | 'settings'>('feed');
   private readonly _isMember = signal(false);
 
   // Posts
   readonly posts = signal<PostUI[]>([]);
   readonly postsLoading = signal(true);
+
+  // Pending Posts
+  readonly pendingPosts = signal<PostUI[]>([]);
+  readonly pendingLoading = signal(false);
+  readonly pendingActionIds = signal<Set<number>>(new Set());
 
   // Comments
   private readonly commentStates = signal<Map<number, CommentState>>(new Map());
@@ -788,12 +829,12 @@ export class CommunityDetailComponent implements OnInit {
   readonly bannedLoading = signal(false);
 
   // Members Modal
- readonly showMembersModal = signal(false);
-readonly allMembersForModal = signal<CommunityMemberUI[]>([]);
-readonly allMembersLoading = signal(false);
-readonly allMembersPage = signal(0);
-readonly allMembersTotalPages = signal(0);
-readonly allMembersLoadingMore = signal(false);
+  readonly showMembersModal = signal(false);
+  readonly allMembersForModal = signal<CommunityMemberUI[]>([]);
+  readonly allMembersLoading = signal(false);
+  readonly allMembersPage = signal(0);
+  readonly allMembersTotalPages = signal(0);
+  readonly allMembersLoadingMore = signal(false);
 
   // Moderator Management
   readonly userSearchResults = signal<any[]>([]);
@@ -828,7 +869,8 @@ readonly allMembersLoadingMore = signal(false);
     category: ['']
   });
 
-  // Computed
+  // ==================== COMPUTED ====================
+
   readonly isOwner = computed(() => {
     const user = this.userContext.user();
     const comm = this.community();
@@ -846,6 +888,7 @@ readonly allMembersLoadingMore = signal(false);
   readonly isMember = computed(() => this._isMember());
   readonly canModeratePost = computed(() => this.isOwner() || this.hasPermission('DELETE_POST'));
   readonly canModerateComment = computed(() => this.isOwner() || this.hasPermission('DELETE_COMMENT'));
+  readonly canApprovePosts = computed(() => this.hasPermission('APPROVE_POST'));
 
   // ==================== PERMISSION HELPERS ====================
 
@@ -927,7 +970,11 @@ readonly allMembersLoadingMore = signal(false);
     try {
       const comm = await firstValueFrom(this.communityFacade.getById(id));
       this.community.set(comm);
-      this.editForm.patchValue({ title: comm.title, description: comm.description, category: comm.category ?? '' });
+      this.editForm.patchValue({
+        title: comm.title,
+        description: comm.description,
+        category: comm.category ?? ''
+      });
       await this.checkMembership(id);
       this.loadPosts(id);
     } catch (err: any) {
@@ -956,6 +1003,18 @@ readonly allMembersLoadingMore = signal(false);
       console.error('Failed to load posts', err);
     } finally {
       this.postsLoading.set(false);
+    }
+  }
+
+  async loadPendingPosts() {
+    this.pendingLoading.set(true);
+    try {
+      const posts = await firstValueFrom(this.postFacade.getPendingPosts(this.communityId()));
+      this.pendingPosts.set(posts);
+    } catch (err: any) {
+      console.error('Failed to load pending posts', err);
+    } finally {
+      this.pendingLoading.set(false);
     }
   }
 
@@ -996,43 +1055,67 @@ readonly allMembersLoadingMore = signal(false);
     }
   }
 
+  // ==================== PENDING POSTS ACTIONS ====================
+
+  async approvePost(post: PostUI) {
+    this.pendingActionIds.update(s => new Set(s).add(post.id));
+    try {
+      await firstValueFrom(this.postFacade.approve(post.id));
+      this.pendingPosts.update(list => list.filter(p => p.id !== post.id));
+      this.posts.update(list => [{ ...post, status: 'Approved' }, ...list]);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to approve post');
+    } finally {
+      this.pendingActionIds.update(s => { const n = new Set(s); n.delete(post.id); return n; });
+    }
+  }
+
+  async rejectPost(post: PostUI) {
+    if (!confirm(`Reject and delete "${post.title}"?`)) return;
+    this.pendingActionIds.update(s => new Set(s).add(post.id));
+    try {
+      await firstValueFrom(this.postFacade.reject(post.id));
+      this.pendingPosts.update(list => list.filter(p => p.id !== post.id));
+    } catch (err: any) {
+      alert(err?.message || 'Failed to reject post');
+    } finally {
+      this.pendingActionIds.update(s => { const n = new Set(s); n.delete(post.id); return n; });
+    }
+  }
+
   // ==================== MEMBERS MODAL ====================
 
-async openMembersModal(): Promise<void> {
+  async openMembersModal(): Promise<void> {
     this.showMembersModal.set(true);
     this.allMembersPage.set(0);
     this.allMembersForModal.set([]);
     this.allMembersLoading.set(true);
     try {
-        const result = await firstValueFrom(this.communityFacade.getMembersPublic(this.communityId(), 0, 5));
-        this.allMembersForModal.set(result.items);
-        this.allMembersTotalPages.set(result.totalPages);
-        console.log('totalPages:', result.totalPages, 'totalItems:', result.totalItems, 'items:', result.items.length);
+      const result = await firstValueFrom(this.communityFacade.getMembersPublic(this.communityId(), 0, 5));
+      this.allMembersForModal.set(result.items);
+      this.allMembersTotalPages.set(result.totalPages);
     } catch (err) {
-        console.error('Failed to load members for modal', err);
+      console.error('Failed to load members for modal', err);
     } finally {
-        this.allMembersLoading.set(false);
+      this.allMembersLoading.set(false);
     }
-}
-// ================= LOAD MORE MEMEBERS ============== //
-async loadMoreModalMembers(): Promise<void> {
+  }
+
+  async loadMoreModalMembers(): Promise<void> {
     if (this.allMembersLoadingMore()) return;
     this.allMembersLoadingMore.set(true);
     try {
-        const nextPage = this.allMembersPage() + 1;
-        console.log('Loading page:', nextPage);
-        const result = await firstValueFrom(this.communityFacade.getMembersPublic(this.communityId(), nextPage, 5));
-        console.log('Got items:', result.items.length, 'items:', result.items);
-        const current = this.allMembersForModal();
-        this.allMembersForModal.set([...current, ...result.items]);
-        this.allMembersPage.set(nextPage);
-        this.allMembersTotalPages.set(result.totalPages);
+      const nextPage = this.allMembersPage() + 1;
+      const result = await firstValueFrom(this.communityFacade.getMembersPublic(this.communityId(), nextPage, 5));
+      this.allMembersForModal.update(current => [...current, ...result.items]);
+      this.allMembersPage.set(nextPage);
+      this.allMembersTotalPages.set(result.totalPages);
     } catch (err) {
-        console.error('Failed to load more members', err);
+      console.error('Failed to load more members', err);
     } finally {
-        this.allMembersLoadingMore.set(false);
+      this.allMembersLoadingMore.set(false);
     }
-}
+  }
 
   // ==================== JOIN / LEAVE ====================
 
@@ -1134,9 +1217,7 @@ async loadMoreModalMembers(): Promise<void> {
       await firstValueFrom(this.commentFacade.delete(commentId));
       const state = this.commentStates().get(postId);
       if (state) {
-        this.commentStates.update(m => new Map(m).set(postId, {
-          ...state, items: state.items.filter(c => c.id !== commentId)
-        }));
+        this.commentStates.update(m => new Map(m).set(postId, { ...state, items: state.items.filter(c => c.id !== commentId) }));
       }
       this.posts.update(list => list.map(p => p.id === postId ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p));
     } catch (err) {
@@ -1150,9 +1231,7 @@ async loadMoreModalMembers(): Promise<void> {
       await firstValueFrom(this.http.delete(`http://localhost:8081/api/comments/${commentId}/moderate`));
       const state = this.commentStates().get(postId);
       if (state) {
-        this.commentStates.update(m => new Map(m).set(postId, {
-          ...state, items: state.items.filter(c => c.id !== commentId)
-        }));
+        this.commentStates.update(m => new Map(m).set(postId, { ...state, items: state.items.filter(c => c.id !== commentId) }));
       }
       this.posts.update(list => list.map(p => p.id === postId ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p));
     } catch (err: any) {
@@ -1190,7 +1269,11 @@ async loadMoreModalMembers(): Promise<void> {
     this.savingEdit.set(true);
     try {
       const vals = this.editForm.getRawValue();
-      const updated = await firstValueFrom(this.communityFacade.update(this.communityId(), vals));
+      const updated = await firstValueFrom(this.communityFacade.update(this.communityId(), {
+        title: vals.title,
+        description: vals.description,
+        category: vals.category ?? ''
+      }));
       this.community.set(updated);
     } catch (err: any) {
       alert('Failed to update: ' + (err.message || 'Unknown error'));
@@ -1202,18 +1285,11 @@ async loadMoreModalMembers(): Promise<void> {
   // ==================== MODERATOR MANAGEMENT ====================
 
   async searchUsers() {
-    if (!this.modSearchQuery.trim() || this.modSearchQuery.length < 2) {
-      this.userSearchResults.set([]);
-      return;
-    }
+    if (!this.modSearchQuery.trim() || this.modSearchQuery.length < 2) { this.userSearchResults.set([]); return; }
     try {
-      const result: any = await firstValueFrom(
-        this.http.get(`http://localhost:8081/api/clients/search?username=${encodeURIComponent(this.modSearchQuery)}&size=5`)
-      );
+      const result: any = await firstValueFrom(this.http.get(`http://localhost:8081/api/clients/search?username=${encodeURIComponent(this.modSearchQuery)}&size=5`));
       this.userSearchResults.set(result.content ?? []);
-    } catch {
-      this.userSearchResults.set([]);
-    }
+    } catch { this.userSearchResults.set([]); }
   }
 
   selectUserForMod(user: any) {
@@ -1261,18 +1337,11 @@ async loadMoreModalMembers(): Promise<void> {
   // ==================== TRANSFER OWNERSHIP ====================
 
   async searchTransferUsers() {
-    if (!this.transferSearchQuery.trim() || this.transferSearchQuery.length < 2) {
-      this.transferSearchResults.set([]);
-      return;
-    }
+    if (!this.transferSearchQuery.trim() || this.transferSearchQuery.length < 2) { this.transferSearchResults.set([]); return; }
     try {
-      const result: any = await firstValueFrom(
-        this.http.get(`http://localhost:8081/api/clients/search?username=${encodeURIComponent(this.transferSearchQuery)}&size=5`)
-      );
+      const result: any = await firstValueFrom(this.http.get(`http://localhost:8081/api/clients/search?username=${encodeURIComponent(this.transferSearchQuery)}&size=5`));
       this.transferSearchResults.set(result.content ?? []);
-    } catch {
-      this.transferSearchResults.set([]);
-    }
+    } catch { this.transferSearchResults.set([]); }
   }
 
   selectTransferUser(user: any) {
@@ -1297,11 +1366,7 @@ async loadMoreModalMembers(): Promise<void> {
 
   // ==================== BAN / WARN ====================
 
-  openBanModal(member: CommunityMemberUI) {
-    this.banTarget.set(member);
-    this.banReason = '';
-    this.showBanModal.set(true);
-  }
+  openBanModal(member: CommunityMemberUI) { this.banTarget.set(member); this.banReason = ''; this.showBanModal.set(true); }
 
   async executeBan() {
     const target = this.banTarget();
@@ -1318,11 +1383,7 @@ async loadMoreModalMembers(): Promise<void> {
     }
   }
 
-  openWarnModal(member: CommunityMemberUI) {
-    this.warnTarget.set(member);
-    this.warnReason = '';
-    this.showWarnModal.set(true);
-  }
+  openWarnModal(member: CommunityMemberUI) { this.warnTarget.set(member); this.warnReason = ''; this.showWarnModal.set(true); }
 
   async executeWarn() {
     const target = this.warnTarget();
