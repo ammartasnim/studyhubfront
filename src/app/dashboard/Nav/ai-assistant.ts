@@ -16,7 +16,7 @@ interface MessageSegment {
   type: 'text' | 'code';
   content: string;
   language?: string;
-  open?: boolean; // ✅ true while the closing ``` hasn't arrived yet
+  open?: boolean; 
 }
 
 @Component({

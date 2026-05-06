@@ -144,14 +144,14 @@ export const routes: Routes = [
     },
     {
       path: 'posts',
-      loadComponent: () => import('./dashboard/admin/admin-posts')
-        .then(m => m.AdminPosts)
+      loadComponent: () => import('./dashboard/admin/admin-posts-reports')
+       .then(m => m.AdminPostReports)
     },
-    {
-      path: 'comments',
-      loadComponent: () => import('./dashboard/admin/admin-comments')
-        .then(m => m.AdminComments)
-    },
+  {
+  path: 'comments',
+  loadComponent: () => import('./dashboard/admin/admin-comments-reports')
+    .then(m => m.AdminCommentReports)  
+},
     {
       path: 'communities',
       loadComponent: () => import('./dashboard/admin/admin-communities')

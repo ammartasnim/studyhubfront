@@ -106,10 +106,19 @@ import { UserFacadeService } from '../../api/facades';
                     {{ banningId() === user.id ? '...' : 'Unban' }}
                   </button>
                 } @else {
-                  <button (click)="toggleBan(user)" [disabled]="banningId() === user.id"
-                    class="px-3 py-1.5 rounded-lg text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 disabled:opacity-50 transition-colors">
-                    {{ banningId() === user.id ? '...' : 'Ban' }}
-                  </button>
+                  <td class="px-5 py-3.5 text-right">
+                    @if (user.banned) {
+                      <button (click)="banTarget.set(user)" [disabled]="banningId() === user.id"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 transition-colors">
+                        {{ banningId() === user.id ? '...' : 'Unban' }}
+                      </button>
+                    } @else {
+                      <button (click)="banTarget.set(user)" [disabled]="banningId() === user.id"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 disabled:opacity-50 transition-colors">
+                        {{ banningId() === user.id ? '...' : 'Ban' }}
+                      </button>
+                    }
+                  </td>
                 }
               </td>
             </tr>
@@ -128,6 +137,58 @@ import { UserFacadeService } from '../../api/facades';
         class="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 disabled:opacity-40 hover:bg-slate-50 transition-colors">Next</button>
     </div>
   </div>
+  @if (banTarget()) {
+  <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+          [class.bg-red-100]="!banTarget()!.banned"
+          [class.bg-emerald-100]="banTarget()!.banned">
+          <svg class="w-6 h-6"
+            [class.text-red-600]="!banTarget()!.banned"
+            [class.text-emerald-600]="banTarget()!.banned"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-bold text-slate-900">
+            {{ banTarget()!.banned ? 'Unban' : 'Ban' }} User?
+          </h3>
+          <p class="text-sm text-slate-500 mt-0.5">
+            {{ banTarget()!.firstName }} {{ banTarget()!.lastName }}
+            <span class="text-slate-300 mx-1">·</span>
+            &#64;{{ banTarget()!.username }}
+          </p>
+        </div>
+      </div>
+
+      <p class="text-sm text-slate-600 mb-6">
+        @if (banTarget()!.banned) {
+          This user will be able to log in and use the platform again.
+        } @else {
+          This user will be immediately logged out and blocked from accessing the platform.
+        }
+      </p>
+
+      <div class="flex gap-3">
+        <button (click)="banTarget.set(null)"
+          class="flex-1 px-4 py-2 border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50">
+          Cancel
+        </button>
+        <button (click)="confirmBan()"
+          class="flex-1 px-4 py-2 rounded-xl font-semibold text-white"
+          [class.bg-red-600]="!banTarget()!.banned"
+          [class.hover:bg-red-700]="!banTarget()!.banned"
+          [class.bg-emerald-600]="banTarget()!.banned"
+          [class.hover:bg-emerald-700]="banTarget()!.banned">
+          {{ banTarget()!.banned ? 'Unban' : 'Ban' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
 </div>
   `
 })
@@ -142,6 +203,7 @@ export class AdminUsers implements OnInit {
   readonly loading   = signal(false);
   readonly banningId = signal<number | null>(null);
   readonly statusFilter = signal<'ALL' | 'ACTIVE' | 'BANNED'>('ALL');
+  readonly banTarget = signal<UserUI | null>(null);
   readonly size = 10;
 
   search = '';
@@ -176,6 +238,12 @@ load() {
     },
     error: () => this.loading.set(false)
   });
+}
+confirmBan() {
+  const user = this.banTarget();
+  if (!user) return;
+  this.banTarget.set(null);
+  this.toggleBan(user);
 }
 
   setStatusFilter(value: 'ALL' | 'ACTIVE' | 'BANNED') {

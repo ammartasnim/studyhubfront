@@ -265,4 +265,9 @@ export class PostFacadeService {
     catchError(err => this.handleError(err, 'Failed to fetch your reports'))
   );
 }
+getGroupedPostReports(): Observable<any[]> {
+  return this.http.get<any[]>(`${this.basePath}/api/reports/posts/grouped`).pipe(
+    catchError(err => this.handleError(err, 'Failed to fetch grouped post reports'))
+  );
+}
 }
