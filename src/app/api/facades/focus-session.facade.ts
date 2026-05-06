@@ -7,15 +7,16 @@ import { FocusSessionControllerService } from '../api/focusSessionController.ser
 import { FocusSessionReqDto } from '../model/focusSessionReqDto';
 import { FocusSessionResDto } from '../model/focusSessionResDto';
 import { PageFocusSessionResDto } from '../model/pageFocusSessionResDto';
-import { UserFocusRankDto } from '../model/userFocusRankDto';
 import { FocusSessionUI } from './models/focus-session.model'
 import { PaginatedSessions } from './models/PaginatedSessions';
 import { UserFocusRank } from './models/user-focus-rank.model';
 import { formatApiError } from './models/api-error.model';
+import { HttpClient } from '@angular/common/http';
 
 @Injectable({ providedIn: 'root' })
 export class FocusSessionFacadeService {
   private readonly focusSessionController = inject(FocusSessionControllerService);
+  private readonly http = inject(HttpClient);
 
   /**
    * Start a new focus session
@@ -203,6 +204,14 @@ export class FocusSessionFacadeService {
       catchError(err => this.handleError(err, 'Failed to fetch top focus users'))
     );
   }
+
+  
+  BASE_URL = 'http://localhost:8081';
+  getFocusTrends(): Observable<{ date: string; count: number }[]> {
+  return this.http.get<{ date: string; count: number }[]>(
+    `${this.BASE_URL}/api/focus-sessions/stats/trends`
+  ).pipe(catchError(err => this.handleError(err, 'Failed to fetch focus trends')));
+}
 
   // ── Private helpers ──────────────────────────────────────────────────────────
 

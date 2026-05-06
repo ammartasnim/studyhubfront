@@ -1,7 +1,9 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
+import { BaseChartDirective } from 'ng2-charts';
+import { ChartConfiguration, ChartData } from 'chart.js';
+
 import { FocusSessionFacadeService } from '../../api/facades/focus-session.facade';
 import { UserFacadeService } from '../../api/facades/user.facade';
 import { PostFacadeService } from '../../api/facades/post.facade';
@@ -11,16 +13,18 @@ import { CommentFacadeService } from '../../api/facades';
 @Component({
   selector: 'app-admin-stats',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, BaseChartDirective],
   template: `
-<div class="p-8">
-  <div class="mb-8">
+<div class="p-8 space-y-8">
+
+  <!-- Header -->
+  <div>
     <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Overview</h2>
     <p class="text-sm text-slate-400 mt-1">Platform statistics at a glance</p>
   </div>
 
   <!-- Overview cards -->
-  <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+  <div class="grid grid-cols-2 xl:grid-cols-5 gap-4">
     @for (card of overviewCards(); track card.label) {
       <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
         <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{{ card.label }}</p>
@@ -36,39 +40,65 @@ import { CommentFacadeService } from '../../api/facades';
     }
   </div>
 
+  <!-- Charts row 1: Line + Doughnut -->
   <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
-    <!-- Badge distribution -->
+    <!-- User Growth Line Chart -->
     <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-      <h3 class="text-sm font-bold text-slate-700 uppercase tracking-widest mb-5">Badge Distribution</h3>
+      <h3 class="text-sm font-bold text-slate-700 uppercase tracking-widest mb-5">User Growth (Last 7 Days)</h3>
       @if (loading()) {
-        <div class="flex flex-col gap-3">
-          @for (i of [1,2,3]; track i) {
-            <div class="h-6 bg-slate-100 rounded-lg animate-pulse"></div>
-          }
-        </div>
-      } @else if (badgeEntries().length === 0) {
-        <p class="text-sm text-slate-400">No badge data available.</p>
+        <div class="h-56 bg-slate-50 rounded-xl animate-pulse"></div>
       } @else {
-        <div class="flex flex-col gap-3">
-          @for (entry of badgeEntries(); track entry.badge) {
-            <div>
-              <div class="flex justify-between text-xs font-semibold text-slate-500 mb-1">
-                <span>{{ entry.badge }}</span>
-                <span>{{ entry.count }}</span>
-              </div>
-              <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
-                  [style.width]="entry.percent + '%'">
-                </div>
-              </div>
-            </div>
-          }
+        <div class="relative h-56">
+          <canvas baseChart
+            [data]="userGrowthData()"
+            [options]="lineOptions"
+            type="line">
+          </canvas>
         </div>
       }
     </div>
 
-    <!-- Top focus users -->
+    <!-- Badge Distribution Doughnut -->
+    <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+      <h3 class="text-sm font-bold text-slate-700 uppercase tracking-widest mb-5">Badge Distribution</h3>
+      @if (loading()) {
+        <div class="h-56 bg-slate-50 rounded-xl animate-pulse"></div>
+      } @else if (badgeEntries().length === 0) {
+        <p class="text-sm text-slate-400">No badge data available.</p>
+      } @else {
+        <div class="relative h-56 flex items-center justify-center">
+          <canvas baseChart
+            [data]="badgeChartData()"
+            [options]="doughnutOptions"
+            type="doughnut">
+          </canvas>
+        </div>
+      }
+    </div>
+
+  </div>
+
+  <!-- Charts row 2: Bar + Leaderboard -->
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+    <!-- Focus Trends Bar Chart -->
+    <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+      <h3 class="text-sm font-bold text-slate-700 uppercase tracking-widest mb-5">Focus Sessions (Last 7 Days)</h3>
+      @if (loading()) {
+        <div class="h-56 bg-slate-50 rounded-xl animate-pulse"></div>
+      } @else {
+        <div class="relative h-56">
+          <canvas baseChart
+            [data]="focusTrendsData()"
+            [options]="barOptions"
+            type="bar">
+          </canvas>
+        </div>
+      }
+    </div>
+
+    <!-- Top Focus Users Leaderboard -->
     <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
       <h3 class="text-sm font-bold text-slate-700 uppercase tracking-widest mb-5">Top Focus Users</h3>
       @if (loading()) {
@@ -83,7 +113,10 @@ import { CommentFacadeService } from '../../api/facades';
         <div class="flex flex-col gap-3">
           @for (u of topUsers(); track u.userId; let i = $index) {
             <div class="flex items-center gap-3">
-              <span class="w-6 text-xs font-black text-slate-300 text-center">{{ i + 1 }}</span>
+              <span class="w-6 text-xs font-black text-center"
+                [class]="i === 0 ? 'text-amber-400' : i === 1 ? 'text-slate-400' : i === 2 ? 'text-orange-400' : 'text-slate-300'">
+                {{ i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1 }}
+              </span>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-bold text-slate-700 truncate">{{ u.username }}</p>
               </div>
@@ -101,41 +134,129 @@ import { CommentFacadeService } from '../../api/facades';
   `
 })
 export class AdminStats implements OnInit {
-  private readonly http               = inject(HttpClient);
-  private readonly focusFacade        = inject(FocusSessionFacadeService);
-  private readonly userFacade         = inject(UserFacadeService);
-  private readonly postFacade         = inject(PostFacadeService);
-  private readonly communityFacade    = inject(CommunityFacadeService)
-  private readonly commentFacade      = inject(CommentFacadeService);
+  private readonly focusFacade     = inject(FocusSessionFacadeService);
+  private readonly userFacade      = inject(UserFacadeService);
+  private readonly postFacade      = inject(PostFacadeService);
+  private readonly communityFacade = inject(CommunityFacadeService);
+  private readonly commentFacade   = inject(CommentFacadeService);
 
-  readonly loading      = signal(true);
-  readonly userStats    = signal<any>(null);
-  readonly postStats    = signal<any>(null);
-  readonly commentStats = signal<any>(null);
+  readonly loading        = signal(true);
+  readonly userStats      = signal<any>(null);
+  readonly postStats      = signal<any>(null);
+  readonly commentStats   = signal<any>(null);
   readonly communityStats = signal<any>(null);
-  readonly focusStats   = signal<any>(null);
-  readonly badges       = signal<Record<string, number>>({});
-  readonly topUsers     = signal<{ userId: number; username: string; totalHours: number }[]>([]);
+  readonly focusStats     = signal<any>(null);
+  readonly badges         = signal<Record<string, number>>({});
+  readonly topUsers       = signal<{ userId: number; username: string; totalHours: number }[]>([]);
+  readonly userGrowthRaw  = signal<{ date: string; count: number }[]>([]);
+  readonly focusTrendsRaw = signal<{ date: string; count: number }[]>([]);
 
-  readonly overviewCards = () => [
-    { label: 'Total Users',        value: this.userStats()?.total        ?? '—', sub: `${this.userStats()?.banned ?? 0} banned` },
-    { label: 'Total Posts',        value: this.postStats()?.total        ?? '—', sub: `${this.postStats()?.flagged ?? 0} flagged` },
-    { label: 'Total Comments',     value: this.commentStats()?.total     ?? '—', sub: null },
-    { label: 'Communities',        value: this.communityStats()?.total   ?? '—', sub: null },
-    { label: 'Completed Sessions', value: this.focusStats()?.completed   ?? '—', sub: `${this.focusStats()?.active ?? 0} active now` },
+  // ── Shared palette ────────────────────────────────────────────
+  private readonly indigo  = 'rgba(99,102,241,1)';
+  private readonly indigoT = 'rgba(99,102,241,0.15)';
+  private readonly palette = [
+    'rgba(99,102,241,0.85)',   // indigo
+    'rgba(168,85,247,0.85)',   // purple
+    'rgba(236,72,153,0.85)',   // pink
+    'rgba(20,184,166,0.85)',   // teal
+    'rgba(245,158,11,0.85)',   // amber
+    'rgba(16,185,129,0.85)',   // emerald
+    'rgba(239,68,68,0.85)',    // red
+    'rgba(59,130,246,0.85)',   // blue
+    'rgba(107,114,128,0.85)',  // slate
+    'rgba(234,179,8,0.85)',    // yellow
   ];
+
+  // ── Chart configs ─────────────────────────────────────────────
+  readonly lineOptions: ChartConfiguration['options'] = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+      y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { color: '#94a3b8', font: { size: 11 }, precision: 0 } }
+    }
+  };
+
+  readonly barOptions: ChartConfiguration['options'] = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+      y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { color: '#94a3b8', font: { size: 11 }, precision: 0 } }
+    }
+  };
+
+  readonly doughnutOptions: ChartConfiguration['options'] = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: { color: '#64748b', font: { size: 11 }, padding: 12, boxWidth: 12 }
+      }
+    }
+  };
+
+  // ── Computed chart data ────────────────────────────────────────
+  readonly userGrowthData = (): ChartData<'line'> => ({
+    labels: this.userGrowthRaw().map(d => this.formatDate(d.date)),
+    datasets: [{
+      data: this.userGrowthRaw().map(d => d.count),
+      borderColor: this.indigo,
+      backgroundColor: this.indigoT,
+      borderWidth: 2,
+      pointBackgroundColor: this.indigo,
+      pointRadius: 4,
+      tension: 0.4,
+      fill: true
+    }]
+  });
+
+  readonly focusTrendsData = (): ChartData<'bar'> => ({
+    labels: this.focusTrendsRaw().map(d => this.formatDate(d.date)),
+    datasets: [{
+      data: this.focusTrendsRaw().map(d => d.count),
+      backgroundColor: this.palette[0],
+      borderRadius: 6,
+      borderSkipped: false
+    }]
+  });
+
+  readonly badgeChartData = (): ChartData<'doughnut'> => {
+    const b = this.badges();
+    const entries = Object.entries(b);
+    return {
+      labels: entries.map(([k]) => k),
+      datasets: [{
+        data: entries.map(([, v]) => v),
+        backgroundColor: this.palette.slice(0, entries.length),
+        borderWidth: 0,
+        hoverOffset: 6
+      }]
+    };
+  };
 
   readonly badgeEntries = () => {
     const b = this.badges();
     if (!b || Object.keys(b).length === 0) return [];
     const max = Math.max(...Object.values(b));
     return Object.entries(b).map(([badge, count]) => ({
-      badge,
-      count,
+      badge, count,
       percent: max > 0 ? (count / max) * 100 : 0
     }));
   };
 
+  readonly overviewCards = () => [
+    { label: 'Total Users',        value: this.userStats()?.total      ?? '—', sub: `${this.userStats()?.banned ?? 0} banned` },
+    { label: 'Total Posts',        value: this.postStats()?.total      ?? '—', sub: `${this.postStats()?.flagged ?? 0} flagged` },
+    { label: 'Total Comments',     value: this.commentStats()?.total   ?? '—', sub: null },
+    { label: 'Communities',        value: this.communityStats()?.total ?? '—', sub: null },
+    { label: 'Focus Sessions',     value: this.focusStats()?.completed ?? '—', sub: `${this.focusStats()?.active ?? 0} active now` },
+  ];
+
+  // ── Init ──────────────────────────────────────────────────────
   ngOnInit() {
     forkJoin({
       users:       this.userFacade.getStats(),
@@ -145,6 +266,8 @@ export class AdminStats implements OnInit {
       focus:       this.focusFacade.getStats(),
       badges:      this.userFacade.getBadgeDistribution(),
       topUsers:    this.focusFacade.getTopUsers(),
+      userGrowth:  this.userFacade.getUserGrowth(),
+      focusTrends: this.focusFacade.getFocusTrends(),
     }).subscribe({
       next: res => {
         this.userStats.set(res.users);
@@ -154,9 +277,16 @@ export class AdminStats implements OnInit {
         this.focusStats.set(res.focus);
         this.badges.set(res.badges);
         this.topUsers.set(res.topUsers);
+        this.userGrowthRaw.set(res.userGrowth);
+        this.focusTrendsRaw.set(res.focusTrends);
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
     });
+  }
+
+  private formatDate(dateStr: string): string {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 }

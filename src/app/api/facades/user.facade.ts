@@ -181,6 +181,13 @@ export class UserFacadeService {
     );
   }
 
+  BASE_URL = 'http://localhost:8081';
+  getUserGrowth(): Observable<{ date: string; count: number }[]> {
+  return this.http.get<{ date: string; count: number }[]>(
+    `${this.BASE_URL}/api/clients/stats/growth`
+  ).pipe(catchError(err => this.handleError(err, 'Failed to fetch user growth')));
+}
+
   private mapToUI(dto: UserResDto | null | undefined): UserUI {
     if (!dto) {
       throw new Error('User data is null or undefined');

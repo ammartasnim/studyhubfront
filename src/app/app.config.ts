@@ -8,6 +8,8 @@ import { authTokenInterceptor } from './auth-token.interceptor';
 import { responseHandlerInterceptor } from './response-handler.interceptor';
 import { routes } from './app.routes';
 
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
@@ -19,6 +21,7 @@ export const appConfig: ApplicationConfig = {
         authTokenInterceptor
       ])
     ),
+    provideCharts(withDefaultRegisterables()),
     {
       provide: Configuration,
       useValue: new CustomConfiguration({
