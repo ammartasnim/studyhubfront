@@ -284,6 +284,7 @@ export class AdminStats implements OnInit {
       error: () => this.loading.set(false)
     });
   }
+  
 
   private formatDate(dateStr: string): string {
     const d = new Date(dateStr);
