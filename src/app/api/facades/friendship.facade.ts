@@ -293,4 +293,9 @@ export class FriendshipFacadeService {
       pageSize: response.size ?? 0
     };
   }
+searchFriends(query: string): Observable<UserSummaryUI[]> {
+  return this.http.get<any[]>(`${this.apiBase}/search?q=${encodeURIComponent(query)}`).pipe(
+    map(results => results.map(dto => this.mapUserSummary(dto) as UserSummaryUI))
+  );
+}
 }
