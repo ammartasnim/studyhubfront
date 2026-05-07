@@ -130,7 +130,7 @@ export class CommunityFacadeService {
   }
 
   removeModerator(communityId: number, userId: number): Observable<void> {
-    return this.http.delete<void>(`${this.basePath}/api/communities/${communityId}/moderators/${userId}`).pipe(
+    return this.http.delete<void>(`${this.basePath}/api/communities/${communityId}/moderators/${userId}`, { observe: 'body' }).pipe(
       catchError(err => this.handleError(err, 'Failed to remove moderator'))
     );
   }
@@ -233,7 +233,7 @@ export class CommunityFacadeService {
   }
 
   unbanMember(communityId: number, userId: number): Observable<void> {
-    return this.http.delete<void>(`${this.basePath}/api/communities/${communityId}/ban/${userId}`).pipe(
+    return this.http.delete<void>(`${this.basePath}/api/communities/${communityId}/ban/${userId}`, { observe: 'body' }).pipe(
       catchError(err => this.handleError(err, 'Failed to unban member'))
     );
   }
@@ -253,7 +253,7 @@ export class CommunityFacadeService {
   }
 
   leave(communityId: number): Observable<void> {
-    return this.http.delete<void>(`${this.basePath}/api/communities/${communityId}/leave`).pipe(
+    return this.http.delete<void>(`${this.basePath}/api/communities/${communityId}/leave`, { observe: 'body' }).pipe(
       catchError(err => this.handleError(err, 'Failed to leave community'))
     );
   }

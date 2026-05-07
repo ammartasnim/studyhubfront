@@ -45,7 +45,11 @@ export class FriendshipFacadeService {
     }
 
     return this.http
-      .put<any>(`${this.apiBase}/accept/${encodeURIComponent(String(requesterId))}`, null, JSON_ACCEPT)
+      .put<any>(
+        `${this.apiBase}/accept/${encodeURIComponent(String(requesterId))}`,
+        {},
+        { ...JSON_ACCEPT, observe: 'body' }
+      )
       .pipe(
         map(dto => {
           this.responseHandler.logResponse(`acceptRequest(${requesterId})`, 'PUT', dto);
@@ -60,7 +64,7 @@ export class FriendshipFacadeService {
       return throwError(() => new Error('Invalid friend ID'));
     } 
     return this.http
-      .delete<void>(`${this.apiBase}/${encodeURIComponent(String(friendId))}`, JSON_ACCEPT)
+      .delete<void>(`${this.apiBase}/${encodeURIComponent(String(friendId))}`, { ...JSON_ACCEPT, observe: 'body' })
       .pipe(
         map(() => {
           this.responseHandler.logResponse(`deleteFriendship(${friendId})`, 'DELETE', null);
@@ -170,7 +174,11 @@ export class FriendshipFacadeService {
     }
 
     return this.http
-      .put<any>(`${this.apiBase}/block/${encodeURIComponent(String(userId))}`, null, JSON_ACCEPT)
+      .put<any>(
+        `${this.apiBase}/block/${encodeURIComponent(String(userId))}`,
+        {},
+        { ...JSON_ACCEPT, observe: 'body' }
+      )
       .pipe(
         map(dto => {
           this.responseHandler.logResponse(`blockUser(${userId})`, 'PUT', dto);
@@ -186,7 +194,11 @@ export class FriendshipFacadeService {
     }
 
     return this.http
-      .put<any>(`${this.apiBase}/unblock/${encodeURIComponent(String(userId))}`, null, JSON_ACCEPT)
+      .put<any>(
+        `${this.apiBase}/unblock/${encodeURIComponent(String(userId))}`,
+        {},
+        { ...JSON_ACCEPT, observe: 'body' }
+      )
       .pipe(
         map(dto => {
           this.responseHandler.logResponse(`unblockUser(${userId})`, 'PUT', dto);

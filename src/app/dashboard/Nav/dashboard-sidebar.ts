@@ -18,6 +18,7 @@ import { Router } from '@angular/router';
         <div class="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center mb-4">
           <img [src]="pfp()" alt="Profile Picture" class="h-full w-full rounded-full object-cover">
         </div>
+        
 
         <!-- User Info -->
         <h3 class="font-semibold text-lg">{{ displayName() }}</h3>
@@ -159,6 +160,7 @@ export class DashboardSidebarComponent {
 
   xpPercentage = () => Math.min((this.xp() / 1000) * 100, 100);
 
+
   getInitials(): string {
     const name = this.displayName();
     if (!name) return '?';
@@ -180,4 +182,5 @@ export class DashboardSidebarComponent {
     this.userContext.clear();
     this.router.navigateByUrl('/auth/login');
   }
+
 }

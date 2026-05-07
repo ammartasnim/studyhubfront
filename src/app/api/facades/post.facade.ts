@@ -168,7 +168,7 @@ export class PostFacadeService {
 
   reject(id: number): Observable<void> {
     if (!id || id <= 0) return throwError(() => new Error('Invalid post ID'));
-    return this.http.delete<void>(`${this.basePath}/api/posts/${id}/reject`).pipe(
+    return this.http.delete<void>(`${this.basePath}/api/posts/${id}/reject`, { observe: 'body' }).pipe(
       catchError(err => this.handleError(err, `Failed to reject post ${id}`))
     );
   }
