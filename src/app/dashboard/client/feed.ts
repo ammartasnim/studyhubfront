@@ -6,13 +6,14 @@ import { CreatePostModalComponent } from './create-post';
 import { CreateCommunityModalComponent } from './create-community';
 import { FeedService } from '../../services/feed.service';
 import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
-import { firstValueFrom } from 'rxjs';
 import { ReportModalComponent } from '../../api/facades/models/report.model';
+import { MentionInputComponent } from './MentionInputComponent';
+import { MentionTextComponent } from './MentionTextComponent';
 
 @Component({
   selector: 'app-academic-feed',
   standalone: true,
-  imports: [CommonModule, CreatePostModalComponent, CreateCommunityModalComponent, ReportModalComponent],
+  imports: [CommonModule, CreatePostModalComponent, CreateCommunityModalComponent, ReportModalComponent,MentionInputComponent,MentionTextComponent],
   template: `
     <app-create-post-modal #createPostModal (postCreated)="onPostCreated()" />
     <app-create-community-modal #createCommunityModal (communityCreated)="onCommunityCreated()" />
@@ -295,7 +296,11 @@ import { ReportModalComponent } from '../../api/facades/models/report.model';
                                   }
                                 </div>
                               </div>
-                              <p class="text-slate-700">{{ comment.content }}</p>
+                           
+                              <app-mention-text
+                                          class="text-slate-700"
+                                          [text]="comment.content"
+                                        />
                               <div class="flex items-center justify-between mt-1">
                                 <button (click)="toggleReplies(comment.id)" class="text-xs text-indigo-500 hover:text-indigo-700 font-medium">
                                   @if (expandedComments().has(comment.id)) { Hide replies } @else { View replies }
@@ -344,19 +349,22 @@ import { ReportModalComponent } from '../../api/facades/models/report.model';
                                           }
                                         </div>
                                       </div>
-                                      <p class="text-slate-700">{{ reply.content }}</p>
+                                   
+                                      <app-mention-text
+                                                class="text-slate-700"
+                                                [text]="reply.content"
+                                              />
                                     </div>
                                   </div>
                                 }
                                 <div class="flex items-center gap-2 mt-1">
-                                  <input
-                                    type="text"
-                                    placeholder="Write a reply..."
-                                    [value]="getReplyInput(comment.id)"
-                                    (input)="setReplyInput(comment.id, $any($event.target).value)"
-                                    (keyup.enter)="submitReply(comment.id)"
-                                    class="flex-1 px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white"
-                                  />
+                               
+                                  <app-mention-input
+                                  class="flex-1"
+                                  [value]="getReplyInput(comment.id)"
+                                  (valueChange)="setReplyInput(comment.id, $event)"
+                                  placeholder="Write a reply..."
+                                />
                                   <button (click)="submitReply(comment.id)" class="text-xs px-2 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
                                     Send
                                   </button>
@@ -376,13 +384,12 @@ import { ReportModalComponent } from '../../api/facades/models/report.model';
                       }
 
                       <div class="flex items-center gap-2 mt-3">
-                        <input
-                          type="text"
-                          placeholder="Write a comment..."
+                
+                        <app-mention-input
+                          class="flex-1"
                           [value]="getCommentInput(post.id)"
-                          (input)="setCommentInput(post.id, $any($event.target).value)"
-                          (keyup.enter)="submitComment(post.id)"
-                          class="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                          (valueChange)="setCommentInput(post.id, $event)"
+                          placeholder="Write a comment..."
                         />
                         <button
                           (click)="submitComment(post.id)"
