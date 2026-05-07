@@ -43,6 +43,8 @@ const AUTH_TOKEN_KEY = 'token';
     .notif-row:hover { background: #f8faff; }
     .notif-row.unread { background: #f5f7ff; }
     .notif-row.unread:hover { background: #eef1ff; }
+    .notif-text { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+    .notif-text.clamp { -webkit-line-clamp: 2; }
     .notif-scroll::-webkit-scrollbar { width: 4px; }
     .notif-scroll::-webkit-scrollbar-track { background: transparent; }
     .notif-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 9999px; }
@@ -89,7 +91,7 @@ const AUTH_TOKEN_KEY = 'token';
 
             <!-- Dropdown panel -->
             @if (isNotifOpen) {
-              <div class="notif-panel absolute right-0 mt-2.5 w-[360px] z-50
+              <div class=" notif-panel absolute right-0 mt-2.5 w-[360px] z-50
                           rounded-2xl overflow-hidden bg-white border border-slate-200/70
                           shadow-[0_20px_60px_-10px_rgba(15,23,42,0.18),0_4px_16px_-4px_rgba(15,23,42,0.08)]">
 
@@ -177,13 +179,19 @@ const AUTH_TOKEN_KEY = 'token';
                       </span>
 
                       <div class="flex-1 min-w-0">
-                        <p class="text-sm leading-snug truncate"
+                        <p class="text-sm leading-snug notif-text"
+                           [class.clamp]="!isExpanded(notif.id)"
                            [class.font-semibold]="!notif.isRead"
                            [class.text-slate-900]="!notif.isRead"
                            [class.font-normal]="notif.isRead"
                            [class.text-slate-600]="notif.isRead">
                           {{ notif.message || notif.type }}
                         </p>
+                        <button type="button"
+                                (click)="toggleExpanded(notif.id, $event)"
+                                class="mt-1 text-[11px] font-medium text-indigo-600 hover:text-indigo-700">
+                          {{ isExpanded(notif.id) ? 'Show less' : 'Show more' }}
+                        </button>
                         @if (notif.createdAt) {
                           <p class="text-[11px] text-slate-400 mt-0.5">
                             {{ notif.createdAt | date: 'MMM d · h:mm a' }}
@@ -337,6 +345,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private currentPage        = 0;
   private preLoaded          = false; // guards against double-fetching
   private hasUnreadCount     = false;
+  private expandedNotifs     = new Set<number>();
   // ────────────────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
@@ -432,6 +441,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
   openNotification(notif: NotificationUI): void {
     if (!notif.isRead) this.markAsRead(notif);
     if (notif.link) this.router.navigateByUrl(notif.link).catch(() => undefined);
+  }
+
+  isExpanded(id: number): boolean {
+    return this.expandedNotifs.has(id);
+  }
+
+  toggleExpanded(id: number, event: Event): void {
+    event.stopPropagation();
+    if (this.expandedNotifs.has(id)) {
+      this.expandedNotifs.delete(id);
+    } else {
+      this.expandedNotifs.add(id);
+    }
   }
 
   // ── private ─────────────────────────────────────────────────────────────
