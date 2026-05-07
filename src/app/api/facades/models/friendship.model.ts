@@ -36,3 +36,4 @@ export interface PaginatedFriendships {
   currentPage: number;
   pageSize: number;
 }
+
