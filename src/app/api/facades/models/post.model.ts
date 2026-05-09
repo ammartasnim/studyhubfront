@@ -1,21 +1,18 @@
-/**
- * Post UI Model - Clean interface for components
- */
 export interface PostUI {
   id: number;
   title: string;
   content: string;
   images: string[];
+  authorId?: number;
   authorUsername: string;
   authorFirstName: string;
   authorLastName: string;
   authorPfp?: string;
+  communityId?: number;
   communityTitle: string;
-  // UI helper fields
   authorFullName: string;
   previewText: string;
   imageCount: number;
-  // Engagement fields
   likeCount: number;
   commentCount: number;
   isLiked: boolean;

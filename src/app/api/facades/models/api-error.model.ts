@@ -13,9 +13,10 @@ export function isApiError(obj: any): obj is ApiError {
 }
 
 export function formatApiError(error: any, fallback: string): string {
-  if (isApiError(error)) {
-    let msg = `[${error.status}] ${error.message}`;
-    if (error.rootCause) msg += ` — ${error.rootCause}`;
+  const body = error?.error ?? error;
+  if (isApiError(body)) {
+    let msg = `[${body.status}] ${body.message}`;
+    if (body.rootCause) msg += ` — ${body.rootCause}`;
     return msg;
   }
   if (error instanceof Error) return error.message;

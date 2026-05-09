@@ -2,6 +2,7 @@ export interface NotificationUI {
   id: number;
   type: string;
   message: string;
+  description?: string;
   link?: string;
   refId?: number;
   isRead: boolean;

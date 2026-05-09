@@ -64,6 +64,14 @@ interface CommentState {
             <div>
               <p class="text-xl font-bold text-slate-900">{{ displayName() }}</p>
               <p class="text-sm text-slate-500">@{{ user()?.username || 'unknown' }}</p>
+              @if (isBlocked()) {
+                <span class="inline-flex items-center gap-1 mt-1 text-xs font-medium px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                  You have blocked this user
+                </span>
+              }
             </div>
             <div class="ml-auto flex items-center gap-2">
               @if (friendshipLoading()) {
@@ -361,6 +369,20 @@ interface CommentState {
         </div>
       </section>
     </div>
+
+    <!-- Block Confirm Modal -->
+    @if (blockConfirm()) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="blockConfirm.set(false)">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4" (click)="$event.stopPropagation()">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">Block User</h3>
+          <p class="text-sm text-slate-600 mb-6">Are you sure you want to block <span class="font-semibold">{{ displayName() }}</span>? They won't be able to see your profile or contact you.</p>
+          <div class="flex gap-3 justify-end">
+            <button class="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition-colors" (click)="blockConfirm.set(false)">Cancel</button>
+            <button class="px-4 py-2 rounded-xl bg-rose-600 text-white font-semibold hover:bg-rose-700 transition-colors" (click)="confirmBlock()">Block</button>
+          </div>
+        </div>
+      </div>
+    }
   `
 })
 export class ProfileDetailComponent implements OnInit, OnDestroy {
@@ -382,6 +404,8 @@ export class ProfileDetailComponent implements OnInit, OnDestroy {
   readonly isFriend        = signal(false);
   readonly friendshipLoading = signal(false);
   readonly hasSentRequest  = signal(false);
+  readonly isBlocked       = signal(false);
+  readonly blockConfirm    = signal(false);
 
   // Comments
   private readonly commentStates   = signal<Map<number, CommentState>>(new Map());
@@ -408,6 +432,7 @@ export class ProfileDetailComponent implements OnInit, OnDestroy {
         this.loadPosts(id, 0, this.paginationConfig().pageSize);
         this.loadFriendshipStatus(id);
         this.loadSentStatus(id);
+        this.loadBlockedStatus(id);
       }
     });
   }
@@ -504,11 +529,20 @@ export class ProfileDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  blockUser() {
+  blockUser() { this.blockConfirm.set(true); }
+
+  confirmBlock() {
     const id = this.user()?.id; if (!id) return;
-    if (!confirm('Block this user?')) return;
+    this.blockConfirm.set(false);
     this.friendshipFacade.blockUser(id).subscribe({
-      next: () => { this.isFriend.set(false); this.hasSentRequest.set(false); }
+      next: () => { this.isFriend.set(false); this.hasSentRequest.set(false); this.isBlocked.set(true); }
+    });
+  }
+
+  loadBlockedStatus(profileUserId: number) {
+    this.friendshipFacade.getBlockedUsers({ page: 0, size: 100 }).subscribe({
+      next: res => this.isBlocked.set(res.items.some(u => u.id === profileUserId)),
+      error: () => {}
     });
   }
 

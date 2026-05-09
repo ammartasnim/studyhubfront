@@ -33,8 +33,7 @@ interface CommentState {
 
       <!-- Banner -->
       <div
-        class="relative h-44 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-500 overflow-hidden cursor-pointer group"
-        (click)="openModal()"
+        class="relative h-44 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-500 overflow-hidden"
       >
         <div class="absolute -top-10 -left-8 w-40 h-40 rounded-full bg-indigo-400 blur-3xl opacity-30 animate-pulse"></div>
         <div class="absolute top-2 right-10 w-28 h-28 rounded-full bg-fuchsia-400 blur-3xl opacity-30 animate-pulse delay-300"></div>
@@ -48,13 +47,10 @@ interface CommentState {
             <div class="flex items-end gap-5">
 
               <!-- Avatar -->
-              <div class="relative w-28 h-28 flex-shrink-0 cursor-pointer group/avatar" (click)="openModal()">
+              <div class="relative w-28 h-28 flex-shrink-0">
                 <div class="absolute -inset-[3px] rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 z-0"></div>
                 <div class="absolute -inset-[3px] rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 blur-md opacity-50 z-[-1]"></div>
                 <div class="relative z-10 w-full h-full rounded-[1.1rem] overflow-hidden bg-indigo-100">
-                  <div class="absolute inset-0 z-20 flex items-center justify-center bg-black/0 group-hover/avatar:bg-black/40 transition-all duration-200 rounded-[1.1rem]">
-                    <span class="text-2xl opacity-0 group-hover/avatar:opacity-100 transition-all duration-200">📷</span>
-                  </div>
                   @if (pfp()) {
                     <img [src]="pfp()" [alt]="displayName()" class="w-full h-full object-cover" />
                   } @else {
@@ -113,7 +109,7 @@ interface CommentState {
         } @else {
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
             @for (friend of friendsPreview(); track friend.id) {
-              <div class="flex items-center gap-3 p-3 rounded-xl bg-white ring-1 ring-slate-100">
+              <div (click)="viewFriendProfile(friend.id)" class="flex items-center gap-3 p-3 rounded-xl bg-white ring-1 ring-slate-100 cursor-pointer hover:bg-indigo-50 transition-colors">
                 <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
                   @if (friend.pfp) {
                     <img [src]="friendAvatarUrl(friend.pfp)" [alt]="friend.fullName || friend.username || 'User'" class="w-full h-full object-cover" />
@@ -154,7 +150,7 @@ interface CommentState {
                 <div class="flex items-start justify-between mb-2">
                   <div class="flex items-center gap-2 flex-wrap">
                     @if (post.communityTitle && post.communityTitle !== 'General') {
-                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[0.65rem] font-semibold bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200">
+                      <span (click)="navigateToCommunity(post.communityId)" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[0.65rem] font-semibold bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200 cursor-pointer hover:bg-indigo-100 transition-colors">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         c/{{ post.communityTitle }}
                       </span>
@@ -448,6 +444,27 @@ interface CommentState {
       </div>
     }
 
+    <!-- Delete Post Confirm Modal -->
+    @if (deletePostConfirmId()) {
+      <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center animate-[fadeIn_0.15s_ease]" (click)="deletePostConfirmId.set(null)">
+        <div class="bg-white rounded-2xl p-6 w-[min(400px,90vw)] shadow-2xl animate-[slideUp_0.2s_ease]" (click)="$event.stopPropagation()">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">Delete Post?</h3>
+          <p class="text-sm text-slate-500 mb-6">This cannot be undone.</p>
+          <div class="flex gap-3">
+            <button (click)="deletePostConfirmId.set(null)" class="flex-1 px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancel</button>
+            <button (click)="confirmDeletePost()" class="flex-1 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors">Delete</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Toast -->
+    @if (toastMsg()) {
+      <div class="fixed top-5 right-5 z-[100] px-5 py-3 bg-slate-800 text-white rounded-xl shadow-lg text-sm font-medium">
+        {{ toastMsg() }}
+      </div>
+    }
+
     <!-- Friends Modal -->
     @if (friendsOpen()) {
       <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center animate-[fadeIn_0.15s_ease]" (click)="closeFriends()">
@@ -601,14 +618,23 @@ export class ProfileComponent implements OnInit {
     }
   }
 
+  deletePostConfirmId = signal<number | null>(null);
+
   async deletePost(postId: number) {
-    if (!confirm('Delete this post? This cannot be undone.')) return;
+    this.deletePostConfirmId.set(postId);
+  }
+
+  async confirmDeletePost() {
+    const postId = this.deletePostConfirmId();
+    if (!postId) return;
+    this.deletePostConfirmId.set(null);
     this.deletingIds.update(s => new Set(s).add(postId));
     try {
       await firstValueFrom(this.postFacade.delete(postId));
       this.posts.update(list => list.filter(p => p.id !== postId));
     } catch (err: any) {
-      alert(err?.message || 'Failed to delete post');
+      this.toastMsg.set(err?.message || 'Failed to delete post');
+      setTimeout(() => this.toastMsg.set(null), 4000);
     } finally {
       this.deletingIds.update(s => { const n = new Set(s); n.delete(postId); return n; });
     }
@@ -632,6 +658,8 @@ cancelEdit() {
   this.editExistingImages.set([]);
 }
 
+  readonly toastMsg = signal<string | null>(null);
+
   async saveEdit(postId: number) {
   if (!this.editTitle.trim() || !this.editContent.trim()) return;
   this.savingEdit.set(true);
@@ -648,7 +676,8 @@ cancelEdit() {
     ));
     this.cancelEdit();
   } catch (err: any) {
-    alert(err?.message || 'Failed to update post');
+    this.toastMsg.set(err?.message || 'Failed to update post');
+    setTimeout(() => this.toastMsg.set(null), 4000);
   } finally {
     this.savingEdit.set(false);
   }
@@ -811,6 +840,7 @@ cancelEdit() {
   onFriendsPageChange(page: number) { this.loadFriends(page, this.friendsPaginationConfig().pageSize); }
   onFriendsPageSizeChange(size: number) { this.loadFriends(0, size); }
   viewFriendProfile(friendId: number) { if (friendId) this.router.navigate(['/dashboard/client/profile', friendId]); }
+  navigateToCommunity(communityId?: number) { if (communityId) this.router.navigate(['/dashboard/client/community', communityId]); }
 
   // ── Upload modal ───────────────────────────────────────────────────────────
 
@@ -864,7 +894,15 @@ cancelEdit() {
   readonly level     = computed(() => this.user()?.level ?? 1);
   readonly xp        = computed(() => this.user()?.xpPts ?? 0);
   readonly badges    = computed(() => this.user()?.badges ?? []);
-  readonly xpPercent = computed(() => Math.min(100, (this.xp() % 5000) / 50));
+  readonly xpPercent = computed(() => {
+    const xp = this.xp();
+    const tiers = [0, 500, 2000, 5000];
+    let tierStart = 0, tierEnd = 500;
+    for (let i = tiers.length - 1; i >= 0; i--) {
+      if (xp >= tiers[i]) { tierStart = tiers[i]; tierEnd = tiers[i + 1] ?? tiers[i] + 5000; break; }
+    }
+    return Math.min(100, ((xp - tierStart) / (tierEnd - tierStart)) * 100);
+  });
 
   readonly pfp = computed(() => {
     if (this.localPfp()) return this.localPfp()!;

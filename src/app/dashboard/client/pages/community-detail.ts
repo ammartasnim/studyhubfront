@@ -7,7 +7,7 @@ import { HttpClient } from '@angular/common/http';
 
 import { CommunityFacadeService, CommunityMemberUI, PostFacadeService, CommunityUI, PostUI, CommentFacadeService, CommentUI } from '../../../api/facades';
 import { UserContextService } from '../../../services/user-context.service';
-import { CreatePostModalComponent } from '../create-post';
+import { CreatePostModalComponent } from '../modals/create-post';
 import { MentionInputComponent } from '../../../shared/components/mention-input';
 import { MentionTextComponent } from '../../../shared/components/mention-text';
 
@@ -239,12 +239,12 @@ interface CommentState {
                 @for (post of posts(); track post.id) {
                   <article class="p-6 transition-colors hover:bg-slate-50">
                     <div class="flex items-start gap-3 mb-3">
-                      <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm select-none flex-shrink-0">
+                      <div (click)="navigateToProfile(post.authorId)" class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm select-none flex-shrink-0 cursor-pointer">
                         {{ getInitials(post.authorFullName) }}
                       </div>
                       <div class="flex-1">
                         <div class="flex justify-between items-start">
-                          <p class="font-semibold text-slate-900 text-sm">{{ post.authorFullName }}</p>
+                          <p (click)="navigateToProfile(post.authorId)" class="font-semibold text-slate-900 text-sm cursor-pointer hover:text-indigo-600 transition-colors">{{ post.authorFullName }}</p>
                           <div class="flex items-center gap-2">
                             <span class="text-xs text-slate-400">{{ getTimeAgo(post.createdAt) }}</span>
                             @if (canModeratePost()) {
@@ -315,7 +315,7 @@ interface CommentState {
                               <div class="flex-1">
                                 <div class="bg-white rounded-xl px-3 py-2 text-sm border border-slate-100 shadow-sm">
                                   <div class="flex items-center justify-between gap-2 mb-0.5">
-                                    <p class="font-semibold text-slate-800 text-xs">{{ comment.authorFullName }}</p>
+                                    <p (click)="navigateToProfile(comment.userId)" class="font-semibold text-slate-800 text-xs cursor-pointer hover:text-indigo-600 transition-colors">{{ comment.authorFullName }}</p>
                                     <div class="flex items-center gap-2">
                                       @if (comment.createdAt) {
                                         <span class="text-xs text-slate-400">{{ getTimeAgo(comment.createdAt) }}</span>
@@ -698,7 +698,7 @@ interface CommentState {
             } @else {
               <div class="space-y-3">
                 @for (member of allMembersForModal(); track member.userId) {
-                  <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <div (click)="navigateToProfile(member.userId); showMembersModal.set(false)" class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-indigo-50 transition-colors">
                     @if (member.pfp) {
                       <img [src]="'http://localhost:8081/uploads/' + member.pfp" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                     } @else {
@@ -790,6 +790,55 @@ interface CommentState {
         </div>
       </div>
     }
+
+    <!-- Reject Post Confirm Modal -->
+    @if (rejectPostConfirm()) {
+      <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+          <h2 class="text-xl font-bold text-slate-900 mb-2">Reject Post?</h2>
+          <p class="text-slate-600 mb-6">Reject and delete "{{ rejectPostConfirm()!.title }}"? This cannot be undone.</p>
+          <div class="flex gap-3">
+            <button (click)="rejectPostConfirm.set(null)" class="flex-1 px-4 py-2 border rounded-xl font-semibold hover:bg-slate-50">Cancel</button>
+            <button (click)="confirmRejectPost()" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700">Reject</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Remove Moderator Confirm Modal -->
+    @if (removingModId()) {
+      <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+          <h2 class="text-xl font-bold text-slate-900 mb-2">Remove Moderator?</h2>
+          <p class="text-slate-600 mb-6">This will revoke all moderator permissions for this user.</p>
+          <div class="flex gap-3">
+            <button (click)="removingModId.set(null)" class="flex-1 px-4 py-2 border rounded-xl font-semibold hover:bg-slate-50">Cancel</button>
+            <button (click)="confirmRemoveModerator()" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700">Remove</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Transfer Ownership Confirm Modal -->
+    @if (showTransferConfirm()) {
+      <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+          <h2 class="text-xl font-bold text-slate-900 mb-2">Transfer Ownership?</h2>
+          <p class="text-slate-600 mb-6">Transfer to {{ selectedTransferUser()?.firstName }} {{ selectedTransferUser()?.lastName }}? You will lose owner privileges.</p>
+          <div class="flex gap-3">
+            <button (click)="showTransferConfirm.set(false)" class="flex-1 px-4 py-2 border rounded-xl font-semibold hover:bg-slate-50">Cancel</button>
+            <button (click)="confirmTransferOwnership()" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700">Confirm Transfer</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Toast notification -->
+    @if (toastMessage()) {
+      <div class="fixed top-5 right-5 z-[100] px-5 py-3 bg-slate-800 text-white rounded-xl shadow-lg text-sm font-medium animate-[slideDown_0.2s_ease]">
+        {{ toastMessage() }}
+      </div>
+    }
   `
 })
 export class CommunityDetailComponent implements OnInit {
@@ -861,6 +910,7 @@ export class CommunityDetailComponent implements OnInit {
   readonly warnTarget = signal<CommunityMemberUI | null>(null);
   readonly actionLoading = signal(false);
   readonly savingEdit = signal(false);
+  readonly toastMessage = signal<string | null>(null);
 
   // Form inputs
   banReason = '';
@@ -1070,20 +1120,28 @@ export class CommunityDetailComponent implements OnInit {
       this.pendingPosts.update(list => list.filter(p => p.id !== post.id));
       this.posts.update(list => [{ ...post, status: 'Approved' }, ...list]);
     } catch (err: any) {
-      alert(err?.message || 'Failed to approve post');
+      this.showToast(err?.message || 'Failed to approve post');
     } finally {
       this.pendingActionIds.update(s => { const n = new Set(s); n.delete(post.id); return n; });
     }
   }
 
+  rejectPostConfirm = signal<PostUI | null>(null);
+
   async rejectPost(post: PostUI) {
-    if (!confirm(`Reject and delete "${post.title}"?`)) return;
+    this.rejectPostConfirm.set(post);
+  }
+
+  async confirmRejectPost() {
+    const post = this.rejectPostConfirm();
+    if (!post) return;
+    this.rejectPostConfirm.set(null);
     this.pendingActionIds.update(s => new Set(s).add(post.id));
     try {
       await firstValueFrom(this.postFacade.reject(post.id));
       this.pendingPosts.update(list => list.filter(p => p.id !== post.id));
     } catch (err: any) {
-      alert(err?.message || 'Failed to reject post');
+      this.showToast(err?.message || 'Failed to reject post');
     } finally {
       this.pendingActionIds.update(s => { const n = new Set(s); n.delete(post.id); return n; });
     }
@@ -1131,7 +1189,7 @@ export class CommunityDetailComponent implements OnInit {
       this._isMember.set(true);
       this.community.update(c => c ? { ...c, nbrMembers: c.nbrMembers + 1 } : c);
     } catch (err: any) {
-      alert(err?.message || 'Failed to join community');
+      this.showToast(err?.message || 'Failed to join community');
     }
   }
 
@@ -1141,7 +1199,7 @@ export class CommunityDetailComponent implements OnInit {
       this._isMember.set(false);
       this.community.update(c => c ? { ...c, nbrMembers: Math.max(0, c.nbrMembers - 1) } : c);
     } catch (err: any) {
-      alert(err?.message || 'Failed to leave community');
+      this.showToast(err?.message || 'Failed to leave community');
     }
   }
 
@@ -1232,7 +1290,6 @@ export class CommunityDetailComponent implements OnInit {
   }
 
   async moderatorDeleteComment(postId: number, commentId: number): Promise<void> {
-    if (!confirm('Delete this comment as moderator?')) return;
     try {
       await firstValueFrom(this.http.delete(`http://localhost:8081/api/comments/${commentId}/moderate`));
       const state = this.commentStates().get(postId);
@@ -1241,7 +1298,7 @@ export class CommunityDetailComponent implements OnInit {
       }
       this.posts.update(list => list.map(p => p.id === postId ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p));
     } catch (err: any) {
-      alert(err?.message || 'Failed to delete comment');
+      this.showToast(err?.message || 'Failed to delete comment');
     }
   }
 
@@ -1259,12 +1316,11 @@ export class CommunityDetailComponent implements OnInit {
   }
 
   async moderatorDeletePost(postId: number) {
-    if (!confirm('Delete this post as moderator?')) return;
     try {
       await firstValueFrom(this.http.delete(`http://localhost:8081/api/posts/${postId}/moderate`));
       this.posts.update(list => list.filter(p => p.id !== postId));
     } catch (err: any) {
-      alert(err?.message || 'Failed to delete post');
+      this.showToast(err?.message || 'Failed to delete post');
     }
   }
 
@@ -1282,7 +1338,7 @@ export class CommunityDetailComponent implements OnInit {
       }));
       this.community.set(updated);
     } catch (err: any) {
-      alert('Failed to update: ' + (err.message || 'Unknown error'));
+      this.showToast('Failed to update: ' + (err.message || 'Unknown error'));
     } finally {
       this.savingEdit.set(false);
     }
@@ -1291,11 +1347,22 @@ export class CommunityDetailComponent implements OnInit {
   // ==================== MODERATOR MANAGEMENT ====================
 
   async searchUsers() {
-    if (!this.modSearchQuery.trim() || this.modSearchQuery.length < 2) { this.userSearchResults.set([]); return; }
-    try {
-      const result: any = await firstValueFrom(this.http.get(`http://localhost:8081/api/clients/search?username=${encodeURIComponent(this.modSearchQuery)}&size=5`));
-      this.userSearchResults.set(result.content ?? []);
-    } catch { this.userSearchResults.set([]); }
+    const q = this.modSearchQuery.trim().toLowerCase();
+    if (!q || q.length < 2) { this.userSearchResults.set([]); return; }
+    const memberList = this.members();
+    if (memberList.length > 0) {
+      const filtered = memberList
+        .filter(m => !m.isModerator && m.userId !== this.community()?.ownerId)
+        .filter(m => (m.username ?? '').toLowerCase().includes(q) || (m.fullName ?? '').toLowerCase().includes(q))
+        .slice(0, 5)
+        .map(m => ({ id: m.userId, firstName: m.fullName?.split(' ')[0] ?? '', lastName: m.fullName?.split(' ').slice(1).join(' ') ?? '', username: m.username }));
+      this.userSearchResults.set(filtered);
+    } else {
+      try {
+        const result: any = await firstValueFrom(this.http.get(`http://localhost:8081/api/clients/search?username=${encodeURIComponent(this.modSearchQuery)}&size=5`));
+        this.userSearchResults.set(result.content ?? []);
+      } catch { this.userSearchResults.set([]); }
+    }
   }
 
   selectUserForMod(user: any) {
@@ -1323,20 +1390,28 @@ export class CommunityDetailComponent implements OnInit {
       this.selectedPermissions.set(new Set());
       this.modSearchQuery = '';
     } catch (err: any) {
-      alert(err?.message || 'Failed to add moderator');
+      this.showToast(err?.message || 'Failed to add moderator');
     } finally {
       this.addingMod.set(false);
     }
   }
 
+  removingModId = signal<number | null>(null);
+
   async removeModerator(userId: number | undefined) {
     if (!userId) return;
-    if (!confirm('Remove this moderator?')) return;
+    this.removingModId.set(userId);
+  }
+
+  async confirmRemoveModerator() {
+    const userId = this.removingModId();
+    if (!userId) return;
+    this.removingModId.set(null);
     try {
       await firstValueFrom(this.communityFacade.removeModerator(this.communityId(), userId));
       await this.loadData(this.communityId());
     } catch (err: any) {
-      alert(err?.message || 'Failed to remove moderator');
+      this.showToast(err?.message || 'Failed to remove moderator');
     }
   }
 
@@ -1356,17 +1431,25 @@ export class CommunityDetailComponent implements OnInit {
     this.transferSearchQuery = user.username;
   }
 
+  showTransferConfirm = signal(false);
+
   async transferOwnership() {
     const target = this.selectedTransferUser();
     if (!target) return;
-    if (!confirm(`Transfer ownership to ${target.firstName} ${target.lastName}? You will lose owner privileges.`)) return;
+    this.showTransferConfirm.set(true);
+  }
+
+  async confirmTransferOwnership() {
+    const target = this.selectedTransferUser();
+    if (!target) return;
+    this.showTransferConfirm.set(false);
     try {
       await firstValueFrom(this.communityFacade.transferOwnership(this.communityId(), target.id));
       await this.loadData(this.communityId());
       this.selectedTransferUser.set(null);
       this.transferSearchQuery = '';
     } catch (err: any) {
-      alert(err?.message || 'Failed to transfer ownership');
+      this.showToast(err?.message || 'Failed to transfer ownership');
     }
   }
 
@@ -1383,7 +1466,7 @@ export class CommunityDetailComponent implements OnInit {
       this.members.update(list => list.filter(m => m.userId !== target.userId));
       this.showBanModal.set(false);
     } catch (err: any) {
-      alert(err?.message || 'Failed to ban member');
+      this.showToast(err?.message || 'Failed to ban member');
     } finally {
       this.actionLoading.set(false);
     }
@@ -1397,10 +1480,24 @@ export class CommunityDetailComponent implements OnInit {
     this.actionLoading.set(true);
     try {
       await firstValueFrom(this.communityFacade.warnMember(this.communityId(), target.userId, this.warnReason));
-      this.members.update(list => list.map(m => m.userId === target.userId ? { ...m, warningCount: m.warningCount + 1 } : m));
+      const newWarningCount = (target.warningCount ?? 0) + 1;
+      this.members.update(list => list.map(m => m.userId === target.userId ? { ...m, warningCount: newWarningCount } : m));
       this.showWarnModal.set(false);
+      if (newWarningCount >= 3) {
+        try {
+          await firstValueFrom(this.communityFacade.banMember(this.communityId(), target.userId, 'Auto-banned after 3 warnings'));
+          this.members.update(list => list.filter(m => m.userId !== target.userId));
+          const banned = { ...target, warningCount: newWarningCount };
+          this.bannedMembers.update(list => [banned, ...list]);
+          this.toastMessage.set('Member auto-banned after 3 warnings');
+          setTimeout(() => this.toastMessage.set(null), 4000);
+        } catch (banErr: any) {
+          console.error('Auto-ban failed:', banErr);
+        }
+      }
     } catch (err: any) {
-      alert(err?.message || 'Failed to warn member');
+      this.toastMessage.set(err?.message || 'Failed to warn member');
+      setTimeout(() => this.toastMessage.set(null), 4000);
     } finally {
       this.actionLoading.set(false);
     }
@@ -1411,7 +1508,7 @@ export class CommunityDetailComponent implements OnInit {
       await firstValueFrom(this.communityFacade.unbanMember(this.communityId(), userId));
       this.bannedMembers.update(list => list.filter(m => m.userId !== userId));
     } catch (err: any) {
-      alert(err?.message || 'Failed to unban member');
+      this.showToast(err?.message || 'Failed to unban member');
     }
   }
 
@@ -1426,7 +1523,7 @@ export class CommunityDetailComponent implements OnInit {
       await firstValueFrom(this.communityFacade.delete(this.communityId()));
       this.router.navigate(['/dashboard/client/my-created']);
     } catch (err: any) {
-      alert('Failed to delete: ' + (err.message || 'Unknown error'));
+      this.showToast('Failed to delete: ' + (err.message || 'Unknown error'));
     } finally {
       this.deletingCommunity.set(false);
     }
@@ -1437,6 +1534,12 @@ export class CommunityDetailComponent implements OnInit {
   goBack() { this.router.navigate(['/dashboard/client/communities']); }
   openCreatePost() { this.createPostModal.open(); }
   onPostCreated() { this.loadPosts(this.communityId()); }
+  navigateToProfile(userId?: number): void { if (userId) this.router.navigate(['/dashboard/client/profile', userId]); }
+
+  showToast(msg: string): void {
+    this.toastMessage.set(msg);
+    setTimeout(() => this.toastMessage.set(null), 4000);
+  }
 
   getInitials(name: string): string {
     if (!name?.trim()) return '?';

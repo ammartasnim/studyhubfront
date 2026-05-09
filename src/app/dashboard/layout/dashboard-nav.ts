@@ -55,7 +55,18 @@ const AUTH_TOKEN_KEY = 'token';
       <div class="w-full px-4 py-6">
 
         <!-- TOP BAR -->
-        <div class="flex items-center justify-end mb-6 pr-1">
+        <div class="flex items-center justify-end gap-3 mb-6 pr-1">
+          <!-- User info -->
+          <div class="hidden sm:flex items-center gap-2">
+            @if (pfpUrl()) {
+              <img [src]="pfpUrl()" [alt]="displayName()" class="w-8 h-8 rounded-full object-cover border border-slate-200" />
+            } @else {
+              <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                {{ displayName().slice(0,2).toUpperCase() }}
+              </div>
+            }
+            <span class="text-sm font-semibold text-slate-700">{{ displayName() }}</span>
+          </div>
           <div class="relative">
 
             <!-- Bell button -->
@@ -334,6 +345,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private readonly PAGE_SIZE = 5;
   private currentPage        = 0;
+  private totalItems         = 0;
   private preLoaded          = false;
   private hasUnreadCount     = false;
   private expandedNotifs     = new Set<number>();
@@ -402,9 +414,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.isNotifLoading = true;
       }
       this.refreshUnreadCount();
-      if (this.unreadCount > 0) {
-        this.markAllAsRead();
-      }
     }
   }
 
@@ -425,7 +434,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
             ...incoming.filter((n: NotificationUI) => !seen.has(n.id)),
           ];
           this.currentPage = nextPage;
-          this.hasMore = incoming.length >= this.PAGE_SIZE;
+          this.totalItems = response.totalItems ?? this.totalItems;
+          this.hasMore = (this.currentPage + 1) * this.PAGE_SIZE < this.totalItems;
         },
         error: err => console.error('[Notifications] load more failed', err),
       });
@@ -443,7 +453,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   openNotification(notif: NotificationUI): void {
     if (!notif.isRead) this.markAsRead(notif);
-    if (notif.link) this.router.navigateByUrl(notif.link).catch(() => undefined);
+    this.isNotifOpen = false;
+    if (notif.link) {
+      this.router.navigateByUrl(notif.link).catch(() => undefined);
+      return;
+    }
+    const type = (notif.type ?? '').toUpperCase();
+    if ((type === 'POST' || type === 'COMMENT' || type === 'MENTION') && notif.refId) {
+      this.router.navigate(['/dashboard/client/community', notif.refId]);
+    } else if (type === 'FRIEND') {
+      this.router.navigateByUrl('/dashboard/client/suggestedFriends');
+    }
   }
 
   isExpanded(id: number): boolean {
@@ -469,7 +489,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .subscribe({
         next: response => {
           this.notifications  = response.items ?? [];
-          this.hasMore        = this.notifications.length >= this.PAGE_SIZE;
+          this.totalItems = response.totalItems ?? this.notifications.length;
+          this.hasMore = (this.currentPage + 1) * this.PAGE_SIZE < this.totalItems;
           this.preLoaded      = true;
           this.isNotifLoading = false;
           if (!this.hasUnreadCount) {

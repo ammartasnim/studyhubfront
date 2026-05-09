@@ -8,6 +8,7 @@ import {
   ValidatorFn,
   Validators
 } from '@angular/forms';
+import { Router } from '@angular/router';
 
 import { UserContextService } from '../../../services/user-context.service';
 import { UserFacadeService } from '../../../api/facades';
@@ -137,6 +138,38 @@ import { PaginationComponent, PaginationConfig } from '../../../shared/paginatio
         <!-- Profile Information Form -->
         <div class="card">
           <h2 class="text-lg font-semibold text-slate-900 mb-4">Profile Information</h2>
+
+          <!-- Profile Picture Upload -->
+          <div class="flex items-center gap-4 mb-5 pb-5 border-b border-slate-100">
+            <div class="relative w-16 h-16 flex-shrink-0">
+              @if (pfpPreview()) {
+                <img [src]="pfpPreview()" alt="Profile picture" class="w-16 h-16 rounded-full object-cover border-2 border-indigo-200" />
+              } @else {
+                <div class="w-16 h-16 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg font-bold">
+                  {{ (profileForm.get('firstName')?.value?.charAt(0) ?? '') + (profileForm.get('lastName')?.value?.charAt(0) ?? '') | uppercase }}
+                </div>
+              }
+              @if (pfpUploading()) {
+                <div class="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                  <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              }
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-medium text-slate-700">Profile Picture</label>
+              <label class="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Change Photo
+                <input type="file" accept="image/*" class="hidden" (change)="onPfpSelected($event)" [disabled]="pfpUploading()" />
+              </label>
+              @if (pfpError()) {
+                <p class="text-xs text-red-500">{{ pfpError() }}</p>
+              }
+            </div>
+          </div>
+
           <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="field-group">
@@ -266,7 +299,8 @@ import { PaginationComponent, PaginationConfig } from '../../../shared/paginatio
         } @else {
           <div class="divide-y divide-slate-100 rounded-2xl ring-1 ring-slate-100 overflow-hidden">
             @for (user of blockedUsers(); track user.id) {
-              <div class="px-5 py-4 flex items-center gap-4">
+              <div class="px-5 py-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                (click)="navigateToProfile(user.id)">
                 <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
                   @if (user.pfp) {
                     <img [src]="blockedAvatarUrl(user.pfp)" [alt]="blockedName(user)" class="w-full h-full object-cover" />
@@ -279,7 +313,7 @@ import { PaginationComponent, PaginationConfig } from '../../../shared/paginatio
                   <p class="text-sm text-slate-500 truncate">@{{ user.username || 'unknown' }}</p>
                 </div>
                 <button class="px-4 py-2 rounded-xl bg-white border border-emerald-200 text-emerald-600 font-semibold hover:bg-emerald-50 transition-colors"
-                  (click)="unblockUser(user.id)">Unblock</button>
+                  (click)="$event.stopPropagation(); unblockConfirmId.set(user.id)">Unblock</button>
               </div>
             }
           </div>
@@ -318,7 +352,8 @@ import { PaginationComponent, PaginationConfig } from '../../../shared/paginatio
         } @else {
           <div class="divide-y divide-slate-100 rounded-2xl ring-1 ring-slate-100 overflow-hidden">
             @for (report of myReports(); track report.id) {
-              <div class="px-5 py-4 flex items-start gap-4">
+              <div class="px-5 py-4 flex items-start gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                (click)="navigateToReport(report)">
 
                 <!-- Icon -->
                 <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
@@ -376,6 +411,27 @@ import { PaginationComponent, PaginationConfig } from '../../../shared/paginatio
       </div>
 
     </div>
+
+    <!-- Toast -->
+    @if (settingsToast()) {
+      <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white text-sm font-medium px-5 py-3 rounded-2xl shadow-xl">
+        {{ settingsToast() }}
+      </div>
+    }
+
+    <!-- Unblock Confirm Modal -->
+    @if (unblockConfirmId()) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="unblockConfirmId.set(null)">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4" (click)="$event.stopPropagation()">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">Unblock User</h3>
+          <p class="text-sm text-slate-600 mb-6">Are you sure you want to unblock this user?</p>
+          <div class="flex gap-3 justify-end">
+            <button class="btn-cancel" (click)="unblockConfirmId.set(null)">Cancel</button>
+            <button class="btn-save" (click)="confirmUnblock()">Unblock</button>
+          </div>
+        </div>
+      </div>
+    }
   `
 })
 export class SettingsComponent implements OnInit {
@@ -384,6 +440,7 @@ export class SettingsComponent implements OnInit {
   private readonly userFacade = inject(UserFacadeService);
   private readonly friendshipFacade = inject(FriendshipFacadeService);
   private readonly postFacade = inject(PostFacadeService);
+  private readonly router = inject(Router);
 
   // Forms
   readonly profileForm = this.fb.nonNullable.group({
@@ -434,6 +491,15 @@ export class SettingsComponent implements OnInit {
     totalPages: 0, totalElements: 0, currentPage: 0,
     pageSize: 10, hasNext: false, hasPrevious: false
   });
+
+  // Toast + modals
+  settingsToast    = signal<string | null>(null);
+  unblockConfirmId = signal<number | null>(null);
+
+  // Pfp upload
+  pfpUploading = signal(false);
+  pfpError     = signal<string | null>(null);
+  pfpPreview   = signal<string | null>(null);
 
   ngOnInit(): void {
     this.initializeForms();
@@ -507,11 +573,19 @@ export class SettingsComponent implements OnInit {
     });
   }
 
-  unblockUser(userId: number) {
-    if (!userId || !confirm('Unblock this user?')) return;
+  confirmUnblock(): void {
+    const userId = this.unblockConfirmId();
+    if (!userId) return;
+    this.unblockConfirmId.set(null);
     this.friendshipFacade.unblockUser(userId).subscribe({
-      next: () => this.blockedUsers.update(list => list.filter(u => u.id !== userId)),
-      error: err => console.error('[Settings] Failed to unblock user', err)
+      next: () => {
+        this.blockedUsers.update(list => list.filter(u => u.id !== userId));
+        this.showToast('User unblocked');
+      },
+      error: err => {
+        console.error('[Settings] Failed to unblock user', err);
+        this.showToast('Failed to unblock user');
+      }
     });
   }
 
@@ -545,6 +619,7 @@ export class SettingsComponent implements OnInit {
       this.usernameOriginal.set(user.username ?? '');
       this.emailOriginal.set(user.email ?? '');
       this.phoneOriginal.set(user.phone ?? '');
+      if (user.pfp) this.pfpPreview.set(this.blockedAvatarUrl(user.pfp));
       this.profileForm.patchValue({
         firstName: user.firstName ?? '',
         lastName: user.lastName ?? '',
@@ -643,6 +718,48 @@ export class SettingsComponent implements OnInit {
     this.passwordError.set(null);
     this.passwordSuccess.set(null);
     this.passwordInvalid = false;
+  }
+
+  // ── Navigation ─────────────────────────────────────────────────────────────
+
+  navigateToProfile(id?: number): void {
+    if (id) this.router.navigate(['/dashboard/client/profile', id]);
+  }
+
+  navigateToReport(report: ReportResDto): void {
+    this.router.navigate(['/dashboard/client/feed']);
+  }
+
+  // ── Pfp Upload ─────────────────────────────────────────────────────────────
+
+  onPfpSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.pfpError.set(null);
+    const reader = new FileReader();
+    reader.onload = e => this.pfpPreview.set(e.target?.result as string);
+    reader.readAsDataURL(file);
+    this.pfpUploading.set(true);
+    this.userFacade.uploadPfp(file).subscribe({
+      next: async user => {
+        this.pfpUploading.set(false);
+        if (user.pfp) this.pfpPreview.set(this.blockedAvatarUrl(user.pfp));
+        await this.refreshUserContext();
+        this.showToast('Profile picture updated');
+      },
+      error: err => {
+        this.pfpUploading.set(false);
+        this.pfpError.set(err?.message || 'Failed to upload photo');
+      }
+    });
+  }
+
+  // ── Toast ──────────────────────────────────────────────────────────────────
+
+  private showToast(msg: string): void {
+    this.settingsToast.set(msg);
+    setTimeout(() => this.settingsToast.set(null), 3500);
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

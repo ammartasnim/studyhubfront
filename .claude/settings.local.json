@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npx ng *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(Get-ChildItem -Recurse -Filter \"feed.ts\" -ErrorAction SilentlyContinue)"
     ]
   }
 }

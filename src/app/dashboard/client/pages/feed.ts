@@ -2,8 +2,9 @@ import {
   Component, ViewChild, OnInit, OnDestroy, inject, signal, computed, ElementRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CreatePostModalComponent } from '../create-post';
-import { CreateCommunityModalComponent } from '../create-community';
+import { Router } from '@angular/router';
+import { CreatePostModalComponent } from '../modals/create-post';
+import { CreateCommunityModalComponent } from '../modals/create-community';
 import { FeedService } from '../../../services/feed.service';
 import { CommentUI, PostFacadeService, PostUI } from '../../../api/facades';
 import { ReportModalComponent } from '../../../api/facades/models/report.model';
@@ -39,17 +40,15 @@ import { MentionTextComponent } from '../../../shared/components/mention-text';
         </div>
 
         <div class="flex gap-2">
-          @if (feedService.hasCommunities()) {
-            <button
-              (click)="openCreatePost()"
-              class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 font-semibold text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-              New Post
-            </button>
-          }
+          <button
+            (click)="openCreatePost()"
+            class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 font-semibold text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            New Post
+          </button>
           <button
             (click)="openCreateCommunity()"
             class="hidden sm:inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
@@ -110,14 +109,12 @@ import { MentionTextComponent } from '../../../shared/components/mention-text';
             } @else {
               <p class="text-lg font-medium text-slate-700">Nothing in your feed yet</p>
               <p class="mt-2 text-sm">Join communities to see posts here, or be the first to share something!</p>
-              @if (feedService.hasCommunities()) {
-                <button (click)="openCreatePost()" class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                  Create First Post
-                </button>
-              }
+              <button (click)="openCreatePost()" class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Create First Post
+              </button>
             }
           </div>
         }
@@ -130,15 +127,15 @@ import { MentionTextComponent } from '../../../shared/components/mention-text';
                 <!-- Post header -->
                 <div class="flex items-start gap-3 px-6 pt-5 pb-3">
                   @if (post.authorPfp) {
-                    <img [src]="'http://localhost:8081/uploads/' + post.authorPfp" [alt]="post.authorFullName" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                    <img (click)="navigateToProfile(post.authorId)" [src]="'http://localhost:8081/uploads/' + post.authorPfp" [alt]="post.authorFullName" class="w-10 h-10 rounded-full object-cover flex-shrink-0 cursor-pointer" />
                   } @else {
-                    <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0 select-none">
+                    <div (click)="navigateToProfile(post.authorId)" class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0 select-none cursor-pointer">
                       {{ getInitials(post.authorFullName) }}
                     </div>
                   }
                   <div class="flex-1 min-w-0">
                     <div class="flex items-start justify-between gap-2">
-                      <p class="font-semibold text-slate-900 text-sm">{{ post.authorFullName }}</p>
+                      <p (click)="navigateToProfile(post.authorId)" class="font-semibold text-slate-900 text-sm cursor-pointer hover:text-indigo-600 transition-colors">{{ post.authorFullName }}</p>
                       <div class="flex items-center gap-2 flex-shrink-0">
                         <span class="text-xs text-slate-400 pt-0.5">{{ getTimeAgo(post.createdAt) }}</span>
                         <!-- Report button -->
@@ -159,7 +156,7 @@ import { MentionTextComponent } from '../../../shared/components/mention-text';
                     </div>
                     <div class="flex items-center gap-1 mt-0.5">
                       <span class="text-xs text-slate-400">in</span>
-                      <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ post.communityTitle }}</span>
+                      <span (click)="navigateToCommunity(post.communityId)" class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full cursor-pointer hover:bg-indigo-100 transition-colors">{{ post.communityTitle }}</span>
                     </div>
                   </div>
                 </div>
@@ -250,7 +247,7 @@ import { MentionTextComponent } from '../../../shared/components/mention-text';
                           <div class="flex-1">
                             <div class="bg-white rounded-xl px-3 py-2 text-sm border border-slate-100 shadow-sm">
                               <div class="flex items-center justify-between gap-2 mb-0.5">
-                                <p class="font-semibold text-slate-800 text-xs">{{ comment.authorFullName }}</p>
+                                <p (click)="navigateToProfile(comment.userId)" class="font-semibold text-slate-800 text-xs cursor-pointer hover:text-indigo-600 transition-colors">{{ comment.authorFullName }}</p>
                                 <div class="flex items-center gap-2">
                                   @if (comment.createdAt) {
                                     <span class="text-xs text-slate-400">{{ getTimeAgo(comment.createdAt) }}</span>
@@ -324,7 +321,7 @@ import { MentionTextComponent } from '../../../shared/components/mention-text';
                                     }
                                     <div class="flex-1 bg-white rounded-lg px-2 py-1.5 text-xs border border-slate-100 shadow-sm">
                                       <div class="flex items-center justify-between mb-0.5">
-                                        <span class="font-semibold text-slate-800">{{ reply.authorFullName }}</span>
+                                        <span (click)="navigateToProfile(reply.userId)" class="font-semibold text-slate-800 cursor-pointer hover:text-indigo-600 transition-colors">{{ reply.authorFullName }}</span>
                                         <div class="flex items-center gap-1.5">
                                           @if (reply.createdAt) {
                                             <span class="text-slate-400">{{ getTimeAgo(reply.createdAt) }}</span>
@@ -404,6 +401,9 @@ import { MentionTextComponent } from '../../../shared/components/mention-text';
                           } @else { Post }
                         </button>
                       </div>
+                       @if (commentErrors().has(post.id)) {
+                         <p class="mt-2 text-sm text-red-500">{{ commentErrors().get(post.id) }}</p>
+                       }
                     }
                   </div>
                 }
@@ -434,11 +434,14 @@ export class FeedComponent implements OnInit, OnDestroy {
   readonly feedService = inject(FeedService);
   private readonly postFacade = inject(PostFacadeService);
   private readonly elementRef = inject(ElementRef);
+  private readonly router = inject(Router);
 
   readonly searchQuery        = signal('');
   readonly expandedPosts      = signal<Set<number>>(new Set());
   readonly commentInputs      = signal<Map<number, string>>(new Map());
   readonly submittingComments = signal<Set<number>>(new Set());
+  readonly commentErrors      = signal<Map<number, string>>(new Map());
+  readonly replyErrors        = signal<Map<number, string>>(new Map());
   readonly expandedComments   = signal<Set<number>>(new Set());
   readonly replyInputs        = signal<Map<number, string>>(new Map());
 
@@ -477,6 +480,9 @@ private checkScroll(): void {
   openCreateCommunity(): void { this.createCommunityModal.open(); }
   onPostCreated():     void { this.feedService.loadFeed(); }
   onCommunityCreated(): void { this.feedService.checkCommunities(); }
+
+  navigateToProfile(id?: number): void { if (id) this.router.navigate(['/dashboard/client/profile', id]); }
+  navigateToCommunity(id?: number): void { if (id) this.router.navigate(['/dashboard/client/community', id]); }
 
   // ─── REPORT ───────────────────────────────────────────────────────────────
 
@@ -532,11 +538,15 @@ private checkScroll(): void {
 
   async submitComment(postId: number): Promise<void> {
     const content = this.getCommentInput(postId).trim();
-    if (!content) return;
+     if (!content) return;
     this.submittingComments.update(s => new Set(s).add(postId));
+    this.commentErrors.update(m => { const n = new Map(m); n.delete(postId); return n; });
     try {
       await this.feedService.addComment(postId, content);
       this.commentInputs.update(m => { const n = new Map(m); n.delete(postId); return n; });
+    } catch (err: any) {
+      const msg = err?.error?.message ?? err?.message ?? 'Failed to add comment';
+      this.commentErrors.update(m => new Map(m).set(postId, msg));
     } finally {
       this.submittingComments.update(s => { const n = new Set(s); n.delete(postId); return n; });
     }
@@ -551,11 +561,15 @@ private checkScroll(): void {
 
   async submitReply(commentId: number): Promise<void> {
     const content = this.getReplyInput(commentId).trim();
-    if (!content) return;
+     if (!content) return;
+    this.replyErrors.update(m => { const n = new Map(m); n.delete(commentId); return n; });
     try {
       await this.feedService.createReply(commentId, content);
       this.replyInputs.update(m => { const n = new Map(m); n.delete(commentId); return n; });
-    } catch (err) { console.error('Failed to send reply', err); }
+    } catch (err: any) {
+      const msg = err?.error?.message ?? err?.message ?? 'Failed to send reply';
+      this.replyErrors.update(m => new Map(m).set(commentId, msg));
+    }
   }
 
   async deleteReply(commentId: number, replyId: number): Promise<void> {
