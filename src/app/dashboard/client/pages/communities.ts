@@ -1,18 +1,15 @@
-import { Component, computed, inject, effect, signal, ViewChild } from '@angular/core';
+import { Component, computed, inject, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { CommunityService } from '../../services/community.service';
-import { CommunityFacadeService, CommunityUI } from '../../api/facades';
-import { CreateCommunityModalComponent } from './create-community';
+import { CommunityService } from '../../../services/community.service';
+import { CommunityUI } from '../../../api/facades';
 
 @Component({
-  selector: 'app-my-created-communities',
+  selector: 'app-my-communities',
   standalone: true,
-  imports: [CommonModule, FormsModule, CreateCommunityModalComponent],
+  imports: [CommonModule, FormsModule],
   template: `
-    <app-create-community-modal #createCommunityModal (communityCreated)="onCommunityCreated()" />
-
     <div class="flex flex-col gap-5">
       <!-- Header with Search -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -26,32 +23,21 @@ import { CreateCommunityModalComponent } from './create-community';
               type="text"
               aria-label="Search communities"
               class="w-full pl-12 pr-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              placeholder="Search your created communities..."
+              placeholder="Search your communities..."
               [(ngModel)]="searchQuery"
             />
           </div>
         </div>
-
-        <!-- Create New Community Button -->
-        <button
-          (click)="openCreateCommunity()"
-          class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 font-semibold text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          New Community
-        </button>
       </div>
 
       <!-- Communities Grid -->
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div class="border-b border-slate-200 px-6 py-4 bg-slate-50">
-          <h2 class="text-xl font-bold text-slate-900">My Created Communities</h2>
+          <h2 class="text-xl font-bold text-slate-900">My Communities</h2>
         </div>
 
         <!-- Loading State -->
-        @if (communityService.myCreatedCommunitiesLoading()) {
+        @if (communityService.myJoinedCommunitiesLoading()) {
           <div class="px-6 py-10 flex justify-center">
             <div class="flex flex-col items-center gap-4">
               <div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
@@ -61,18 +47,18 @@ import { CreateCommunityModalComponent } from './create-community';
         }
 
         <!-- Empty State -->
-        @if (!communityService.myCreatedCommunitiesLoading() && communityService.isMyCreatedCommunitiesEmpty()) {
+        @if (!communityService.myJoinedCommunitiesLoading() && communityService.isMyJoinedCommunitiesEmpty()) {
           <div class="px-6 py-10 text-center text-slate-500">
             <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 12H9m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
             </svg>
-            <p class="text-lg font-medium text-slate-700">No communities created yet</p>
-            <p class="mt-2">Create your first community to get started</p>
+            <p class="text-lg font-medium text-slate-700">No communities yet</p>
+            <p class="mt-2">Join a community to see it here</p>
           </div>
         }
 
         <!-- Communities List -->
-        @if (!communityService.myCreatedCommunitiesLoading() && filteredCommunities().length > 0) {
+        @if (!communityService.myJoinedCommunitiesLoading() && filteredCommunities().length > 0) {
           <div class="divide-y divide-slate-200">
             @for (community of filteredCommunities(); track community.id) {
               <div class="px-6 py-4 hover:bg-slate-50 transition-colors cursor-pointer">
@@ -93,12 +79,10 @@ import { CreateCommunityModalComponent } from './create-community';
                     </div>
                   </div>
 
-                  <!-- Action Buttons -->
-                  <div class="flex gap-2 flex-shrink-0">
-                    <button (click)="viewCommunity(community.id)" class="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium transition-colors whitespace-nowrap">
-                      Manage
-                    </button>
-                  </div>
+                  <!-- Action Button -->
+                  <button (click)="viewCommunity(community.id)" class="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium transition-colors flex-shrink-0 whitespace-nowrap">
+                    View
+                  </button>
                 </div>
               </div>
             }
@@ -106,10 +90,10 @@ import { CreateCommunityModalComponent } from './create-community';
         }
 
         <!-- Error State -->
-        @if (communityService.myCreatedCommunitiesError()) {
+        @if (communityService.myJoinedCommunitiesError()) {
           <div class="px-6 py-10 text-center text-red-600">
             <p class="text-lg font-medium">Failed to load communities</p>
-            <p class="mt-2 text-sm">{{ communityService.myCreatedCommunitiesError() }}</p>
+            <p class="mt-2 text-sm">{{ communityService.myJoinedCommunitiesError() }}</p>
             <button 
               (click)="retryLoad()"
               class="mt-4 px-4 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-medium transition-colors"
@@ -122,32 +106,29 @@ import { CreateCommunityModalComponent } from './create-community';
     </div>
   `
 })
-export class MyCreatedCommunitiesComponent {
-  @ViewChild('createCommunityModal') createCommunityModal!: CreateCommunityModalComponent;
-
+export class MyCommunitiesComponent {
   readonly communityService = inject(CommunityService);
   private readonly router = inject(Router);
-  private readonly communityFacade = inject(CommunityFacadeService);
 
   readonly searchQuery = signal('');
   readonly filteredCommunities = computed(() => {
     const query = this.searchQuery().toLowerCase();
-    if (!query) return this.communityService.myCreatedCommunities();
-    return this.communityService.myCreatedCommunities().filter(c =>
+    if (!query) return this.communityService.myJoinedCommunities();
+    return this.communityService.myJoinedCommunities().filter(c =>
       c.title?.toLowerCase().includes(query) || c.description?.toLowerCase().includes(query)
     );
   });
 
   constructor() {
-    console.log('[MyCreatedCommunitiesComponent] Section component initialized');
+    console.log('[MyCommunitiesComponent] Section component initialized');
     effect(() => {
-      console.log('[MyCreatedCommunitiesComponent] Created communities loaded:', this.communityService.myCreatedCommunities().length);
+      console.log('[MyCommunitiesComponent] Communities loaded:', this.communityService.myJoinedCommunities().length);
     });
   }
 
   ngOnInit() {
-    console.log('[MyCreatedCommunitiesComponent] Loading created communities...');
-    this.communityService.loadMyCreatedCommunities();
+    console.log('[MyCommunitiesComponent] Loading joined communities...');
+    this.communityService.loadMyJoinedCommunities();
   }
 
   getInitials(name: string): string {
@@ -163,16 +144,7 @@ export class MyCreatedCommunitiesComponent {
   }
 
   retryLoad(): void {
-    console.log('[MyCreatedCommunitiesComponent] Retrying load...');
-    this.communityService.loadMyCreatedCommunities();
-  }
-
-  openCreateCommunity(): void {
-    this.createCommunityModal.open();
-  }
-
-  onCommunityCreated(): void {
-    this.communityService.loadMyCreatedCommunities();
+    console.log('[MyCommunitiesComponent] Retrying load...');
+    this.communityService.loadMyJoinedCommunities();
   }
 }
-

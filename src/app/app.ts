@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
-import { UserContextService } from './user-context.service';
+import { UserContextService } from './services/user-context.service';
 
 @Component({
   selector: 'app-root',

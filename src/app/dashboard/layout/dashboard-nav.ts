@@ -5,9 +5,9 @@ import { finalize, take } from 'rxjs/operators';
 import { Subscription } from 'rxjs';
 
 import { DashboardSidebarComponent } from './dashboard-sidebar';
-import { DashboardRightSidebarComponent } from './promodoro_sidebar';
+import { DashboardRightSidebarComponent } from './pomodoro-sidebar';
 import { AiAssistant } from './ai-assistant';
-import { UserContextService } from '../../user-context.service';
+import { UserContextService } from '../../services/user-context.service';
 import { environment } from '../../../environments/environment';
 import { NotificationFacadeService, NotificationUI } from '../../api/facades';
 

@@ -9,12 +9,12 @@ import {
   Validators
 } from '@angular/forms';
 
-import { UserContextService } from '../../user-context.service';
-import { UserFacadeService } from '../../api/facades';
-import { FriendshipFacadeService } from '../../api/facades/friendship.facade';
-import { PostFacadeService, ReportResDto } from '../../api/facades/post.facade';
-import { UserSummaryUI } from '../../api/facades/models/friendship.model';
-import { PaginationComponent, PaginationConfig } from '../../shared/pagination/pagination.component';
+import { UserContextService } from '../../../services/user-context.service';
+import { UserFacadeService } from '../../../api/facades';
+import { FriendshipFacadeService } from '../../../api/facades/friendship.facade';
+import { PostFacadeService, ReportResDto } from '../../../api/facades/post.facade';
+import { UserSummaryUI } from '../../../api/facades/models/friendship.model';
+import { PaginationComponent, PaginationConfig } from '../../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-settings',

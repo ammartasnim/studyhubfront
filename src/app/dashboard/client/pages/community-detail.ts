@@ -5,9 +5,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 
-import { CommunityFacadeService, CommunityMemberUI, PostFacadeService, CommunityUI, PostUI, CommentFacadeService, CommentUI } from '../../api/facades';
-import { UserContextService } from '../../user-context.service';
-import { CreatePostModalComponent } from './create-post';
+import { CommunityFacadeService, CommunityMemberUI, PostFacadeService, CommunityUI, PostUI, CommentFacadeService, CommentUI } from '../../../api/facades';
+import { UserContextService } from '../../../services/user-context.service';
+import { CreatePostModalComponent } from '../create-post';
+import { MentionInputComponent } from '../../../shared/components/mention-input';
+import { MentionTextComponent } from '../../../shared/components/mention-text';
 
 const ALL_PERMISSIONS = [
   'EDIT_COMMUNITY', 'ADD_MODERATOR', 'REMOVE_MODERATOR',
@@ -27,7 +29,7 @@ interface CommentState {
 @Component({
   selector: 'app-community-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, CreatePostModalComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, CreatePostModalComponent,MentionInputComponent,MentionTextComponent ],
   template: `
     <app-create-post-modal #createPostModal [prefilledCommunityId]="communityId()" (postCreated)="onPostCreated()" />
 
@@ -333,7 +335,7 @@ interface CommentState {
                                       }
                                     </div>
                                   </div>
-                                  <p class="text-slate-700">{{ comment.content }}</p>
+                                  <app-mention-text [text]="comment.content"/>
                                 </div>
                               </div>
                             </div>
@@ -344,7 +346,11 @@ interface CommentState {
                             </div>
                           }
                           <div class="flex items-center gap-2 mt-3">
-                            <input type="text" placeholder="Write a comment..." [value]="getCommentInput(post.id)" (input)="setCommentInput(post.id, $any($event.target).value)" (keyup.enter)="submitComment(post.id)" class="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" />
+                           <app-mention-input
+  [value]="getCommentInput(post.id)"
+  (valueChange)="setCommentInput(post.id,  $any($event))"
+  placeholder="Write a comment..."
+  class="flex-1"/>
                             <button (click)="submitComment(post.id)" [disabled]="!getCommentInput(post.id).trim() || submittingComments().has(post.id)" class="px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 transition-colors flex items-center justify-center min-w-[52px]">
                               @if (submittingComments().has(post.id)) {
                                 <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">

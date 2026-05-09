@@ -1,13 +1,13 @@
 import { Routes } from '@angular/router';
 
-import { privateGuard } from './guards/private.guard';
-import { publicGuard } from './guards/public.guard';
-import { roleGuard } from './guards/role.guard';
-import { LoginComponent } from './auth/login/login.component';
-import { RegisterComponent } from './auth/register/register.component';
-import { AuthCallbackComponent } from './auth/auth-callback/auth-callback.component';
-import { FocusTimerComponent } from './dashboard/client/focus-timer.component';
-import { SuggestedFriendsComponent } from './dashboard/client/suggestedFriends';
+import { privateGuard } from './core/guards/private.guard';
+import { publicGuard } from './core/guards/public.guard';
+import { roleGuard } from './core/guards/role.guard';
+import { LoginComponent } from './auth/login/login';
+import { RegisterComponent } from './auth/register/register';
+import { AuthCallbackComponent } from './auth/callback/callback';
+import { FocusTimerComponent } from './dashboard/client/pages/focus-timer.component';
+
 
 export const routes: Routes = [
   {
@@ -35,7 +35,7 @@ export const routes: Routes = [
   {
     path: 'dashboard',
     canActivate: [privateGuard],
-    loadComponent: () => import('./dashboard/Nav/dashNav').then((m) => m.DashboardComponent),
+    loadComponent: () => import('./dashboard/layout/dashboard-nav').then((m) => m.DashboardComponent),
     children: [
       {
         path: '',
@@ -44,27 +44,27 @@ export const routes: Routes = [
       },
       {
         path: 'feed',
-        loadComponent: () => import('./dashboard/client/feed').then((m) => m.FeedComponent)
+        loadComponent: () => import('./dashboard/client/pages/feed').then((m) => m.FeedComponent)
       },
       {
         path: 'profile',
-        loadComponent: () => import('./dashboard/client/profile').then((m) => m.ProfileComponent)
+        loadComponent: () => import('./dashboard/client/pages/my_profile').then((m) => m.ProfileComponent)
       },
        {
          path: 'explore',
-         loadComponent: () => import('./dashboard/client/explore-communities').then((m) => m.ExploreCommunitiesComponent)
+         loadComponent: () => import('./dashboard/client/pages/explore-communities').then((m) => m.ExploreCommunitiesComponent)
        },
        {
          path: 'communities',
-         loadComponent: () => import('./dashboard/client/my-communities').then((m) => m.MyCommunitiesComponent)
+         loadComponent: () => import('./dashboard/client/pages/communities').then((m) => m.MyCommunitiesComponent)
        },
        {
          path: 'community/:id',
-         loadComponent: () => import('./dashboard/client/community-detail').then((m) => m.CommunityDetailComponent)
+         loadComponent: () => import('./dashboard/client/pages/community-detail').then((m) => m.CommunityDetailComponent)
        },
        {
          path: 'my-created',
-           loadComponent: () => import('./dashboard/client/my-created-communities').then((m) => m.MyCreatedCommunitiesComponent)
+           loadComponent: () => import('./dashboard/client/pages/my-communities').then((m) => m.MyCreatedCommunitiesComponent)
          },
       {
         path: 'focus-room',
@@ -72,11 +72,11 @@ export const routes: Routes = [
       },
       {
         path: 'settings',
-        loadComponent: () => import('./dashboard/client/settings').then((m) => m.SettingsComponent)
+        loadComponent: () => import('./dashboard/client/pages/settings').then((m) => m.SettingsComponent)
       },
       {
         path: 'chat',
-        loadComponent: () => import('./dashboard/client/chat').then((m) => m.ChatComponent)
+        loadComponent: () => import('./dashboard/client/pages/chat').then((m) => m.ChatComponent)
       }
     ]
   },
@@ -162,7 +162,7 @@ export const routes: Routes = [
   {
     path: 'dashboard/client',
     canActivate: [privateGuard, roleGuard(['Client'])],
-    loadComponent: () => import('./dashboard/Nav/dashNav').then((m) => m.DashboardComponent),
+    loadComponent: () => import('./dashboard/layout/dashboard-nav').then((m) => m.DashboardComponent),
     children: [
       {
         path: '',
@@ -171,27 +171,27 @@ export const routes: Routes = [
       },
       {
         path: 'feed',
-        loadComponent: () => import('./dashboard/client/feed').then((m) => m.FeedComponent)
+        loadComponent: () => import('./dashboard/client/pages/feed').then((m) => m.FeedComponent)
       },
        {
          path: 'profile',
-         loadComponent: () => import('./dashboard/client/profile').then((m) => m.ProfileComponent)
+         loadComponent: () => import('./dashboard/client/pages/my_profile').then((m) => m.ProfileComponent)
        },
        {
          path: 'explore',
-         loadComponent: () => import('./dashboard/client/explore-communities').then((m) => m.ExploreCommunitiesComponent)
+         loadComponent: () => import('./dashboard/client/pages/explore-communities').then((m) => m.ExploreCommunitiesComponent)
        },
         {
           path: 'communities',
-          loadComponent: () => import('./dashboard/client/my-communities').then((m) => m.MyCommunitiesComponent)
+          loadComponent: () => import('./dashboard/client/pages/communities').then((m) => m.MyCommunitiesComponent)
         },
        {
          path: 'community/:id',
-         loadComponent: () => import('./dashboard/client/community-detail').then((m) => m.CommunityDetailComponent)
+         loadComponent: () => import('./dashboard/client/pages/community-detail').then((m) => m.CommunityDetailComponent)
        },
        {
          path: 'my-created',
-         loadComponent: () => import('./dashboard/client/my-created-communities').then((m) => m.MyCreatedCommunitiesComponent)
+         loadComponent: () => import('./dashboard/client/pages/my-communities').then((m) => m.MyCreatedCommunitiesComponent)
        },
        {
          path: 'focus-room',
@@ -199,22 +199,22 @@ export const routes: Routes = [
        },
         {
           path: 'settings',
-          loadComponent: () => import('./dashboard/client/settings').then((m) => m.SettingsComponent)
+          loadComponent: () => import('./dashboard/client/pages/settings').then((m) => m.SettingsComponent)
          },
          {
           path: 'chat',
-          loadComponent: () => import('./dashboard/client/chat').then((m) => m.ChatComponent)
+          loadComponent: () => import('./dashboard/client/pages/chat').then((m) => m.ChatComponent)
          }
          ,
         {
          path: 'suggestedFriends',
-         loadComponent: () => import('./dashboard/client/suggestedFriends').then((m) => m.SuggestedFriendsComponent)
+         loadComponent: () => import('./dashboard/client/pages/suggested-friends').then((m) => m.SuggestedFriendsComponent)
 
         }
         ,
         {
          path: 'profile/:id',
-         loadComponent: () => import('./dashboard/client/profile-detail').then((m) => m.ProfileDetailComponent)
+         loadComponent: () => import('./dashboard/client/pages/profile-detail').then((m) => m.ProfileDetailComponent)
         }
       ]
     },

@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
-import { UserContextService } from '../user-context.service';
+import { UserContextService } from '../../services/user-context.service';
 
 const AUTH_TOKEN_KEY = 'token';
 

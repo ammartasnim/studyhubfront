@@ -4,8 +4,8 @@ import { provideRouter } from '@angular/router';
 import { Configuration } from './api/configuration';
 import { CustomConfiguration } from './api/custom-configuration';
 
-import { authTokenInterceptor } from './auth-token.interceptor';
-import { responseHandlerInterceptor } from './response-handler.interceptor';
+import { authTokenInterceptor } from './core/interceptors/auth-token.interceptor';
+import { responseHandlerInterceptor } from './core/interceptors/response-handler.interceptor';
 import { routes } from './app.routes';
 
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';

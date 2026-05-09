@@ -4,7 +4,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { AiFacadeService } from '../../api/facades/ai-service-Facade';
+import { AiFacadeService } from '../../api/facades/ai.facade';
 
 interface Message {
   role: 'user' | 'assistant';

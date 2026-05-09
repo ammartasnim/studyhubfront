@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { PostFacadeService, PostUI } from '../api/facades';
 import { CommentFacadeService, CommentUI } from '../api/facades';
 import { CommunityFacadeService } from '../api/facades';
-import { UserContextService } from '../user-context.service';
+import { UserContextService } from '../services/user-context.service';
 
 const FEED_PAGE_SIZE = 10;
 const COMMENT_PAGE_SIZE = 5;

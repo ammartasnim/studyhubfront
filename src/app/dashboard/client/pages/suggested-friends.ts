@@ -8,9 +8,9 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 
-import { FriendshipFacadeService } from '../../api/facades/friendship.facade';
-import { FriendshipUI, UserSummaryUI } from '../../api/facades/models/friendship.model';
-import { PaginationComponent, PaginationConfig } from '../../shared/pagination/pagination.component';
+import { FriendshipFacadeService } from '../../../api/facades/friendship.facade';
+import { FriendshipUI, UserSummaryUI } from '../../../api/facades/models/friendship.model';
+import { PaginationComponent, PaginationConfig } from '../../../shared/pagination/pagination.component';
 
 
 

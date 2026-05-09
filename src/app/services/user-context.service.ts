@@ -1,8 +1,8 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { UserService } from './services/user.service';
-import { UserUI } from './api/facades';
+import { UserService } from '../services/user.service';
+import { UserUI } from '../api/facades';
 
 const AUTH_TOKEN_KEY = 'token';
 

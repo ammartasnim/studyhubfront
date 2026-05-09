@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { UserContextService } from '../../user-context.service';
+import { UserContextService } from '../../services/user-context.service';
 import { AuthFacadeService } from '../../api/facades';
 
 
@@ -12,7 +12,7 @@ import { AuthFacadeService } from '../../api/facades';
   selector: 'app-register',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
-  templateUrl: './register.component.html'
+  templateUrl: './register.html'
 })
 export class RegisterComponent {
   private readonly fb = inject(FormBuilder);

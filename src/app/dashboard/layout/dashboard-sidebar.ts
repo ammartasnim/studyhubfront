@@ -1,6 +1,6 @@
 import { Component, inject, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { UserContextService } from '../../user-context.service';
+import { UserContextService } from '../../services/user-context.service';
 import { Router } from '@angular/router';
 
 @Component({

@@ -2,9 +2,9 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject, signal } from 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription, interval } from 'rxjs';
-import { FocusSessionFacadeService } from '../../api/facades/focus-session.facade';
-import { UserContextService } from '../../user-context.service';
-import { FormatTimerPipe } from '../../pipes/format-timer.pipe';
+import { FocusSessionFacadeService } from '../../../api/facades/focus-session.facade';
+import { UserContextService } from '../../../services/user-context.service';
+import { FormatTimerPipe } from '../../../core/pipes/format-timer.pipe';
 
 type Phase = 'setup' | 'running' | 'paused' | 'done';
 

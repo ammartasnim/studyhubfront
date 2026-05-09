@@ -8,7 +8,7 @@ import { FocusSessionReqDto } from '../model/focusSessionReqDto';
 import { FocusSessionResDto } from '../model/focusSessionResDto';
 import { PageFocusSessionResDto } from '../model/pageFocusSessionResDto';
 import { FocusSessionUI } from './models/focus-session.model'
-import { PaginatedSessions } from './models/PaginatedSessions';
+import { PaginatedSessions } from './models/paginated-sessions.model';
 import { UserFocusRank } from './models/user-focus-rank.model';
 import { formatApiError } from './models/api-error.model';
 import { HttpClient } from '@angular/common/http';

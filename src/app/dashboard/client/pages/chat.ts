@@ -2,11 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
 
-import { ChatFacadeService } from '../../api/facades/chat.facade';
-import { FriendshipFacadeService } from '../../api/facades/friendship.facade';
-import { ConversationUI, MessageUI, PaginatedMessages, UserSummaryUI } from '../../api/facades';
-import { UserContextService } from '../../user-context.service';
-import { environment } from '../../../environments/environment';
+import { ChatFacadeService } from '../../../api/facades/chat.facade';
+import { FriendshipFacadeService } from '../../../api/facades/friendship.facade';
+import { ConversationUI, MessageUI, PaginatedMessages, UserSummaryUI } from '../../../api/facades';
+import { UserContextService } from '../../../services/user-context.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-chat',

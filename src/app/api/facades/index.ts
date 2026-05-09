@@ -14,7 +14,7 @@ export * from './post.facade';
 export * from './user.facade';
 export * from './comment.facade';
 export * from './focus-session.facade';
-export * from './ai-service-Facade';
+export * from './ai.facade';
 export * from './friendship.facade';
 export * from './chat.facade';
 export * from './notification.facade';

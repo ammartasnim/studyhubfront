@@ -2,13 +2,13 @@ import {
   Component, ViewChild, OnInit, OnDestroy, inject, signal, computed, ElementRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CreatePostModalComponent } from './create-post';
-import { CreateCommunityModalComponent } from './create-community';
-import { FeedService } from '../../services/feed.service';
-import { CommentUI, PostFacadeService, PostUI } from '../../api/facades';
-import { ReportModalComponent } from '../../api/facades/models/report.model';
-import { MentionInputComponent } from './MentionInputComponent';
-import { MentionTextComponent } from './MentionTextComponent';
+import { CreatePostModalComponent } from '../create-post';
+import { CreateCommunityModalComponent } from '../create-community';
+import { FeedService } from '../../../services/feed.service';
+import { CommentUI, PostFacadeService, PostUI } from '../../../api/facades';
+import { ReportModalComponent } from '../../../api/facades/models/report.model';
+import { MentionInputComponent } from '../../../shared/components/mention-input';
+import { MentionTextComponent } from '../../../shared/components/mention-text';
 
 @Component({
   selector: 'app-academic-feed',

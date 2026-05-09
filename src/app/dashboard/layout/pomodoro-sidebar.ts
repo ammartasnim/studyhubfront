@@ -1,10 +1,10 @@
 import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormatTimerPipe } from '../../pipes/format-timer.pipe';
+import { FormatTimerPipe } from '../../core/pipes/format-timer.pipe';
 import { FormsModule } from '@angular/forms';
 import { interval, Subscription } from 'rxjs';
 import { FocusSessionFacadeService } from '../../api/facades';
-import { UserContextService } from '../../user-context.service';
+import { UserContextService } from '../../services/user-context.service';
 
 type Phase = 'setup' | 'running' | 'paused' | 'done';
 

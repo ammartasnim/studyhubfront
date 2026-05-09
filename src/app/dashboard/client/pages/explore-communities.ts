@@ -5,9 +5,9 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 
-import { CommunityFacadeService } from '../../api/facades/community.facade';
-import { CommunityUI } from '../../api/facades/models/community.model';
-import { PaginationComponent, PaginationConfig } from '../../shared/pagination/pagination.component';
+import { CommunityFacadeService } from '../../../api/facades/community.facade';
+import { CommunityUI } from '../../../api/facades/models/community.model';
+import { PaginationComponent, PaginationConfig } from '../../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-explore-communities',

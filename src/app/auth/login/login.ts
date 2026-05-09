@@ -3,8 +3,8 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthFacadeService } from '../../api/facades';
-import { UserContextService } from '../../user-context.service';
-import { SupabaseService } from '../../services/supabase-service';
+import { UserContextService } from '../../services/user-context.service';
+import { SupabaseService } from '../../services/supabase.service';
 
 
 
@@ -12,7 +12,7 @@ import { SupabaseService } from '../../services/supabase-service';
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
-  templateUrl: './login.component.html'
+  templateUrl: './login.html'
 })
 export class LoginComponent {
   private readonly supabase = inject(SupabaseService);
