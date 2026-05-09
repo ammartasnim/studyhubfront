@@ -18,10 +18,23 @@ import { CommentFacadeService } from '../../api/facades';
 <div class="p-8 space-y-8">
 
   <!-- Header -->
+  <div class="flex items-center justify-between">
   <div>
     <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Overview</h2>
     <p class="text-sm text-slate-400 mt-1">Platform statistics at a glance</p>
   </div>
+
+  <button
+    (click)="exportMonthlyReport()"
+    [disabled]="loading()"
+    class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    Export CSV
+  </button>
+</div>
 
   <!-- Overview cards -->
   <div class="grid grid-cols-2 xl:grid-cols-5 gap-4">
@@ -289,6 +302,73 @@ export class AdminStats implements OnInit {
       error: () => this.loading.set(false)
     });
   }
+
+  exportMonthlyReport(): void {
+  const now = new Date();
+  const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const sections: string[] = [];
+
+  // Header
+  sections.push(`StudyHub Monthly Report — ${monthLabel}`);
+  sections.push(`Generated: ${now.toLocaleString()}`);
+  sections.push('');
+
+  // Overview
+  sections.push('=== OVERVIEW ===');
+  sections.push('Metric,Value');
+  sections.push(`Total Users,${this.userStats()?.total ?? 0}`);
+  sections.push(`Banned Users,${this.userStats()?.banned ?? 0}`);
+  sections.push(`Total Posts,${this.postStats()?.total ?? 0}`);
+  sections.push(`Flagged Posts,${this.postStats()?.flagged ?? 0}`);
+  sections.push(`Pending Posts,${this.postStats()?.pending ?? 0}`);
+  sections.push(`Total Comments,${this.commentStats()?.total ?? 0}`);
+  sections.push(`Total Communities,${this.communityStats()?.total ?? 0}`);
+  sections.push(`Completed Focus Sessions,${this.focusStats()?.completed ?? 0}`);
+  sections.push(`Active Focus Sessions,${this.focusStats()?.active ?? 0}`);
+  sections.push('');
+
+  // Badge distribution
+  sections.push('=== BADGE DISTRIBUTION ===');
+  sections.push('Badge,Users');
+  const b = this.badges();
+  Object.entries(b).forEach(([badge, count]) => {
+    sections.push(`${badge},${count}`);
+  });
+  sections.push('');
+
+  // User growth
+  sections.push('=== USER GROWTH (LAST 7 DAYS) ===');
+  sections.push('Date,New Users');
+  this.userGrowthRaw().forEach(d => {
+    sections.push(`${d.date},${d.count}`);
+  });
+  sections.push('');
+
+  // Focus trends
+  sections.push('=== FOCUS SESSION TRENDS (LAST 7 DAYS) ===');
+  sections.push('Date,Completed Sessions');
+  this.focusTrendsRaw().forEach(d => {
+    sections.push(`${d.date},${d.count}`);
+  });
+  sections.push('');
+
+  // Top focus users
+  sections.push('=== TOP FOCUS USERS ===');
+  sections.push('Rank,Username,Total Hours');
+  this.topUsers().forEach((u, i) => {
+    sections.push(`${i + 1},${u.username},${u.totalHours.toFixed(1)}`);
+  });
+
+  const csvContent = sections.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `studyhub-report-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
   // ─── HELPERS ─────────────────────────────────────────────────────────────
 
