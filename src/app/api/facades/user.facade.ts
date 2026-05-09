@@ -10,7 +10,7 @@ import { PageUserResDto } from '../model/pageUserResDto';
 import { UserUI, PaginatedUsers, Badge } from './models/user.model';
 import { ChangePasswordDto, UserReqDto } from '../model/models';
 import { HttpClient } from '@angular/common/http';
-import { ApiError, formatApiError } from './models/api-error.model';
+import { formatApiError } from './models/api-error.model';
 
 const JSON_ACCEPT = { httpHeaderAccept: 'application/json' } as any;
 
@@ -22,6 +22,8 @@ export class UserFacadeService {
   private readonly TOKEN_KEY = 'token';
   private readonly http = inject(HttpClient);
 
+
+  // ─── PROFILE ─────────────────────────────────────────────────────────────
 
   editMe(dto: UserReqDto): Observable<UserUI> {
     return this.userController.editUser(dto, 'body', false, JSON_ACCEPT).pipe(
@@ -71,6 +73,8 @@ export class UserFacadeService {
   }
 
 
+
+  // ─── ADMIN: USER LIST ────────────────────────────────────────────────────
 
   getAllRaw(filters?: {
     firstName?: string;
@@ -133,6 +137,8 @@ export class UserFacadeService {
     );
   }
 
+  // ─── ADMIN: BAN / PFP / STATS ────────────────────────────────────────────
+
   ban(userId: number): Observable<string> {
     if (!userId || userId <= 0) {
       return throwError(() => new Error('Invalid user ID'));
@@ -187,6 +193,8 @@ export class UserFacadeService {
     `${this.BASE_URL}/api/clients/stats/growth`
   ).pipe(catchError(err => this.handleError(err, 'Failed to fetch user growth')));
 }
+
+  // ─── MAPPERS ─────────────────────────────────────────────────────────────
 
   private mapToUI(dto: UserResDto | null | undefined): UserUI {
     if (!dto) {

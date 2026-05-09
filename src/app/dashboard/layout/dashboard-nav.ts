@@ -312,14 +312,33 @@ const AUTH_TOKEN_KEY = 'token';
   `
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  // ─── DEPENDENCIES ─────────────────────────────────────────────────────────
+
   private readonly userContext         = inject(UserContextService);
   private readonly router              = inject(Router);
   private readonly notificationFacade  = inject(NotificationFacadeService);
   private readonly cdr                 = inject(ChangeDetectorRef);
   private socketSubscription?: Subscription;
 
+  // ─── STATE ────────────────────────────────────────────────────────────────
+
   readonly user    = this.userContext.user;
   readonly aiOpen  = signal(false);
+
+  notifications: NotificationUI[] = [];
+  unreadCount    = 0;
+  isNotifOpen    = false;
+  isNotifLoading = false;
+  isLoadingMore  = false;
+  hasMore        = false;
+
+  private readonly PAGE_SIZE = 5;
+  private currentPage        = 0;
+  private preLoaded          = false;
+  private hasUnreadCount     = false;
+  private expandedNotifs     = new Set<number>();
+
+  // ─── COMPUTED ─────────────────────────────────────────────────────────────
 
   readonly displayName = computed(() => {
     const u = this.user();
@@ -332,25 +351,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly xp      = computed(() => this.user()?.xpPts ?? 0);
   readonly level   = computed(() => this.user()?.level ?? 1);
 
-  // ── notification state ──────────────────────────────────────────────────
-  notifications: NotificationUI[] = [];
-  unreadCount    = 0;
-  isNotifOpen    = false;
-  /** true only during the very first fetch if silent pre-load hasn't finished before first open */
-  isNotifLoading = false;
-  isLoadingMore  = false;
-  hasMore        = false;
-
-  private readonly PAGE_SIZE = 5;
-  private currentPage        = 0;
-  private preLoaded          = false; // guards against double-fetching
-  private hasUnreadCount     = false;
-  private expandedNotifs     = new Set<number>();
-  // ────────────────────────────────────────────────────────────────────────
+  // ─── LIFECYCLE ────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
-    // Fetch first page silently — unread count is derived directly from the response
-    // so the badge appears as soon as the data lands, with zero extra round-trips.
     this.silentLoad();
     this.refreshUnreadCount();
     this.connectNotifications();
@@ -360,6 +363,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.socketSubscription?.unsubscribe();
     this.notificationFacade.disconnect();
   }
+
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
 
   isFocusRoom(): boolean {
     return this.router.url.includes('/focus-room');
@@ -393,12 +398,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   toggleNotifications(): void {
     this.isNotifOpen = !this.isNotifOpen;
     if (this.isNotifOpen) {
-      // If the silent pre-load hasn't resolved yet, show skeleton + wait
       if (!this.preLoaded) {
         this.isNotifLoading = true;
       }
       this.refreshUnreadCount();
-      // Auto mark all read the moment the panel opens
       if (this.unreadCount > 0) {
         this.markAllAsRead();
       }
@@ -456,12 +459,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ── private ─────────────────────────────────────────────────────────────
+  // ─── PRIVATE ─────────────────────────────────────────────────────────────
 
-  /**
-   * Fetches the first page in the background without touching isNotifLoading.
-   * Called once from ngOnInit so notifications are ready before first open.
-   */
   private silentLoad(): void {
     this.currentPage = 0;
     this.notificationFacade
@@ -472,8 +471,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.notifications  = response.items ?? [];
           this.hasMore        = this.notifications.length >= this.PAGE_SIZE;
           this.preLoaded      = true;
-          this.isNotifLoading = false; // in case panel opened before this resolved
-          // Only derive unread count from items if we haven't fetched the server count yet
+          this.isNotifLoading = false;
           if (!this.hasUnreadCount) {
             this.unreadCount = this.notifications.filter(n => !n.isRead).length;
           }

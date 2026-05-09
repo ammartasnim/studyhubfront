@@ -134,11 +134,15 @@ import { CommentFacadeService } from '../../api/facades';
   `
 })
 export class AdminStats implements OnInit {
+  // ─── DEPENDENCIES ─────────────────────────────────────────────────────────
+
   private readonly focusFacade     = inject(FocusSessionFacadeService);
   private readonly userFacade      = inject(UserFacadeService);
   private readonly postFacade      = inject(PostFacadeService);
   private readonly communityFacade = inject(CommunityFacadeService);
   private readonly commentFacade   = inject(CommentFacadeService);
+
+  // ─── STATE ────────────────────────────────────────────────────────────────
 
   readonly loading        = signal(true);
   readonly userStats      = signal<any>(null);
@@ -151,7 +155,7 @@ export class AdminStats implements OnInit {
   readonly userGrowthRaw  = signal<{ date: string; count: number }[]>([]);
   readonly focusTrendsRaw = signal<{ date: string; count: number }[]>([]);
 
-  // ── Shared palette ────────────────────────────────────────────
+  // ─── PALETTE ─────────────────────────────────────────────────────────────
   private readonly indigo  = 'rgba(99,102,241,1)';
   private readonly indigoT = 'rgba(99,102,241,0.15)';
   private readonly palette = [
@@ -167,7 +171,7 @@ export class AdminStats implements OnInit {
     'rgba(234,179,8,0.85)',    // yellow
   ];
 
-  // ── Chart configs ─────────────────────────────────────────────
+  // ─── CHART CONFIGS ────────────────────────────────────────────────────────
   readonly lineOptions: ChartConfiguration['options'] = {
     responsive: true,
     maintainAspectRatio: false,
@@ -199,7 +203,7 @@ export class AdminStats implements OnInit {
     }
   };
 
-  // ── Computed chart data ────────────────────────────────────────
+  // ─── COMPUTED CHART DATA ──────────────────────────────────────────────────
   readonly userGrowthData = (): ChartData<'line'> => ({
     labels: this.userGrowthRaw().map(d => this.formatDate(d.date)),
     datasets: [{
@@ -256,7 +260,8 @@ export class AdminStats implements OnInit {
     { label: 'Focus Sessions',     value: this.focusStats()?.completed ?? '—', sub: `${this.focusStats()?.active ?? 0} active now` },
   ];
 
-  // ── Init ──────────────────────────────────────────────────────
+  // ─── LIFECYCLE ────────────────────────────────────────────────────────────
+
   ngOnInit() {
     forkJoin({
       users:       this.userFacade.getStats(),
@@ -284,7 +289,8 @@ export class AdminStats implements OnInit {
       error: () => this.loading.set(false)
     });
   }
-  
+
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
 
   private formatDate(dateStr: string): string {
     const d = new Date(dateStr);

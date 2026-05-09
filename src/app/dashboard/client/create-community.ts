@@ -161,7 +161,6 @@ export class CreateCommunityModalComponent {
       const formValue = this.form.getRawValue();
       console.log('[CreateCommunityModal] Submitting community:', formValue);
 
-      // Using facade service - clean and simple
       await firstValueFrom(this.communityFacade.create({
         title: formValue.name,
         description: formValue.description,
@@ -173,14 +172,12 @@ export class CreateCommunityModalComponent {
       this.close();
     } catch (error: any) {
       console.error('[CreateCommunityModal] Error creating community:', error.error);
-      const errorMessage = 
-    error.error?.message ||          
-    error.error ||                  
-    error.message ||                
-    'An unexpected error occurred';  
-
- 
-  this.submitError.set(errorMessage);
+      const errorMessage =
+        error.error?.message ||
+        error.error ||
+        error.message ||
+        'An unexpected error occurred';
+      this.submitError.set(errorMessage);
     } finally {
       this.isSubmitting.set(false);
     }

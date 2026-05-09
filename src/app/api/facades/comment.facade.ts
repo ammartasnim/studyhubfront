@@ -15,6 +15,8 @@ import { formatApiError } from './models/api-error.model';
 export class CommentFacadeService {
   private readonly commentController = inject(CommentControllerService);
 
+  // ─── READ ─────────────────────────────────────────────────────────────────
+
   create(data: { content: string; postId: number }): Observable<CommentUI> {
     if (!data?.content?.trim()) {
       return throwError(() => new Error('Comment content is required'));
@@ -58,6 +60,8 @@ export class CommentFacadeService {
     );
   }
 
+  // ─── WRITE ────────────────────────────────────────────────────────────────
+
   update(commentId: number, data: { content: string; postId: number }): Observable<CommentUI> {
     if (!commentId || commentId <= 0) {
       return throwError(() => new Error('Invalid comment ID'));
@@ -81,9 +85,6 @@ export class CommentFacadeService {
     );
   }
 
-  /**
-   * Toggle like on a comment (NEW)
-   */
   toggleLike(commentId: number): Observable<void> {
     if (!commentId || commentId <= 0) {
       return throwError(() => new Error('Invalid comment ID'));
@@ -93,7 +94,8 @@ export class CommentFacadeService {
       catchError(err => this.handleError(err, `Failed to toggle like on comment ${commentId}`))
     );
   }
-    getReplies(commentId: number, page: number = 0, size: number = 5): Observable<PaginatedComments> {
+
+  getReplies(commentId: number, page: number = 0, size: number = 5): Observable<PaginatedComments> {
     if (!commentId || commentId <= 0) {
       return throwError(() => new Error('Invalid comment ID'));
     }
@@ -107,6 +109,7 @@ export class CommentFacadeService {
         )
       );
   }
+
   createReply(commentId: number, data: { content: string }): Observable<CommentUI> {
     if (!commentId || commentId <= 0) {
       return throwError(() => new Error('Invalid comment ID'));
@@ -126,28 +129,30 @@ export class CommentFacadeService {
       );
   }
 
- mapToUI(dto: CommentResDto | null | undefined): CommentUI {
-  if (!dto) throw new Error('Comment data is null or undefined');
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
 
-  const firstName = dto.authorFirstName ?? '';
-  const lastName = dto.authorLastName ?? '';
-  const fullName = `${firstName} ${lastName}`.trim() || dto.authorUsername || `User #${dto.userId}`;
+  mapToUI(dto: CommentResDto | null | undefined): CommentUI {
+    if (!dto) throw new Error('Comment data is null or undefined');
 
-  return {
-    id: dto.id ?? 0,
-    content: dto.content ?? '',
-    postId: dto.postId ?? 0,
-    userId: dto.userId ?? 0,
-    previewText: (dto.content ?? '').length > 50 ? dto.content!.substring(0, 50) + '...' : (dto.content ?? ''),
-    authorUsername: dto.authorUsername,
-    authorFullName: fullName,
-    authorPfp: dto.authorPfp,
-    createdAt: dto.createdAt ? new Date(dto.createdAt) : undefined,
-    likeCount: dto.likeCount ?? 0,
-    isLiked: dto.isLiked ?? false,
-    isReportedByCurrentUser: dto.isReportedByCurrentUser ?? false  
-  };
-}
+    const firstName = dto.authorFirstName ?? '';
+    const lastName = dto.authorLastName ?? '';
+    const fullName = `${firstName} ${lastName}`.trim() || dto.authorUsername || `User #${dto.userId}`;
+
+    return {
+      id: dto.id ?? 0,
+      content: dto.content ?? '',
+      postId: dto.postId ?? 0,
+      userId: dto.userId ?? 0,
+      previewText: (dto.content ?? '').length > 50 ? dto.content!.substring(0, 50) + '...' : (dto.content ?? ''),
+      authorUsername: dto.authorUsername,
+      authorFullName: fullName,
+      authorPfp: dto.authorPfp,
+      createdAt: dto.createdAt ? new Date(dto.createdAt) : undefined,
+      likeCount: dto.likeCount ?? 0,
+      isLiked: dto.isLiked ?? false,
+      isReportedByCurrentUser: dto.isReportedByCurrentUser ?? false
+    };
+  }
 
   private mapPagedResponse(response: PageCommentResDto | null | undefined): PaginatedComments {
     if (!response) return { items: [], totalItems: 0, totalPages: 0, currentPage: 0, pageSize: 0 };

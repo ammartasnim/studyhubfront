@@ -10,16 +10,12 @@ import { RegisterReqDto } from '../model/registerReqDto';
 
 import { AuthUI, LoginRequest, RegisterRequest } from './models/auth.model';
 import { formatApiError } from './models/api-error.model';
-/*ok*/
+
 /**
  * Auth Facade Service
- * 
- * Wraps the generated AuthControllerService with:
- * - Clean method names (login, register)
- * - DTO to UI Model mapping
- * - Token storage and management
- * - Null/undefined safety
- * - Error handling with logging
+ *
+ * Wraps the generated AuthControllerService with clean method names,
+ * DTO-to-UI mapping, token storage, and consistent error handling.
  */
 @Injectable({
   providedIn: 'root'
@@ -28,9 +24,8 @@ export class AuthFacadeService {
   private readonly authController = inject(AuthControllerService);
   private readonly TOKEN_KEY = 'token';
 
-  /**
-   * Login user with username and password
-   */
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
+
   login(credentials: LoginRequest): Observable<AuthUI> {
     if (!credentials?.username || !credentials?.password) {
       return throwError(() => new Error('Username and password are required'));
@@ -66,9 +61,6 @@ export class AuthFacadeService {
     );
   }
 
-  /**
-   * Register new user
-   */
   register(data: RegisterRequest): Observable<AuthUI> {
     if (!data?.username || !data?.password || !data?.email || !data?.firstName || !data?.lastName) {
       return throwError(() => new Error('Required fields are missing'));
@@ -99,39 +91,26 @@ export class AuthFacadeService {
     );
   }
 
-  /**
-   * Get stored token
-   */
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
+
   getToken(): string | null {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
-  /**
-   * Check if user is authenticated
-   */
   isAuthenticated(): boolean {
     return !!this.getToken();
   }
 
-  /**
-   * Logout user (clear token)
-   */
   logout(): void {
     localStorage.removeItem(this.TOKEN_KEY);
   }
 
-  /**
-   * Store token in local storage
-   */
   private storeToken(token?: string): void {
     if (token) {
       localStorage.setItem(this.TOKEN_KEY, token);
     }
   }
 
-  /**
-   * Map DTO to UI Model
-   */
   private mapToUI(dto: AuthResDto | null | undefined): AuthUI {
     if (!dto) {
       throw new Error('Auth response is null or undefined');
@@ -147,9 +126,6 @@ export class AuthFacadeService {
     };
   }
 
-  /**
-   * Handle errors with logging
-   */
   private handleError(error: any, message: string): Observable<never> {
     const formatted = formatApiError(error, message);
     console.groupCollapsed(`[AuthFacade] ${formatted}`);

@@ -99,8 +99,12 @@ export interface BadgeUI {
   `]
 })
 export class BadgesDisplayComponent {
+  // ─── INPUTS / COMPUTED ────────────────────────────────────────────────────
+
   readonly badges = input<BadgeUI[] | undefined>();
   readonly hasBadges = computed(() => (this.badges()?.length ?? 0) > 0);
+
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
 
   getBadgeEmoji(type: string): string {
     const emojiMap: { [key: string]: string } = {

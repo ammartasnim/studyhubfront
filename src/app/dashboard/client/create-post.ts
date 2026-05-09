@@ -158,9 +158,13 @@ import { firstValueFrom } from 'rxjs';
   `
 })
 export class CreatePostModalComponent {
+  // ─── DEPENDENCIES ─────────────────────────────────────────────────────────
+
   private readonly fb = inject(FormBuilder);
   private readonly postFacade = inject(PostFacadeService);
   private readonly communityFacade = inject(CommunityFacadeService);
+
+  // ─── STATE ────────────────────────────────────────────────────────────────
 
   readonly isOpen = signal(false);
   readonly isSubmitting = signal(false);
@@ -180,6 +184,8 @@ export class CreatePostModalComponent {
 
   get title() { return this.form.get('title')!; }
   get description() { return this.form.get('description')!; }
+
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
 
   open(): void {
     this.isOpen.set(true);

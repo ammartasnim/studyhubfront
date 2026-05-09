@@ -13,21 +13,21 @@ export class UserContextService {
   readonly user = signal<UserUI | null>(null);
   readonly isLoading = signal(false);
 
+  // ─── LIFECYCLE ───────────────────────────────────────────────────────────
+
   async initializeFromStoredToken(): Promise<void> {
     const token = localStorage.getItem(AUTH_TOKEN_KEY)?.trim();
     if (!token) {
-
       this.user.set(null);
       return;
     }
-
     await this.loadMe();
   }
 
-  async loadMe(): Promise<UserUI | null> {
-   
-    this.isLoading.set(true);
+  // ─── DATA LOADING ────────────────────────────────────────────────────────
 
+  async loadMe(): Promise<UserUI | null> {
+    this.isLoading.set(true);
     try {
       const response = await firstValueFrom(this.userService.getMe());
       console.log('[UserContext] loadMe response:', response);
@@ -36,55 +36,46 @@ export class UserContextService {
       return user;
     } catch (error) {
       console.error('[UserContext] loadMe error:', error);
-      this.user.set(null);  
+      this.user.set(null);
       return null;
     } finally {
       this.isLoading.set(false);
     }
   }
 
-  clear(): void {
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
 
+  clear(): void {
     this.user.set(null);
   }
 
   setUser(user: UserUI): void {
-  
     this.user.set(user);
   }
 
+  // Returns the default dashboard route based on the current user's role.
   getDefaultRouteByRole(): string {
     const role = this.user()?.role;
-
-
-    // Handle both string and enum values
     if (role === 'Admin') {
-   
       return '/dashboard/admin';
     }
-
     if (role === 'Client') {
-    
       return '/dashboard/client';
     }
-
-   
     return '/dashboard';
   }
 
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
+
   private async normalizeResponse(response: UserUI | Blob): Promise<UserUI | null> {
     if (response instanceof Blob) {
-
       try {
         const text = await response.text();
-        const parsed = JSON.parse(text) as UserUI;
-        return parsed;
-      } catch (error) {
-        
+        return JSON.parse(text) as UserUI;
+      } catch {
         return null;
       }
     }
-
     return response ?? null;
   }
 }

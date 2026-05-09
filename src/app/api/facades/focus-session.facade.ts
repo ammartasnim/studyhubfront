@@ -18,9 +18,8 @@ export class FocusSessionFacadeService {
   private readonly focusSessionController = inject(FocusSessionControllerService);
   private readonly http = inject(HttpClient);
 
-  /**
-   * Start a new focus session
-   */
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
+
   start(data: { title: string; timer: string; remainingSeconds: number }): Observable<FocusSessionUI> {
     if (!data?.title?.trim()) {
       return throwError(() => new Error('Title is required'));
@@ -41,9 +40,6 @@ export class FocusSessionFacadeService {
     );
   }
 
-  /**
-   * Complete a focus session
-   */
   complete(id: number, finalTimer: string): Observable<FocusSessionUI> {
     if (!id || id <= 0) {
       return throwError(() => new Error('Invalid session ID'));
@@ -58,9 +54,6 @@ export class FocusSessionFacadeService {
     );
   }
 
-  /**
-   * Pause a focus session
-   */
   pause(id: number, remainingSeconds: number): Observable<FocusSessionUI> {
     if (!id || id <= 0) {
       return throwError(() => new Error('Invalid session ID'));
@@ -75,9 +68,6 @@ export class FocusSessionFacadeService {
     );
   }
 
-  /**
-   * Resume a paused focus session
-   */
   resume(id: number, remainingSeconds: number): Observable<FocusSessionUI> {
     if (!id || id <= 0) {
       return throwError(() => new Error('Invalid session ID'));
@@ -92,9 +82,6 @@ export class FocusSessionFacadeService {
     );
   }
 
-  /**
-   * Delete a focus session
-   */
   delete(id: number): Observable<void> {
     if (!id || id <= 0) {
       return throwError(() => new Error('Invalid session ID'));
@@ -105,13 +92,11 @@ export class FocusSessionFacadeService {
     );
   }
 
-  /**
-   * Get the current user's active session
-   */
+  // ─── READ ─────────────────────────────────────────────────────────────────
+
   getActive(): Observable<FocusSessionUI | null> {
     return this.focusSessionController.getActive().pipe(
       map(dto => {
-        // If backend returns null/undefined (no active session), return null safely
         if (!dto) return null;
         return this.mapToUI(dto);
       }),
@@ -119,9 +104,6 @@ export class FocusSessionFacadeService {
     );
   }
 
-  /**
-   * Get the current user's sessions (paginated)
-   */
   getMySessions(filters?: {
     page?: number;
     size?: number;
@@ -141,9 +123,6 @@ export class FocusSessionFacadeService {
       );
   }
 
-  /**
-   * Get all sessions for a specific user (flat list)
-   */
   getByUser(userId: number): Observable<FocusSessionUI[]> {
     if (!userId || userId <= 0) {
       return throwError(() => new Error('Invalid user ID'));
@@ -155,9 +134,6 @@ export class FocusSessionFacadeService {
     );
   }
 
-  /**
-   * Get sessions for a specific user (paginated)
-   */
   getByUserPaginated(userId: number, filters?: {
     page?: number;
     size?: number;
@@ -182,18 +158,12 @@ export class FocusSessionFacadeService {
       );
   }
 
-  /**
-   * Get focus session stats
-   */
   getStats(): Observable<{ [key: string]: number }> {
     return this.focusSessionController.getFocusStats().pipe(
       catchError(err => this.handleError(err, 'Failed to fetch focus stats'))
     );
   }
 
-  /**
-   * Get top focus users leaderboard
-   */
   getTopUsers(): Observable<UserFocusRank[]> {
     return this.focusSessionController.getTopFocusUsers().pipe(
       map(dtos => (dtos ?? []).map(dto => ({
@@ -205,15 +175,15 @@ export class FocusSessionFacadeService {
     );
   }
 
-  
   BASE_URL = 'http://localhost:8081';
-  getFocusTrends(): Observable<{ date: string; count: number }[]> {
-  return this.http.get<{ date: string; count: number }[]>(
-    `${this.BASE_URL}/api/focus-sessions/stats/trends`
-  ).pipe(catchError(err => this.handleError(err, 'Failed to fetch focus trends')));
-}
 
-  // ── Private helpers ──────────────────────────────────────────────────────────
+  getFocusTrends(): Observable<{ date: string; count: number }[]> {
+    return this.http.get<{ date: string; count: number }[]>(
+      `${this.BASE_URL}/api/focus-sessions/stats/trends`
+    ).pipe(catchError(err => this.handleError(err, 'Failed to fetch focus trends')));
+  }
+
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
 
   private mapToUI(dto: FocusSessionResDto | null | undefined): FocusSessionUI {
     if (!dto) {
@@ -227,7 +197,7 @@ export class FocusSessionFacadeService {
       timer: dto.timer ?? '00:00:00',
       status: (dto.status as 'ACTIVE' | 'PAUSED' | 'COMPLETED') ?? 'ACTIVE',
       remainingSeconds: dto.remainingSeconds ?? 0,
-      lastUpdated: dto.lastUpdated, // Optional field
+      lastUpdated: dto.lastUpdated,
       displayDuration: dto.timer ?? '00:00:00'
     };
   }

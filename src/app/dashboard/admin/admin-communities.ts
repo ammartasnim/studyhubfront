@@ -240,9 +240,13 @@ import { CommunityUI } from '../../api/facades/models/community.model';
   `
 })
 export class AdminCommunities implements OnInit {
+  // ─── DEPENDENCIES ─────────────────────────────────────────────────────────
+
   private readonly communityFacade = inject(CommunityFacadeService);
   private readonly http = inject(HttpClient);
   private readonly basePath = 'http://localhost:8081';
+
+  // ─── STATE ────────────────────────────────────────────────────────────────
 
   readonly communities      = signal<CommunityUI[]>([]);
   readonly total            = signal(0);
@@ -259,7 +263,11 @@ export class AdminCommunities implements OnInit {
   private searchTimer: any;
   readonly totalPages = () => Math.ceil(this.total() / this.size);
 
+  // ─── LIFECYCLE ────────────────────────────────────────────────────────────
+
   ngOnInit() { this.load(); }
+
+  // ─── DATA LOADING ─────────────────────────────────────────────────────────
 
   load() {
     this.loading.set(true);
@@ -282,7 +290,7 @@ export class AdminCommunities implements OnInit {
     this.searchTimer = setTimeout(() => { this.page.set(0); this.load(); }, 400);
   }
 
-  // ── moderation modal ──────────────────────────────────────────────────────
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
 
   openModeration(c: CommunityUI) {
     this.moderationTarget.set(c);
@@ -302,8 +310,6 @@ export class AdminCommunities implements OnInit {
     this.moderationTarget.set(null);
     this.moderation.set(null);
   }
-
-  // ── delete modal ──────────────────────────────────────────────────────────
 
   confirmDelete(c: CommunityUI) { this.deleteTarget.set(c); }
   cancelDelete()                { this.deleteTarget.set(null); }

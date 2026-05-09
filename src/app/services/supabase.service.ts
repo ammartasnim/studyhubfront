@@ -15,8 +15,7 @@ export class SupabaseService {
     );
   }
 
-  // The "Connect" method we discussed
-    async signInWithGoogle() {
+  async signInWithGoogle() {
       return await this.supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

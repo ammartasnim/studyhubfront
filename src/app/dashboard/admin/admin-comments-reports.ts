@@ -160,8 +160,12 @@ import { HttpClient } from '@angular/common/http';
 `
 })
 export class AdminCommentReports implements OnInit {
+  // ─── DEPENDENCIES ─────────────────────────────────────────────────────────
+
   private readonly http = inject(HttpClient);
   private readonly basePath = 'http://localhost:8081';
+
+  // ─── STATE ────────────────────────────────────────────────────────────────
 
   readonly reports        = signal<any[]>([]);
   readonly loading        = signal(false);
@@ -171,25 +175,27 @@ export class AdminCommentReports implements OnInit {
   readonly loadingDetails = signal<Set<number>>(new Set());
   readonly actingOnReport = signal<number | null>(null);
 
-readonly tabs = [
-  { label: 'All',      value: 'ALL'      },
-  { label: 'Pending',  value: 'PENDING'  },
-  { label: 'Approved', value: 'APPROVED' },
-  { label: 'Rejected', value: 'REJECTED' },
-  { label: 'Flagged',  value: 'FLAGGED'  },  
-];
+  readonly tabs = [
+    { label: 'All',      value: 'ALL'      },
+    { label: 'Pending',  value: 'PENDING'  },
+    { label: 'Approved', value: 'APPROVED' },
+    { label: 'Rejected', value: 'REJECTED' },
+    { label: 'Flagged',  value: 'FLAGGED'  },
+  ];
 
-filtered() {
-  const tab = this.activeTab();
-  const all = this.reports();
-  if (tab === 'ALL') return all;
-  if (tab === 'FLAGGED') return all.filter(r => r.status === 'Flagged');
-  return all.filter(r => {
-    const details = this.reportDetails()[r.commentId];
-    if (!details) return tab === 'PENDING' ? r.hasPendingReports : true;
-    return details.some(rep => rep.status === tab);
-  });
-}
+  // ─── COMPUTED ─────────────────────────────────────────────────────────────
+
+  filtered() {
+    const tab = this.activeTab();
+    const all = this.reports();
+    if (tab === 'ALL') return all;
+    if (tab === 'FLAGGED') return all.filter(r => r.status === 'Flagged');
+    return all.filter(r => {
+      const details = this.reportDetails()[r.commentId];
+      if (!details) return tab === 'PENDING' ? r.hasPendingReports : true;
+      return details.some(rep => rep.status === tab);
+    });
+  }
 
   getVisibleReports(commentId: number): any[] {
     const tab = this.activeTab();
@@ -197,6 +203,8 @@ filtered() {
     if (tab === 'ALL') return details;
     return details.filter(rep => rep.status === tab);
   }
+
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
 
   toEntries(obj: Record<string, number>): [string, number][] {
     return Object.entries(obj ?? {});
@@ -207,7 +215,11 @@ filtered() {
       .replace(/\b\w/g, c => c.toUpperCase());
   }
 
+  // ─── LIFECYCLE ────────────────────────────────────────────────────────────
+
   ngOnInit() { this.loadGrouped(); }
+
+  // ─── DATA LOADING ─────────────────────────────────────────────────────────
 
   loadGrouped() {
     this.loading.set(true);
@@ -216,6 +228,8 @@ filtered() {
       error: ()  => this.loading.set(false)
     });
   }
+
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
 
   toggleExpand(commentId: number) {
     const s = new Set(this.expanded());

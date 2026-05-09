@@ -2,36 +2,26 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CommunityFacadeService, CommunityUI } from '../api/facades';
 
-/**
- * Service to manage community state using Angular Signals
- * Provides a clean abstraction over CommunityFacadeService
- * for UI components to consume community data reactively
- *
- * Endpoints:
- * - GET /api/communities - All communities (public)
- * - GET /api/communities/my - Communities joined by current user
- * - GET /api/communities/my-created - Communities created by current user
- */
 @Injectable({ providedIn: 'root' })
 export class CommunityService {
   private readonly communityFacade = inject(CommunityFacadeService);
 
-  // Signal state for "All Communities"
+  // ─── STATE ───────────────────────────────────────────────────────────────
+
   readonly communities = signal<CommunityUI[]>([]);
   readonly isLoading = signal(false);
   readonly error = signal<string | null>(null);
 
-  // Signals for "My Communities" (joined)
   readonly myJoinedCommunities = signal<CommunityUI[]>([]);
   readonly myJoinedCommunitiesLoading = signal(false);
   readonly myJoinedCommunitiesError = signal<string | null>(null);
 
-  // Signals for "My Created Communities"
   readonly myCreatedCommunities = signal<CommunityUI[]>([]);
   readonly myCreatedCommunitiesLoading = signal(false);
   readonly myCreatedCommunitiesError = signal<string | null>(null);
 
-  // Computed state
+  // ─── COMPUTED ────────────────────────────────────────────────────────────
+
   readonly isEmpty = computed(() => this.communities().length === 0);
   readonly hasError = computed(() => this.error() !== null);
   readonly isMyJoinedCommunitiesEmpty = computed(() => this.myJoinedCommunities().length === 0);
@@ -39,10 +29,8 @@ export class CommunityService {
   readonly isMyCreatedCommunitiesEmpty = computed(() => this.myCreatedCommunities().length === 0);
   readonly hasMyCreatedCommunitiesError = computed(() => this.myCreatedCommunitiesError() !== null);
 
-  /**
-   * Fetch all communities with optional filters
-   * Updates the communities signal with the result
-   */
+  // ─── DATA LOADING ────────────────────────────────────────────────────────
+
   async loadCommunities(params?: {
     page?: number;
     size?: number;
@@ -72,10 +60,6 @@ export class CommunityService {
     }
   }
 
-  /**
-   * Fetch user's created communities
-   * Updates the myCreatedCommunities signal with the result
-   */
   async loadMyCreatedCommunities(params?: {
     page?: number;
     size?: number;
@@ -103,10 +87,6 @@ export class CommunityService {
     }
   }
 
-  /**
-   * Fetch user's joined communities
-   * Updates the myJoinedCommunities signal with the result
-   */
   async loadMyJoinedCommunities(params?: {
     page?: number;
     size?: number;
@@ -134,9 +114,8 @@ export class CommunityService {
     }
   }
 
-  /**
-   * Get a single community by ID
-   */
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
+
   async getCommunityById(id: number): Promise<CommunityUI | null> {
     console.log('[CommunityService] getCommunityById called with id:', id);
     
@@ -148,9 +127,8 @@ export class CommunityService {
     }
   }
 
-  /**
-   * Clear the communities list and state
-   */
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
+
   clear(): void {
     console.log('[CommunityService] clear called - resetting state');
     this.communities.set([]);

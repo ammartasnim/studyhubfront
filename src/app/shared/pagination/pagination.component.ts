@@ -10,17 +10,6 @@ export interface PaginationConfig {
   hasPrevious: boolean;
 }
 
-/**
- * Reusable pagination component that works with any paginated API response
- * 
- * Usage:
- * <app-pagination 
- *   [config]="paginationConfig"
- *   [isLoading]="isLoading"
- *   (pageChange)="onPageChange($event)"
- *   (pageSizeChange)="onPageSizeChange($event)">
- * </app-pagination>
- */
 @Component({
   selector: 'app-pagination',
   standalone: true,
@@ -132,23 +121,20 @@ export interface PaginationConfig {
 export class PaginationComponent {
   @Input() config!: PaginationConfig;
   @Input() isLoading = false;
-  @Input() visiblePagesCount = 5; // Number of page buttons to show
+  @Input() visiblePagesCount = 5;
 
   @Output() pageChange = new EventEmitter<number>();
   @Output() pageSizeChange = new EventEmitter<number>();
 
+  // Keeps the current page centered in the page-button window when possible.
   get visiblePages(): number[] {
     const { currentPage, totalPages } = this.config;
     const halfVisible = Math.floor(this.visiblePagesCount / 2);
-    
     let start = Math.max(0, currentPage - halfVisible);
     let end = Math.min(totalPages, start + this.visiblePagesCount);
-    
-    // Adjust start if we're near the end
     if (end - start < this.visiblePagesCount) {
       start = Math.max(0, end - this.visiblePagesCount);
     }
-    
     return Array.from({ length: end - start }, (_, i) => start + i);
   }
 

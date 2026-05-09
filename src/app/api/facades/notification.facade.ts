@@ -23,6 +23,8 @@ export class NotificationFacadeService {
 
   private readonly apiBase = `${environment.apiBaseUrl}/api/notifications`;
 
+  // ─── REST ─────────────────────────────────────────────────────────────────
+
   getMyNotifications(filters?: { page?: number; size?: number }): Observable<PaginatedNotifications> {
     const page = filters?.page ?? 0;
     const size = filters?.size ?? 20;
@@ -63,6 +65,8 @@ export class NotificationFacadeService {
       catchError(err => this.handleError(err, 'Failed to fetch unread count'))
     );
   }
+
+  // ─── WEBSOCKET ────────────────────────────────────────────────────────────
 
   connect(token: string): Promise<void> {
     if (this.isConnected && this.client?.connected) {
@@ -138,6 +142,8 @@ export class NotificationFacadeService {
       return () => subscription?.unsubscribe();
     });
   }
+
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
 
   private subscribe(destination: string, handler: (message: IMessage) => void): StompSubscription | undefined {
     if (!this.client || !this.isConnected) {

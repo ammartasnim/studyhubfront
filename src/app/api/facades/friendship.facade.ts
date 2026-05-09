@@ -23,6 +23,8 @@ export class FriendshipFacadeService {
   private readonly baseUrl = 'http://localhost:8081';
   private readonly apiBase = `${this.baseUrl}/api/friendships`;
 
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
+
   sendRequest(addresseeId: number): Observable<FriendshipUI> {
     if (!addresseeId || addresseeId <= 0) {
       return throwError(() => new Error('Invalid addressee ID'));
@@ -62,7 +64,7 @@ export class FriendshipFacadeService {
   deleteFriendship(friendId: number): Observable<void> {
     if (!friendId || friendId <= 0) {
       return throwError(() => new Error('Invalid friend ID'));
-    } 
+    }
     return this.http
       .delete<void>(`${this.apiBase}/${encodeURIComponent(String(friendId))}`, { ...JSON_ACCEPT, observe: 'body' })
       .pipe(
@@ -71,9 +73,9 @@ export class FriendshipFacadeService {
         }),
         catchError(err => this.responseHandler.handleError(err, 'Failed to delete friendship'))
       );
-
-    
   }
+
+  // ─── READ ─────────────────────────────────────────────────────────────────
 
   getFriends(filters?: { page?: number; size?: number }): Observable<PaginatedUserSummaries> {
     const page = filters?.page ?? 0;
@@ -168,6 +170,8 @@ export class FriendshipFacadeService {
       );
   }
 
+  // ─── BLOCK / UNBLOCK ──────────────────────────────────────────────────────
+
   blockUser(userId: number): Observable<UserSummaryUI> {
     if (!userId || userId <= 0) {
       return throwError(() => new Error('Invalid user ID'));
@@ -225,6 +229,8 @@ export class FriendshipFacadeService {
         catchError(err => this.responseHandler.handleError(err, 'Failed to fetch blocked users'))
       );
   }
+
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
 
   private mapToUI(dto: any): FriendshipUI {
     if (!dto) {
@@ -293,9 +299,9 @@ export class FriendshipFacadeService {
       pageSize: response.size ?? 0
     };
   }
-searchFriends(query: string): Observable<UserSummaryUI[]> {
-  return this.http.get<any[]>(`${this.apiBase}/search?q=${encodeURIComponent(query)}`).pipe(
-    map(results => results.map(dto => this.mapUserSummary(dto) as UserSummaryUI))
-  );
-}
+  searchFriends(query: string): Observable<UserSummaryUI[]> {
+    return this.http.get<any[]>(`${this.apiBase}/search?q=${encodeURIComponent(query)}`).pipe(
+      map(results => results.map(dto => this.mapUserSummary(dto) as UserSummaryUI))
+    );
+  }
 }

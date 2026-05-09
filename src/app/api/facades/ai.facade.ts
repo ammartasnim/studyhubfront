@@ -1,4 +1,3 @@
-// ai-facade.service.ts
 import { Injectable, inject } from '@angular/core';
 import { Observable, switchMap, of, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
@@ -42,10 +41,10 @@ export class AiFacadeService {
   private readonly ai = inject(AiControllerService);
 
   chat(message: string): Observable<string> {
-     const request = { 
-    message, 
-    systemPrompt: 'You are a helpful study assistant. Be concise and student-friendly.' 
-  } as ChatRequest; 
+    const request: ChatRequest = {
+      message,
+      systemPrompt: 'You are a helpful study assistant. Be concise and student-friendly.'
+    };
 
     return this.ai.chat(request).pipe(
       switchMap(toText),

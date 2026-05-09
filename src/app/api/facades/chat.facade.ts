@@ -21,6 +21,8 @@ export class ChatFacadeService {
   private connectionPromise?: Promise<void>;
   private isConnected = false;
 
+  // ─── WEBSOCKET ────────────────────────────────────────────────────────────
+
   connect(token: string): Promise<void> {
     if (this.isConnected && this.client?.connected) {
       return Promise.resolve();
@@ -82,6 +84,8 @@ export class ChatFacadeService {
     this.connectionPromise = undefined;
   }
 
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
+
   sendMessage(request: MessageSendRequest): void {
     this.assertConnected();
     this.client?.publish({
@@ -122,6 +126,8 @@ export class ChatFacadeService {
       })
     });
   }
+
+  // ─── SUBSCRIPTIONS ────────────────────────────────────────────────────────
 
   onMessageReceived(): Observable<MessageUI> {
     return new Observable(observer => {
@@ -169,6 +175,8 @@ export class ChatFacadeService {
       return () => subscription?.unsubscribe();
     });
   }
+
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
 
   private subscribe(destination: string, handler: (message: IMessage) => void): StompSubscription | undefined {
     if (!this.client || !this.isConnected) {

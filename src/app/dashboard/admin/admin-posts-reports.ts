@@ -190,6 +190,8 @@ import { PostFacadeService } from '../../api/facades/post.facade';
 `
 })
 export class AdminPostReports implements OnInit {
+  // ─── DEPENDENCIES ─────────────────────────────────────────────────────────
+
   private readonly facade  = inject(PostFacadeService);
   private readonly http    = inject(HttpClient);
 
@@ -197,6 +199,8 @@ export class AdminPostReports implements OnInit {
     return (this.facade as any)['postController']?.['configuration']?.basePath
       ?? 'http://localhost:8081';
   }
+
+  // ─── STATE ────────────────────────────────────────────────────────────────
 
   readonly reports        = signal<any[]>([]);
   readonly loading        = signal(false);
@@ -206,50 +210,45 @@ export class AdminPostReports implements OnInit {
   readonly loadingDetails = signal<Set<number>>(new Set());
   readonly actingOnReport = signal<number | null>(null);
 
-  // ── change this if your backend threshold changes ──
   readonly threshold = 5;
 
-readonly tabs = [
-  { label: 'All',      value: 'ALL'      },
-  { label: 'Pending',  value: 'PENDING'  },
-  { label: 'Approved', value: 'APPROVED' },
-  { label: 'Rejected', value: 'REJECTED' },
-  { label: 'Flagged',  value: 'FLAGGED'  },
-];
+  readonly tabs = [
+    { label: 'All',      value: 'ALL'      },
+    { label: 'Pending',  value: 'PENDING'  },
+    { label: 'Approved', value: 'APPROVED' },
+    { label: 'Rejected', value: 'REJECTED' },
+    { label: 'Flagged',  value: 'FLAGGED'  },
+  ];
 
-filtered() {
-  const tab = this.activeTab();
-  const all = this.reports();
+  // ─── COMPUTED ─────────────────────────────────────────────────────────────
 
-  if (tab === 'ALL') return all;
-
-  if (tab === 'FLAGGED') {
-
-    return all.filter(r => r.status === 'Flagged');
+  filtered() {
+    const tab = this.activeTab();
+    const all = this.reports();
+    if (tab === 'ALL') return all;
+    if (tab === 'FLAGGED') return all.filter(r => r.status === 'Flagged');
+    return all.filter(r => {
+      const details = this.reportDetails()[r.postId];
+      if (!details) {
+        if (tab === 'PENDING') return r.hasPendingReports;
+        return true;
+      }
+      return details.some(rep => rep.status === tab);
+    });
   }
 
-  return all.filter(r => {
-    const details = this.reportDetails()[r.postId];
-    if (!details) {
-      if (tab === 'PENDING') return r.hasPendingReports;
-      return true; 
-    }
-    return details.some(rep => rep.status === tab);
-  });
-}
-
-  toEntries(obj: Record<string, number>): [string, number][] {
-    return Object.entries(obj ?? {});
+  getVisibleReports(postId: number): any[] {
+    const tab = this.activeTab();
+    const details = this.reportDetails()[postId] ?? [];
+    if (tab === 'ALL' || tab === 'FLAGGED') return details;
+    return details.filter(rep => rep.status === tab);
   }
 
-  formatReason(raw: string): string {
-    return (raw ?? '').replace(/_/g, ' ').toLowerCase()
-      .replace(/\b\w/g, c => c.toUpperCase());
-  }
+  // ─── LIFECYCLE ────────────────────────────────────────────────────────────
 
   ngOnInit() { this.loadGrouped(); }
 
-  // ── load grouped summary ──────────────────────────────────────────────────
+  // ─── DATA LOADING ─────────────────────────────────────────────────────────
 
   loadGrouped() {
     this.loading.set(true);
@@ -259,33 +258,8 @@ filtered() {
     });
   }
 
-  // ── expand / collapse row ────────────────────────────────────────────────
-
-toggleExpand(postId: number) {
-  const s = new Set(this.expanded());
-  if (s.has(postId)) {
-    s.delete(postId);
-  } else {
-    s.add(postId);
-    // always reload details fresh on expand
-    this.loadDetailsForPost(postId);
-  }
-  this.expanded.set(s);
-}
-getVisibleReports(postId: number): any[] {
-  const tab = this.activeTab();
-  const details = this.reportDetails()[postId] ?? [];
-
-  if (tab === 'ALL' || tab === 'FLAGGED') return details;
-  return details.filter(rep => rep.status === tab);
-}
-  // ── load individual reports for one post ─────────────────────────────────
-  // Requires: GET /api/reports/posts/{postId}  (returns List<ReportResDto>)
-
   loadDetailsForPost(postId: number) {
-    // mark as loading
     this.loadingDetails.update(s => { const n = new Set(s); n.add(postId); return n; });
-
     this.http.get<any[]>(`${this.basePath}/api/reports/posts/${postId}`).subscribe({
       next: items => {
         this.reportDetails.update(d => ({ ...d, [postId]: items }));
@@ -298,29 +272,51 @@ getVisibleReports(postId: number): any[] {
     });
   }
 
-  // ── approve a single report ───────────────────────────────────────────────
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
 
-approveReport(reportId: number, postId: number) {
-  this.actingOnReport.set(reportId);
-  this.http.patch<any>(`${this.basePath}/api/reports/${reportId}/approve`, {}).subscribe({
-    next: () => {
-      this.actingOnReport.set(null);
-      this.loadDetailsForPost(postId); // reload details fresh
-      this.loadGrouped();              // reload grouped counts + post status
-    },
-    error: () => this.actingOnReport.set(null)
-  });
-}
-
-rejectReport(reportId: number, postId: number) {
-  this.actingOnReport.set(reportId);
-  this.http.patch<any>(`${this.basePath}/api/reports/${reportId}/reject`, {}).subscribe({
-    next: () => {
-      this.actingOnReport.set(null);
+  toggleExpand(postId: number) {
+    const s = new Set(this.expanded());
+    if (s.has(postId)) {
+      s.delete(postId);
+    } else {
+      s.add(postId);
       this.loadDetailsForPost(postId);
-      this.loadGrouped();
-    },
-    error: () => this.actingOnReport.set(null)
-  });
-}
+    }
+    this.expanded.set(s);
+  }
+
+  approveReport(reportId: number, postId: number) {
+    this.actingOnReport.set(reportId);
+    this.http.patch<any>(`${this.basePath}/api/reports/${reportId}/approve`, {}).subscribe({
+      next: () => {
+        this.actingOnReport.set(null);
+        this.loadDetailsForPost(postId);
+        this.loadGrouped();
+      },
+      error: () => this.actingOnReport.set(null)
+    });
+  }
+
+  rejectReport(reportId: number, postId: number) {
+    this.actingOnReport.set(reportId);
+    this.http.patch<any>(`${this.basePath}/api/reports/${reportId}/reject`, {}).subscribe({
+      next: () => {
+        this.actingOnReport.set(null);
+        this.loadDetailsForPost(postId);
+        this.loadGrouped();
+      },
+      error: () => this.actingOnReport.set(null)
+    });
+  }
+
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
+
+  toEntries(obj: Record<string, number>): [string, number][] {
+    return Object.entries(obj ?? {});
+  }
+
+  formatReason(raw: string): string {
+    return (raw ?? '').replace(/_/g, ' ').toLowerCase()
+      .replace(/\b\w/g, c => c.toUpperCase());
+  }
 }

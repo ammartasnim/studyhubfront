@@ -1,7 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { UserUI } from '../../api/facades/models/user.model';
 import { UserFacadeService } from '../../api/facades';
 
@@ -193,9 +192,7 @@ import { UserFacadeService } from '../../api/facades';
   `
 })
 export class AdminUsers implements OnInit {
-  // Using HttpClient directly — the generated getAllClients signature
-  // doesn't map cleanly to the /api/clients query params the backend expects.
-  private readonly http = inject(HttpClient);
+  // ─── STATE ───────────────────────────────────────────────────────────────
 
   readonly users     = signal<UserUI[]>([]);
   readonly total     = signal(0);
@@ -218,10 +215,15 @@ export class AdminUsers implements OnInit {
 
   readonly totalPages = () => Math.ceil(this.total() / this.size);
 
+  // ─── DEPENDENCIES ────────────────────────────────────────────────────────
+
+  private readonly userFacade = inject(UserFacadeService);
+
+  // ─── LIFECYCLE ───────────────────────────────────────────────────────────
+
   ngOnInit() { this.load(); }
 
-  // Remove: private readonly http = inject(HttpClient);
-private readonly userFacade = inject(UserFacadeService);
+  // ─── DATA LOADING ────────────────────────────────────────────────────────
 
 load() {
   this.loading.set(true);
@@ -239,6 +241,8 @@ load() {
     error: () => this.loading.set(false)
   });
 }
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
+
 confirmBan() {
   const user = this.banTarget();
   if (!user) return;
@@ -260,25 +264,6 @@ confirmBan() {
   prevPage() { this.page.update(p => p - 1); this.load(); }
   nextPage() { this.page.update(p => p + 1); this.load(); }
 
-  // toggleBan(user: UserUI) {
-  //   this.banningId.set(user.id);
-  //   const endpoint = user.banned
-  //     ? `/api/clients/${user.id}/unban`
-  //     : `/api/clients/${user.id}/ban`;
-
-  //   this.http.patch(endpoint, {}).subscribe({
-  //     next: () => {
-  //       this.users.update(list =>
-  //         list.map(u => u.id === user.id ? { ...u, banned: !u.banned } : u)
-  //       );
-  //       this.banningId.set(null);
-  //     },
-  //     error: err => {
-  //       console.error('[AdminUsers] ban/unban error:', err);
-  //       this.banningId.set(null);
-  //     }
-  //   });
-  // }
   toggleBan(user: UserUI) {
     this.banningId.set(user.id);
     const action = user.banned
@@ -311,31 +296,11 @@ confirmBan() {
     });
   }
 
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
+
   initials(user: UserUI): string {
     const f = user.firstName?.[0] ?? '';
     const l = user.lastName?.[0] ?? '';
     return (f + l).toUpperCase() || user.username?.substring(0, 2).toUpperCase() || '?';
-  }
-
-  // Map raw backend DTO to UserUI without depending on the facade
-  private mapToUI(dto: any): UserUI {
-    return {
-      id: dto.id ?? 0,
-      username: dto.username ?? '',
-      email: dto.email ?? '',
-      firstName: dto.firstName ?? '',
-      lastName: dto.lastName ?? '',
-      pfp: dto.pfp ?? undefined,
-      phone: dto.phone ?? undefined,
-      xpPts: dto.xpPts ?? 0,
-      level: dto.level ?? 1,
-      banned: dto.banned ?? false,
-      role: dto.role ?? 'Client',
-      badges: (dto.badges ?? []).map((b: any) => ({
-        id: b.id,
-        type: b.type,
-        userId: b.userId
-      }))
-    };
   }
 }

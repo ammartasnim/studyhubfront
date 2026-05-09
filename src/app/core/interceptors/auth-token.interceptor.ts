@@ -1,8 +1,9 @@
-import { HttpInterceptorFn, HttpResponse } from '@angular/common/http';
-import { tap } from 'rxjs/operators';
+import { HttpInterceptorFn } from '@angular/common/http';
 
 const AUTH_TOKEN_KEY = 'token';
 
+// Attaches the stored JWT as a Bearer token to every outgoing request,
+// except login and register which are public endpoints.
 export const authTokenInterceptor: HttpInterceptorFn = (req, next) => {
   const token = localStorage.getItem(AUTH_TOKEN_KEY);
 
@@ -16,13 +17,5 @@ export const authTokenInterceptor: HttpInterceptorFn = (req, next) => {
     }
   });
 
-  return next(authorizedRequest).pipe(
-    tap({
-      next: (event) => {
-        if (event instanceof HttpResponse && req.url.includes('/api/clients/me')) {
-         
-        }
-      }
-    })
-  );
+  return next(authorizedRequest);
 };

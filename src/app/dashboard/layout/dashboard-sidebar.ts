@@ -145,42 +145,43 @@ import { Router } from '@angular/router';
   styles: []
 })
 export class DashboardSidebarComponent {
+  // ─── INPUTS / OUTPUTS ─────────────────────────────────────────────────────
+
   readonly displayName = input<string>('');
   readonly level = input<number>(0);
   readonly xp = input<number>(0);
   readonly pfp = input<string | undefined>(undefined);
 
   readonly navigate = output<string>();
-  userContext: UserContextService=inject(UserContextService);
-  router=inject(Router);
 
-  constructor() {
-    
-  }
+  // ─── DEPENDENCIES ─────────────────────────────────────────────────────────
+
+  userContext = inject(UserContextService);
+  router = inject(Router);
+
+  // ─── COMPUTED ─────────────────────────────────────────────────────────────
 
   xpPercentage = () => Math.min((this.xp() / 1000) * 100, 100);
-
 
   getInitials(): string {
     const name = this.displayName();
     if (!name) return '?';
-    
     const parts = name.trim().split(/\s+/);
     if (parts.length >= 2) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
-    
     return name.substring(0, 2).toUpperCase();
   }
 
-  navigateTo(section: string): void {
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
 
+  navigateTo(section: string): void {
     this.navigate.emit(section);
   }
-    handleLogout(): void {
+
+  handleLogout(): void {
     localStorage.removeItem('token');
     this.userContext.clear();
     this.router.navigateByUrl('/auth/login');
   }
-
 }
