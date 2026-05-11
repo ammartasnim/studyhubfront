@@ -97,7 +97,13 @@ import { PostFacadeService } from '../../api/facades/post.facade';
               </td>
 
               <td class="px-5 py-3.5 text-right text-xs text-slate-300">
-                {{ r.latestReportDate | date:'MMM d, y' }}
+                <div class="flex items-center justify-end gap-3">
+                  <span>{{ r.latestReportDate | date:'MMM d, y' }}</span>
+                  <button (click)="openPostModal(r, $event)"
+                    class="px-2.5 py-1 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition whitespace-nowrap">
+                    View Post
+                  </button>
+                </div>
               </td>
             </tr>
 
@@ -187,6 +193,95 @@ import { PostFacadeService } from '../../api/facades/post.facade';
     }
   </div>
 </div>
+
+@if (selectedPost() !== null) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+       (click)="selectedPost.set(null)">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+         (click)="$event.stopPropagation()">
+
+      <!-- Modal header -->
+      <div class="flex items-start justify-between px-6 py-4 border-b border-slate-100">
+        <div class="flex-1 min-w-0 pr-4">
+          <h3 class="text-lg font-bold text-slate-900 truncate">{{ selectedPost()?.title }}</h3>
+          <div class="flex items-center gap-2 mt-1 flex-wrap">
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+              [class.bg-red-100]="selectedPost()?.status === 'Flagged'"
+              [class.text-red-600]="selectedPost()?.status === 'Flagged'"
+              [class.bg-green-100]="selectedPost()?.status === 'Approved'"
+              [class.text-green-700]="selectedPost()?.status === 'Approved'"
+              [class.bg-slate-100]="selectedPost()?.status === 'Pending'"
+              [class.text-slate-500]="selectedPost()?.status === 'Pending'">
+              {{ selectedPost()?.status }}
+            </span>
+            @if (selectedPost()?.communityTitle) {
+              <span class="text-xs text-slate-400">in <span class="font-semibold text-slate-600">{{ selectedPost()?.communityTitle }}</span></span>
+            }
+          </div>
+        </div>
+        <button (click)="selectedPost.set(null)"
+          class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Author + date -->
+      <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50">
+        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+          @if (selectedPost()?.userPfp) {
+            <img [src]="imageUrl(selectedPost()?.userPfp)" class="w-full h-full object-cover" />
+          } @else {
+            <span class="text-indigo-700 font-bold text-sm">{{ (selectedPost()?.authorUsername || '?')[0].toUpperCase() }}</span>
+          }
+        </div>
+        <div>
+          <p class="font-semibold text-slate-800 text-sm">{{ selectedPost()?.authorUsername }}</p>
+          <p class="text-xs text-slate-400">{{ selectedPost()?.postCreatedAt | date:'MMM d, y · h:mm a' }}</p>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="px-6 py-4 border-b border-slate-100">
+        <p class="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{{ selectedPost()?.content }}</p>
+      </div>
+
+      <!-- Images -->
+      @if (selectedPost()?.imgs?.length > 0) {
+        <div class="px-6 py-4 border-b border-slate-100">
+          <div class="flex flex-wrap gap-2">
+            @for (img of selectedPost()?.imgs; track img) {
+              <img [src]="imageUrl(img)" class="h-32 rounded-xl object-cover border border-slate-100" />
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Report summary -->
+      <div class="px-6 py-4">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Report Summary</p>
+        <div class="flex items-center gap-4 mb-3">
+          <span class="text-sm font-semibold"
+            [class.text-red-600]="selectedPost()?.approvedReports >= threshold"
+            [class.text-amber-500]="selectedPost()?.approvedReports > 0 && selectedPost()?.approvedReports < threshold"
+            [class.text-slate-400]="selectedPost()?.approvedReports === 0">
+            {{ selectedPost()?.approvedReports }} / {{ threshold }} approved
+          </span>
+          <span class="text-xs text-slate-400">({{ selectedPost()?.totalReports }} total)</span>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          @for (entry of toEntries(selectedPost()?.reasons); track entry[0]) {
+            <span class="text-xs px-2.5 py-0.5 bg-slate-100 rounded-full text-slate-600">
+              {{ formatReason(entry[0]) }} <span class="font-bold text-slate-800">×{{ entry[1] }}</span>
+            </span>
+          }
+        </div>
+      </div>
+
+    </div>
+  </div>
+}
 `
 })
 export class AdminPostReports implements OnInit {
@@ -209,6 +304,7 @@ export class AdminPostReports implements OnInit {
   readonly reportDetails  = signal<Record<number, any[]>>({});
   readonly loadingDetails = signal<Set<number>>(new Set());
   readonly actingOnReport = signal<number | null>(null);
+  readonly selectedPost    = signal<any | null>(null);
 
   readonly threshold = 5;
 
@@ -318,5 +414,15 @@ export class AdminPostReports implements OnInit {
   formatReason(raw: string): string {
     return (raw ?? '').replace(/_/g, ' ').toLowerCase()
       .replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  openPostModal(r: any, event: Event) {
+    event.stopPropagation();
+    this.selectedPost.set(r);
+  }
+
+  imageUrl(path?: string | null): string {
+    if (!path) return '';
+    return `${this.basePath}/uploads/${path}`;
   }
 }

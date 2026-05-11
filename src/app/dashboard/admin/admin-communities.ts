@@ -39,8 +39,7 @@ import { CommunityUI } from '../../api/facades/models/community.model';
           <tr><td colspan="4" class="text-center py-10 text-slate-400 text-sm">No communities found.</td></tr>
         }
         @for (c of communities(); track c.id) {
-          <tr class="hover:bg-slate-50 transition-colors cursor-pointer"
-              (click)="openModeration(c)">
+          <tr class="hover:bg-slate-50 transition-colors">
             <td class="px-5 py-3.5 font-semibold text-slate-800">
               <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
@@ -59,11 +58,17 @@ import { CommunityUI } from '../../api/facades/models/community.model';
                 {{ c.nbrMembers }}
               </span>
             </td>
-            <td class="px-5 py-3.5 text-right" (click)="$event.stopPropagation()">
-              <button (click)="confirmDelete(c)"
-                class="px-3 py-1.5 rounded-lg text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 transition-colors">
-                Delete
-              </button>
+            <td class="px-5 py-3.5 text-right">
+              <div class="flex gap-2 justify-end">
+                <button (click)="openModeration(c)"
+                  class="px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors">
+                  Bans/Warns
+                </button>
+                <button (click)="confirmDelete(c)"
+                  class="px-3 py-1.5 rounded-lg text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 transition-colors">
+                  Delete
+                </button>
+              </div>
             </td>
           </tr>
         }
@@ -178,26 +183,15 @@ import { CommunityUI } from '../../api/facades/models/community.model';
           @if (!moderation()?.bans?.length) {
             <div class="text-center py-10 text-slate-400 text-sm">No bans in this community.</div>
           } @else {
-            <div class="space-y-3">
+            <div class="divide-y divide-slate-100">
               @for (ban of moderation()!.bans; track ban.id) {
-                <div class="flex items-start justify-between p-4 bg-red-50 border border-red-100 rounded-xl">
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-red-200 text-red-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                      {{ (ban.firstName?.[0] ?? '') + (ban.lastName?.[0] ?? '') | uppercase }}
-                    </div>
-                    <div>
-                      <p class="font-semibold text-slate-800 text-sm">
-                        {{ ban.firstName }} {{ ban.lastName }}
-                        <span class="text-slate-400 font-normal ml-1">&#64;{{ ban.username }}</span>
-                      </p>
-                      <p class="text-xs text-red-600 mt-0.5">
-                        {{ ban.reason || 'No reason provided' }}
-                      </p>
-                    </div>
+                <div class="flex items-center justify-between py-2.5">
+                  <div>
+                    <span class="text-sm font-semibold text-slate-800">{{ ban.firstName }} {{ ban.lastName }}</span>
+                    <span class="text-xs text-slate-400 ml-1">&#64;{{ ban.username }}</span>
+                    <p class="text-xs text-red-500 mt-0.5">{{ ban.reason || 'No reason provided' }}</p>
                   </div>
-                  <span class="text-xs text-slate-400 flex-shrink-0 mt-1">
-                    {{ ban.bannedAt | date:'MMM d, y' }}
-                  </span>
+                  <span class="text-xs text-slate-400 flex-shrink-0">{{ ban.bannedAt | date:'MMM d, y' }}</span>
                 </div>
               }
             </div>
@@ -208,26 +202,15 @@ import { CommunityUI } from '../../api/facades/models/community.model';
           @if (!moderation()?.warnings?.length) {
             <div class="text-center py-10 text-slate-400 text-sm">No warnings in this community.</div>
           } @else {
-            <div class="space-y-3">
+            <div class="divide-y divide-slate-100">
               @for (warn of moderation()!.warnings; track warn.id) {
-                <div class="flex items-start justify-between p-4 bg-amber-50 border border-amber-100 rounded-xl">
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-amber-200 text-amber-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                      {{ (warn.firstName?.[0] ?? '') + (warn.lastName?.[0] ?? '') | uppercase }}
-                    </div>
-                    <div>
-                      <p class="font-semibold text-slate-800 text-sm">
-                        {{ warn.firstName }} {{ warn.lastName }}
-                        <span class="text-slate-400 font-normal ml-1">&#64;{{ warn.username }}</span>
-                      </p>
-                      <p class="text-xs text-amber-600 mt-0.5">
-                        {{ warn.reason || 'No reason provided' }}
-                      </p>
-                    </div>
+                <div class="flex items-center justify-between py-2.5">
+                  <div>
+                    <span class="text-sm font-semibold text-slate-800">{{ warn.firstName }} {{ warn.lastName }}</span>
+                    <span class="text-xs text-slate-400 ml-1">&#64;{{ warn.username }}</span>
+                    <p class="text-xs text-amber-500 mt-0.5">{{ warn.reason || 'No reason provided' }}</p>
                   </div>
-                  <span class="text-xs text-slate-400 flex-shrink-0 mt-1">
-                    {{ warn.warnedAt | date:'MMM d, y' }}
-                  </span>
+                  <span class="text-xs text-slate-400 flex-shrink-0">{{ warn.warnedAt | date:'MMM d, y' }}</span>
                 </div>
               }
             </div>
@@ -248,15 +231,15 @@ export class AdminCommunities implements OnInit {
 
   // ─── STATE ────────────────────────────────────────────────────────────────
 
-  readonly communities      = signal<CommunityUI[]>([]);
-  readonly total            = signal(0);
-  readonly page             = signal(0);
-  readonly loading          = signal(false);
-  readonly deleteTarget     = signal<CommunityUI | null>(null);
-  readonly moderationTarget = signal<CommunityUI | null>(null);
-  readonly moderation       = signal<any | null>(null);
+  readonly communities       = signal<CommunityUI[]>([]);
+  readonly total             = signal(0);
+  readonly page              = signal(0);
+  readonly loading           = signal(false);
+  readonly deleteTarget      = signal<CommunityUI | null>(null);
+  readonly moderationTarget  = signal<CommunityUI | null>(null);
+  readonly moderation        = signal<any | null>(null);
   readonly moderationLoading = signal(false);
-  readonly modTab           = signal<'bans' | 'warnings'>('bans');
+  readonly modTab            = signal<'bans' | 'warnings'>('bans');
 
   readonly size = 10;
   search = '';
