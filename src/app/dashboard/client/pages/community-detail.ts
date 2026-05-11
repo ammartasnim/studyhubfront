@@ -431,7 +431,7 @@ const ALL_PERMISSIONS = [
               <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                 <h3 class="text-lg font-bold text-slate-900 mb-4">Banned Members</h3>
                 @if (bannedLoading()) {
-                  <div class="flex justify-center py-4">
+                  <div  class="flex justify-center py-4">
                     <div class="w-6 h-6 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
                   </div>
                 } @else if (bannedMembers().length === 0) {
@@ -439,12 +439,12 @@ const ALL_PERMISSIONS = [
                 } @else {
                   <div class="space-y-3">
                     @for (member of bannedMembers(); track member.userId) {
-                      <div class="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
-                        <div class="flex items-center gap-3">
+                      <div  class="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
+                        <div (click)="navigateToProfile(member.userId)" class="flex items-center cursor-pointer gap-3">
                           @if (member.pfp) {
-                            <img [src]="'http://localhost:8081/uploads/' + member.pfp" class="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                            <img [src]="'http://localhost:8081/uploads/' + member.pfp" class="w-9 h-9 rounded-full cursor-pointer object-cover flex-shrink-0" />
                           } @else {
-                            <div class="w-9 h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                            <div class="w-9 h-9 rounded-full cursor-pointer bg-red-100 text-red-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
                               {{ getInitials(member.fullName) }}
                             </div>
                           }
