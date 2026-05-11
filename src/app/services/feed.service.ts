@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { PostFacadeService, PostUI } from '../api/facades';
 import { CommentFacadeService, CommentUI } from '../api/facades';
 import { CommunityFacadeService } from '../api/facades';
+import { FriendshipFacadeService } from '../api/facades';
 import { UserContextService } from '../services/user-context.service';
 
 const FEED_PAGE_SIZE = 10;
@@ -23,6 +24,7 @@ export class FeedService {
   private readonly postFacade = inject(PostFacadeService);
   private readonly commentFacade = inject(CommentFacadeService);
   private readonly communityFacade = inject(CommunityFacadeService);
+  private readonly friendshipFacade = inject(FriendshipFacadeService);
   readonly userContext = inject(UserContextService);
 
   // ─── STATE ────────────────────────────────────────────────────────────────
@@ -38,6 +40,7 @@ export class FeedService {
   private currentPage = 0;
   private loading = false;
   private seenPostIds = new Set<number>();
+  private blockedUserIds = new Set<number>();
 
   private readonly commentStates = signal<Map<number, CommentState>>(new Map());
   readonly replyStates = signal<Map<number, CommentUI[]>>(new Map());
@@ -73,7 +76,24 @@ export class FeedService {
     this.seenPostIds.clear();
     this.posts.set([]);
     this.hasMore.set(true);
+    await this.loadBlockedUsers();
     await Promise.all([this.loadFeed(), this.checkCommunities()]);
+  }
+
+  private async loadBlockedUsers(): Promise<void> {
+    try {
+      const res = await firstValueFrom(this.friendshipFacade.getBlockedUsers({ page: 0, size: 200 }));
+      this.blockedUserIds = new Set(res.items.map(u => u.id));
+
+    } catch {
+      this.blockedUserIds = new Set();
+    }
+  }
+
+  private filterBlocked(posts: PostUI[]): PostUI[] {
+    if (this.blockedUserIds.size === 0) return posts;
+    return posts.filter(p =>!this.blockedUserIds.has(Number(p.authorId))
+);
   }
 
   // ─── DATA LOADING ─────────────────────────────────────────────────────────
@@ -90,10 +110,11 @@ export class FeedService {
         this.postFacade.getFeed({ page: 0, size: FEED_PAGE_SIZE })
       );
       this.currentPage = 0;
-      this.seenPostIds = new Set(result.items.map(p => p.id));
-      this.posts.set(result.items);
+      const filtered = this.filterBlocked(result.items);
+      this.seenPostIds = new Set(filtered.map(p => p.id));
+      this.posts.set(filtered);
       this.hasMore.set(result.currentPage < result.totalPages - 1);
-      this.markPostsSeen(result.items.map(p => p.id));
+      this.markPostsSeen(filtered.map(p => p.id));
     } catch (err: any) {
       this.error.set(err.message ?? 'Failed to load feed');
     } finally {
@@ -119,7 +140,7 @@ export class FeedService {
       }
 
       const displayedIds = new Set(this.posts().map(p => p.id));
-      const newPosts = result.items.filter(p => !displayedIds.has(p.id));
+      const newPosts = this.filterBlocked(result.items).filter(p => !displayedIds.has(p.id));
 
       if (newPosts.length > 0) {
         this.posts.update(list => [...list, ...newPosts]);

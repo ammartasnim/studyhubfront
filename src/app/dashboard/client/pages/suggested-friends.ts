@@ -289,6 +289,19 @@ import { PaginationComponent, PaginationConfig } from '../../../shared/paginatio
         </div>
       </section>
     </div>
+
+    @if (blockConfirmUserId() !== null) {
+      <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+          <h2 class="text-lg font-bold text-slate-900 mb-2">Block this user?</h2>
+          <p class="text-sm text-slate-500 mb-5">They won't be able to see your profile or send you requests.</p>
+          <div class="flex gap-3">
+            <button (click)="blockConfirmUserId.set(null)" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+            <button (click)="confirmBlock()" class="flex-1 px-4 py-2 bg-rose-600 text-white rounded-xl font-semibold hover:bg-rose-700 transition-colors">Block</button>
+          </div>
+        </div>
+      </div>
+    }
   `
 })
 export class SuggestedFriendsComponent implements OnInit, OnDestroy {
@@ -310,6 +323,8 @@ export class SuggestedFriendsComponent implements OnInit, OnDestroy {
   readonly sent = signal<FriendshipUI[]>([]);
   readonly sentLoading = signal(false);
   readonly sentError = signal<string | null>(null);
+
+  readonly blockConfirmUserId = signal<number | null>(null);
 
   readonly paginationConfig = signal<PaginationConfig>({
     totalPages: 0,
@@ -534,14 +549,14 @@ export class SuggestedFriendsComponent implements OnInit, OnDestroy {
   }
 
   blockUser(userId: number) {
-    if (!userId || userId <= 0) {
-      return;
-    }
+    if (!userId || userId <= 0) return;
+    this.blockConfirmUserId.set(userId);
+  }
 
-    if (!confirm('Block this user?')) {
-      return;
-    }
-
+  confirmBlock() {
+    const userId = this.blockConfirmUserId();
+    if (!userId) return;
+    this.blockConfirmUserId.set(null);
     this.friendshipFacade.blockUser(userId).subscribe({
       next: () => {
         this.pending.set(this.pending().filter(r => r.requesterId !== userId));

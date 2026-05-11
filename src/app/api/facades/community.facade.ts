@@ -270,7 +270,9 @@ export class CommunityFacadeService {
   // ─── MAPPERS ──────────────────────────────────────────────────────────────
 
   private mapToUI(dto: CommunityResDto | null | undefined): CommunityUI {
+    
     if (!dto) throw new Error('Community data is null or undefined');
+  
     return {
       id: dto.id ?? 0,
       title: dto.title ?? 'Untitled Community',
@@ -288,6 +290,7 @@ export class CommunityFacadeService {
   }
 
 private mapPostToUI(dto: any): PostUI {
+  
   const firstName = dto.userFirstName ?? '';
   const lastName = dto.userLastName ?? '';
   const fullName = `${firstName} ${lastName}`.trim() || dto.userUsername || 'Unknown Author';
@@ -301,6 +304,7 @@ private mapPostToUI(dto: any): PostUI {
     authorFirstName: firstName,
     authorLastName: lastName,
     authorPfp: dto.userPfp ?? undefined,
+    communityId: dto.communityId ?? 0,
     communityTitle: dto.communityTitle ?? '',
     authorFullName: fullName,
     previewText: (dto.content ?? '').length > 100 ? dto.content.substring(0, 100) + '...' : (dto.content ?? ''),
@@ -310,7 +314,8 @@ private mapPostToUI(dto: any): PostUI {
     isLiked: dto.liked ?? false,
     createdAt: dto.createdAt ? new Date(dto.createdAt) : null,
     status: dto.status ?? '',
-    isReportedByCurrentUser: dto.isReportedByCurrentUser ?? false
+    isReportedByCurrentUser: dto.isReportedByCurrentUser ?? false,
+    authorId: dto.userId ?? 0,
   };
 }
 

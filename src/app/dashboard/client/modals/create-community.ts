@@ -2,6 +2,7 @@ import { Component, inject, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommunityFacadeService } from '../../../api/facades/community.facade';
+import { AiFacadeService } from '../../../api/facades/ai.facade';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -47,7 +48,28 @@ import { firstValueFrom } from 'rxjs';
 
             <!-- Description -->
             <div>
-              <label class="block text-sm font-semibold text-slate-900 mb-2">Description</label>
+              <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-semibold text-slate-900">Description</label>
+                <button
+                  type="button"
+                  (click)="improveDescription()"
+                  [disabled]="isImproving() || !description.value?.trim() || description.value!.trim().length < 10"
+                  class="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:text-slate-300 transition-colors"
+                >
+                  @if (isImproving()) {
+                    <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    Improving...
+                  } @else {
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Improve with AI
+                  }
+                </button>
+              </div>
               <textarea
                 formControlName="description"
                 placeholder="Describe what this community is about..."
@@ -118,9 +140,11 @@ import { firstValueFrom } from 'rxjs';
 export class CreateCommunityModalComponent {
   private readonly fb = inject(FormBuilder);
   private readonly communityFacade = inject(CommunityFacadeService);
+  private readonly aiFacade = inject(AiFacadeService);
 
   readonly isOpen = signal(false);
   readonly isSubmitting = signal(false);
+  readonly isImproving = signal(false);
   readonly submitError = signal<string | null>(null);
 
   readonly communityCreated = output<void>();
@@ -149,6 +173,20 @@ export class CreateCommunityModalComponent {
   close(): void {
     console.log('[CreateCommunityModal] Closing modal');
     this.isOpen.set(false);
+  }
+
+  async improveDescription(): Promise<void> {
+    const current = this.description.value?.trim();
+    if (!current || current.length < 10) return;
+    this.isImproving.set(true);
+    try {
+      const improved = await firstValueFrom(this.aiFacade.improveDescription(current));
+      this.form.patchValue({ description: improved });
+    } catch (err: any) {
+      this.submitError.set(err?.message ?? 'Failed to improve description');
+    } finally {
+      this.isImproving.set(false);
+    }
   }
 
   async onSubmit(): Promise<void> {

@@ -1,41 +1,27 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { UserContextService } from '../../../services/user-context.service';
 import { BadgesDisplayComponent } from '../../layout/badges-display';
 import { UserFacadeService } from '../../../api/facades/user.facade';
 import { PostFacadeService } from '../../../api/facades/post.facade';
-import { CommentFacadeService } from '../../../api/facades/comment.facade';
 import { FriendshipFacadeService } from '../../../api/facades/friendship.facade';
 import { PostUI } from '../../../api/facades/models/post.model';
-import { CommentUI } from '../../../api/facades/models/comment.model';
 import { UserSummaryUI } from '../../../api/facades/models/friendship.model';
 import { PaginationComponent, PaginationConfig } from '../../../shared/pagination/pagination.component';
+import { PostCardComponent } from '../modals/posts';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-
-const COMMENT_PAGE_SIZE = 5;
-
-interface CommentState {
-  items: CommentUI[];
-  page: number;
-  hasMore: boolean;
-  loading: boolean;
-}
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, BadgesDisplayComponent, PaginationComponent],
+  imports: [CommonModule, BadgesDisplayComponent, PaginationComponent, PostCardComponent],
   template: `
     <article class="relative rounded-3xl overflow-hidden bg-white shadow-sm ring-1 ring-indigo-500/10 w-full">
 
       <!-- Banner -->
-      <div
-        class="relative h-44 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-500 overflow-hidden cursor-pointer group"
-        (click)="openModal()"
-      >
+      <div class="relative h-44 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-500 overflow-hidden">
         <div class="absolute -top-10 -left-8 w-40 h-40 rounded-full bg-indigo-400 blur-3xl opacity-30 animate-pulse"></div>
         <div class="absolute top-2 right-10 w-28 h-28 rounded-full bg-fuchsia-400 blur-3xl opacity-30 animate-pulse delay-300"></div>
         <div class="absolute -bottom-4 left-1/2 w-20 h-20 rounded-full bg-purple-400 blur-2xl opacity-30 animate-pulse delay-700"></div>
@@ -48,13 +34,10 @@ interface CommentState {
             <div class="flex items-end gap-5">
 
               <!-- Avatar -->
-              <div class="relative w-28 h-28 flex-shrink-0 cursor-pointer group/avatar" (click)="openModal()">
+              <div class="relative w-28 h-28 flex-shrink-0">
                 <div class="absolute -inset-[3px] rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 z-0"></div>
                 <div class="absolute -inset-[3px] rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 blur-md opacity-50 z-[-1]"></div>
                 <div class="relative z-10 w-full h-full rounded-[1.1rem] overflow-hidden bg-indigo-100">
-                  <div class="absolute inset-0 z-20 flex items-center justify-center bg-black/0 group-hover/avatar:bg-black/40 transition-all duration-200 rounded-[1.1rem]">
-                    <span class="text-2xl opacity-0 group-hover/avatar:opacity-100 transition-all duration-200">📷</span>
-                  </div>
                   @if (pfp()) {
                     <img [src]="pfp()" [alt]="displayName()" class="w-full h-full object-cover" />
                   } @else {
@@ -90,11 +73,14 @@ interface CommentState {
             [style.width]="xpPercent() + '%'"
           ></div>
         </div>
+        <p class="text-xs text-slate-400 mt-1 text-right">{{ xpToNextBadge() }}</p>
 
         <!-- Badges -->
         <div class="h-px bg-gradient-to-r from-indigo-100 via-purple-100 to-transparent my-5"></div>
-        <app-badges-display [badges]="badges()" />
-
+       <div class="flex items-center justify-between mb-2">
+      <span></span>
+    </div>
+       <app-badges-display [badges]="badges()" />
         <!-- Friends Preview -->
         <div class="h-px bg-gradient-to-r from-indigo-100 via-purple-100 to-transparent my-5"></div>
         <div class="flex items-center justify-between mb-4">
@@ -113,7 +99,7 @@ interface CommentState {
         } @else {
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
             @for (friend of friendsPreview(); track friend.id) {
-              <div class="flex items-center gap-3 p-3 rounded-xl bg-white ring-1 ring-slate-100">
+              <div (click)="viewFriendProfile(friend.id)" class="flex items-center gap-3 p-3 rounded-xl bg-white ring-1 ring-slate-100 cursor-pointer hover:bg-indigo-50 transition-colors">
                 <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
                   @if (friend.pfp) {
                     <img [src]="friendAvatarUrl(friend.pfp)" [alt]="friend.fullName || friend.username || 'User'" class="w-full h-full object-cover" />
@@ -148,257 +134,18 @@ interface CommentState {
         } @else {
           <div class="divide-y divide-slate-100 rounded-2xl ring-1 ring-slate-100 overflow-hidden">
             @for (post of posts(); track post.id) {
-              <article class="p-5 transition-colors hover:bg-slate-50 bg-white">
-
-                <!-- Top row: badge + time + actions -->
-                <div class="flex items-start justify-between mb-2">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    @if (post.communityTitle && post.communityTitle !== 'General') {
-                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[0.65rem] font-semibold bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                        c/{{ post.communityTitle }}
-                      </span>
-                    } @else {
-                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[0.65rem] font-semibold bg-slate-100 text-slate-500 ring-1 ring-slate-200">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                        Personal
-                      </span>
-                    }
-                    <span class="text-xs text-slate-400">{{ getTimeAgo(post.createdAt) }}</span>
-                    @if (post.status === 'Pending') {
-                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-amber-50 text-amber-600 ring-1 ring-amber-200">Pending</span>
-                    }
-                  </div>
-
-                  <!-- Edit / Delete -->
-                  <div class="flex items-center gap-2 flex-shrink-0">
-                    <button (click)="startEdit(post)" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors" title="Edit post">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                    </button>
-                    <button (click)="deletePost(post.id)" [disabled]="deletingIds().has(post.id)" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40" title="Delete post">
-                      @if (deletingIds().has(post.id)) {
-                        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                      } @else {
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      }
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Edit form -->
-                @if (editingPostId() === post.id) {
-                  <div class="mb-3 p-4 bg-indigo-50 rounded-xl ring-1 ring-indigo-200">
-                    <input
-                      type="text"
-                      [(ngModel)]="editTitle"
-                      placeholder="Title"
-                      class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2 bg-white"
-                    />
-                    <textarea
-                      [(ngModel)]="editContent"
-                      placeholder="Content"
-                      rows="3"
-                      class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none bg-white mb-2"
-                    ></textarea>
-
-                    <!-- Image previews -->
-                    @if (editPreviews().length > 0) {
-                      <div class="grid grid-cols-3 gap-2 mb-2">
-                        @for (preview of editPreviews(); track preview; let i = $index) {
-                          <div class="relative rounded-lg overflow-hidden aspect-square bg-slate-100">
-                            <img [src]="preview" class="w-full h-full object-cover" />
-                            <button type="button" (click)="removeEditImage(i)" class="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80">
-                              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                          </div>
-                        }
-                      </div>
-                    }
-
-                    <!-- Add images -->
-                    @if (editImages().length < 5) {
-                      <label class="cursor-pointer inline-block mb-2">
-                        <div class="flex items-center gap-2 px-3 py-1.5 border border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors text-xs">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                          Add images {{ editImages().length > 0 ? '(' + editImages().length + '/5)' : '' }}
-                        </div>
-                        <input type="file" accept="image/*" multiple class="hidden" (change)="addEditImages($event)" />
-                      </label>
-                    }
-
-                    <div class="flex gap-2">
-                      <button (click)="saveEdit(post.id)" [disabled]="savingEdit()" class="px-4 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors">
-                        {{ savingEdit() ? 'Saving...' : 'Save' }}
-                      </button>
-                      <button (click)="cancelEdit()" class="px-4 py-1.5 bg-white text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-100 transition-colors border border-slate-200">
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                }
-
-                <h4 class="font-bold text-slate-900 mb-1">{{ post.title }}</h4>
-                <p class="text-sm text-slate-600 leading-relaxed">{{ post.previewText }}</p>
-
-                <!-- Existing images -->
-@if (editExistingImages().length > 0) {
-  <p class="text-xs font-semibold text-slate-500 mb-1">Current images</p>
-  <div class="grid grid-cols-3 gap-2 mb-2">
-    @for (img of editExistingImages(); track img; let i = $index) {
-      <div class="relative rounded-lg overflow-hidden aspect-square bg-slate-100">
-        <img [src]="uploadUrl(img)" class="w-full h-full object-cover" />
-        <button
-          type="button"
-          (click)="removeExistingImage(i)"
-          class="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
-        >
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    }
-  </div>
-}
-
-<!-- New image previews -->
-@if (editPreviews().length > 0) {
-  <p class="text-xs font-semibold text-slate-500 mb-1">New images</p>
-  <div class="grid grid-cols-3 gap-2 mb-2">
-    @for (preview of editPreviews(); track preview; let i = $index) {
-      <div class="relative rounded-lg overflow-hidden aspect-square bg-slate-100">
-        <img [src]="preview" class="w-full h-full object-cover" />
-        <button
-          type="button"
-          (click)="removeEditImage(i)"
-          class="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
-        >
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    }
-  </div>
-}
-
-<!-- Add images button -->
-@if (editExistingImages().length + editImages().length < 5) {
-  <label class="cursor-pointer inline-block mb-2">
-    <div class="flex items-center gap-2 px-3 py-1.5 border border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors text-xs">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-      Add images {{ (editExistingImages().length + editImages().length) > 0 ? '(' + (editExistingImages().length + editImages().length) + '/5)' : '' }}
-    </div>
-    <input type="file" accept="image/*" multiple class="hidden" (change)="addEditImages($event)" />
-  </label>
-}
-                
-
-                <!-- Like + Comment buttons -->
-                <div class="mt-3 flex items-center gap-3">
-                  <button
-                    (click)="toggleLike(post)"
-                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                    [class.text-rose-600]="post.isLiked"
-                    [class.bg-rose-50]="post.isLiked"
-                    [class.text-slate-500]="!post.isLiked"
-                    [class.hover:bg-slate-100]="!post.isLiked"
-                  >
-                    <svg class="w-4 h-4" [attr.fill]="post.isLiked ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                    {{ post.likeCount }}
-                  </button>
-                  <button
-                    (click)="toggleComments(post.id)"
-                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                    [class.text-indigo-600]="expandedPosts().has(post.id)"
-                    [class.bg-indigo-50]="expandedPosts().has(post.id)"
-                    [class.text-slate-500]="!expandedPosts().has(post.id)"
-                    [class.hover:bg-slate-100]="!expandedPosts().has(post.id)"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    {{ post.commentCount }}
-                  </button>
-                </div>
-
-                <!-- Comments section -->
-                @if (expandedPosts().has(post.id)) {
-                  <div class="mt-4 border-t border-slate-100 pt-4">
-                    @if (commentsLoadingFor(post.id)) {
-                      <div class="flex items-center gap-2 text-sm text-slate-500 py-2">
-                        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                        Loading comments...
-                      </div>
-                    } @else {
-                      @let postComments = getComments(post.id);
-                      @if (postComments.length === 0) {
-                        <p class="text-sm text-slate-400 text-center py-2 mb-3">No comments yet. Be the first!</p>
-                      }
-                      @for (comment of postComments; track comment.id) {
-                        <div class="flex items-start gap-2 mb-3">
-                          @if (comment.authorPfp) {
-                            <img [src]="uploadUrl(comment.authorPfp)" class="w-7 h-7 rounded-full object-cover flex-shrink-0" />
-                          } @else {
-                            <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold flex-shrink-0 select-none">
-                              {{ getInitials(comment.authorFullName ?? '?') }}
-                            </div>
-                          }
-                          <div class="flex-1">
-                            <div class="bg-white rounded-xl px-3 py-2 text-sm border border-slate-100 shadow-sm">
-                              <div class="flex items-center justify-between gap-2 mb-0.5">
-                                <p class="font-semibold text-slate-800 text-xs">{{ comment.authorFullName }}</p>
-                                <div class="flex items-center gap-2">
-                                  @if (comment.createdAt) {
-                                    <span class="text-xs text-slate-400">{{ getTimeAgo(comment.createdAt) }}</span>
-                                  }
-                                  @if (isOwnComment(comment.userId)) {
-                                    <button (click)="deleteComment(post.id, comment.id)" class="text-xs text-red-400 hover:text-red-600 transition-colors" title="Delete comment">
-                                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    </button>
-                                  }
-                                </div>
-                              </div>
-                              <p class="text-slate-700">{{ comment.content }}</p>
-                            </div>
-                          </div>
-                        </div>
-                      }
-
-                      @if (commentHasMore(post.id)) {
-                        <div class="text-center mt-2 mb-3">
-                          <button (click)="loadMoreComments(post.id)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">Load more comments</button>
-                        </div>
-                      }
-
-                      <div class="flex items-center gap-2 mt-3">
-                        <input
-                          type="text"
-                          placeholder="Write a comment..."
-                          [value]="getCommentInput(post.id)"
-                          (input)="setCommentInput(post.id, $any($event.target).value)"
-                          (keyup.enter)="submitComment(post.id)"
-                          class="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                        />
-                        <button
-                          (click)="submitComment(post.id)"
-                          [disabled]="!getCommentInput(post.id).trim() || submittingComments().has(post.id)"
-                          class="px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 transition-colors flex items-center justify-center min-w-[52px]"
-                        >
-                          @if (submittingComments().has(post.id)) {
-                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                          } @else { Post }
-                        </button>
-                      </div>
-                    }
-                  </div>
-                }
-
-              </article>
+          <app-post-card
+            [post]="post"
+            [showLike]="true"
+            [showComments]="true"
+            [showReport]="false"
+            [showCommunity]="true"
+            [showOwnerDelete]="true"
+            [showEdit]="true"
+            [isProfilePage]="true"
+            (postDeleted)="onPostDeleted($event)"
+            (postUpdated)="onPostUpdated($event)"
+          />
             }
           </div>
         }
@@ -524,10 +271,8 @@ export class ProfileComponent implements OnInit {
   private readonly userContext      = inject(UserContextService);
   private readonly userFacade       = inject(UserFacadeService);
   private readonly postFacade       = inject(PostFacadeService);
-  private readonly commentFacade    = inject(CommentFacadeService);
   private readonly friendshipFacade = inject(FriendshipFacadeService);
   private readonly router           = inject(Router);
-  
 
   readonly user = this.userContext.user;
 
@@ -540,22 +285,8 @@ export class ProfileComponent implements OnInit {
   readonly localPfp     = signal<string | null>(null);
 
   // ── Posts ──
-  readonly posts              = signal<PostUI[]>([]);
-  readonly postsLoading       = signal(true);
-  readonly deletingIds        = signal<Set<number>>(new Set());
-  readonly expandedPosts      = signal<Set<number>>(new Set());
-  readonly commentInputs      = signal<Map<number, string>>(new Map());
-  readonly submittingComments = signal<Set<number>>(new Set());
-  private readonly commentStates = signal<Map<number, CommentState>>(new Map());
-
-  // ── Edit ──
-  readonly editingPostId = signal<number | null>(null);
-  readonly savingEdit    = signal(false);
-  readonly editImages    = signal<File[]>([]);
-  readonly editPreviews  = signal<string[]>([]);
-  readonly editExistingImages = signal<string[]>([]);
-  editTitle   = '';
-  editContent = '';
+  readonly posts       = signal<PostUI[]>([]);
+  readonly postsLoading = signal(true);
 
   // ── Friends ──
   readonly friendsPreview          = signal<UserSummaryUI[]>([]);
@@ -588,191 +319,12 @@ export class ProfileComponent implements OnInit {
     }
   }
 
-  async toggleLike(post: PostUI) {
-    try {
-      await firstValueFrom(this.postFacade.toggleLike(post.id));
-      this.posts.update(list => list.map(p =>
-        p.id === post.id
-          ? { ...p, isLiked: !p.isLiked, likeCount: p.likeCount + (p.isLiked ? -1 : 1) }
-          : p
-      ));
-    } catch (err) {
-      console.error('Failed to toggle like', err);
-    }
+  onPostDeleted(postId: number): void {
+    this.posts.update(list => list.filter(p => p.id !== postId));
   }
 
-  async deletePost(postId: number) {
-    if (!confirm('Delete this post? This cannot be undone.')) return;
-    this.deletingIds.update(s => new Set(s).add(postId));
-    try {
-      await firstValueFrom(this.postFacade.delete(postId));
-      this.posts.update(list => list.filter(p => p.id !== postId));
-    } catch (err: any) {
-      alert(err?.message || 'Failed to delete post');
-    } finally {
-      this.deletingIds.update(s => { const n = new Set(s); n.delete(postId); return n; });
-    }
-  }
-
- startEdit(post: PostUI) {
-  this.editingPostId.set(post.id);
-  this.editTitle   = post.title;
-  this.editContent = post.content;
-  this.editImages.set([]);
-  this.editPreviews.set([]);
-  this.editExistingImages.set([...post.images]);
-}
-
-cancelEdit() {
-  this.editingPostId.set(null);
-  this.editTitle   = '';
-  this.editContent = '';
-  this.editImages.set([]);
-  this.editPreviews.set([]);
-  this.editExistingImages.set([]);
-}
-
-  async saveEdit(postId: number) {
-  if (!this.editTitle.trim() || !this.editContent.trim()) return;
-  this.savingEdit.set(true);
-  try {
-    const updated = await firstValueFrom(this.postFacade.update(postId, {
-      title:   this.editTitle.trim(),
-      content: this.editContent.trim(),
-      imgs:    this.editImages().length > 0 ? this.editImages() : undefined
-    }));
-    this.posts.update(list => list.map(p =>
-      p.id === postId
-        ? { ...p, ...updated, images: [...this.editExistingImages(), ...updated.images] }
-        : p
-    ));
-    this.cancelEdit();
-  } catch (err: any) {
-    alert(err?.message || 'Failed to update post');
-  } finally {
-    this.savingEdit.set(false);
-  }
-}
-  removeExistingImage(index: number): void {
-  this.editExistingImages.update(imgs => imgs.filter((_, i) => i !== index));
-}
-
-  addEditImages(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.files?.length) return;
-    const remaining = 5 - this.editImages().length;
-    const newFiles = Array.from(input.files).slice(0, remaining);
-    this.editImages.update(existing => [...existing, ...newFiles]);
-    newFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = e => this.editPreviews.update(p => [...p, e.target!.result as string]);
-      reader.readAsDataURL(file);
-    });
-    input.value = '';
-  }
-
-  removeEditImage(index: number): void {
-    this.editImages.update(imgs => imgs.filter((_, i) => i !== index));
-    this.editPreviews.update(previews => previews.filter((_, i) => i !== index));
-  }
-
-  // ── Comments ───────────────────────────────────────────────────────────────
-
-  getComments(postId: number): CommentUI[] { return this.commentStates().get(postId)?.items ?? []; }
-  commentsLoadingFor(postId: number): boolean { return this.commentStates().get(postId)?.loading ?? false; }
-  commentHasMore(postId: number): boolean { return this.commentStates().get(postId)?.hasMore ?? false; }
-  getCommentInput(postId: number): string { return this.commentInputs().get(postId) ?? ''; }
-  setCommentInput(postId: number, value: string): void { this.commentInputs.update(m => new Map(m).set(postId, value)); }
-
-  toggleComments(postId: number): void {
-    this.expandedPosts.update(set => {
-      const next = new Set(set);
-      if (next.has(postId)) {
-        next.delete(postId);
-        this.commentStates.update(m => { const n = new Map(m); n.delete(postId); return n; });
-      } else {
-        next.add(postId);
-        this.loadComments(postId);
-      }
-      return next;
-    });
-  }
-
-  async loadComments(postId: number): Promise<void> {
-    this.commentStates.update(m => new Map(m).set(postId, { items: [], page: 0, hasMore: false, loading: true }));
-    try {
-      const result = await firstValueFrom(this.commentFacade.getByPostPaged(postId, 0, COMMENT_PAGE_SIZE));
-      this.commentStates.update(m => new Map(m).set(postId, {
-        items: result.items, page: 0,
-        hasMore: result.totalItems > result.items.length, loading: false
-      }));
-    } catch (err) {
-      console.error('Failed to load comments:', err);
-      this.commentStates.update(m => new Map(m).set(postId, { items: [], page: 0, hasMore: false, loading: false }));
-    }
-  }
-
-  async loadMoreComments(postId: number): Promise<void> {
-    const state = this.commentStates().get(postId);
-    if (!state || state.loading || !state.hasMore) return;
-    this.commentStates.update(m => new Map(m).set(postId, { ...state, loading: true }));
-    try {
-      const nextPage = state.page + 1;
-      const result = await firstValueFrom(this.commentFacade.getByPostPaged(postId, nextPage, COMMENT_PAGE_SIZE));
-      const existingIds = new Set(state.items.map(c => c.id));
-      const newItems = result.items.filter(c => !existingIds.has(c.id));
-      this.commentStates.update(m => new Map(m).set(postId, {
-        items: [...state.items, ...newItems], page: nextPage,
-        hasMore: state.items.length + newItems.length < result.totalItems, loading: false
-      }));
-    } catch (err) {
-      console.error('Failed to load more comments:', err);
-      this.commentStates.update(m => new Map(m).set(postId, { ...state, loading: false }));
-    }
-  }
-
-  async submitComment(postId: number): Promise<void> {
-    const content = this.getCommentInput(postId).trim();
-    if (!content) return;
-    this.submittingComments.update(s => new Set(s).add(postId));
-    try {
-      const comment = await firstValueFrom(this.commentFacade.create({ content, postId }));
-      const state = this.commentStates().get(postId);
-      this.commentStates.update(m => new Map(m).set(postId, {
-        ...(state ?? { page: 0, hasMore: false, loading: false }),
-        items: [...(state?.items ?? []), comment]
-      }));
-      this.posts.update(list => list.map(p =>
-        p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p
-      ));
-      this.commentInputs.update(m => { const n = new Map(m); n.delete(postId); return n; });
-    } catch (err) {
-      console.error('Failed to submit comment:', err);
-    } finally {
-      this.submittingComments.update(s => { const n = new Set(s); n.delete(postId); return n; });
-    }
-  }
-
-  async deleteComment(postId: number, commentId: number): Promise<void> {
-    try {
-      await firstValueFrom(this.commentFacade.delete(commentId));
-      const state = this.commentStates().get(postId);
-      if (state) {
-        this.commentStates.update(m => new Map(m).set(postId, {
-          ...state, items: state.items.filter(c => c.id !== commentId)
-        }));
-      }
-      this.posts.update(list => list.map(p =>
-        p.id === postId ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p
-      ));
-    } catch (err) {
-      console.error('Failed to delete comment:', err);
-    }
-  }
-
-  isOwnComment(commentUserId: number | undefined): boolean {
-    const user = this.userContext.user();
-    return !!user && !!commentUserId && user.id === commentUserId;
+  onPostUpdated(updated: PostUI): void {
+    this.posts.update(list => list.map(p => p.id === updated.id ? updated : p));
   }
 
   // ── Friends ────────────────────────────────────────────────────────────────
@@ -864,7 +416,24 @@ cancelEdit() {
   readonly level     = computed(() => this.user()?.level ?? 1);
   readonly xp        = computed(() => this.user()?.xpPts ?? 0);
   readonly badges    = computed(() => this.user()?.badges ?? []);
-  readonly xpPercent = computed(() => Math.min(100, (this.xp() % 5000) / 50));
+
+  readonly xpPercent = computed(() => {
+    const xp = this.xp();
+    const tiers = [0, 500, 2000, 5000];
+    let tierStart = 0, tierEnd = 500;
+    for (let i = tiers.length - 1; i >= 0; i--) {
+      if (xp >= tiers[i]) { tierStart = tiers[i]; tierEnd = tiers[i + 1] ?? tiers[i] + 5000; break; }
+    }
+    return Math.min(100, ((xp - tierStart) / (tierEnd - tierStart)) * 100);
+  });
+
+  readonly xpToNextBadge = computed(() => {
+    const xp = this.xp();
+    if (xp >= 5000) return 'Max level reached';
+    if (xp >= 2000) return `${(5000 - xp).toLocaleString()} XP to Master`;
+    if (xp >= 500)  return `${(2000 - xp).toLocaleString()} XP to Explorer`;
+    return `${(500 - xp).toLocaleString()} XP to Learner`;
+  });
 
   readonly pfp = computed(() => {
     if (this.localPfp()) return this.localPfp()!;
@@ -896,14 +465,6 @@ cancelEdit() {
     return parts.length >= 2
       ? (parts[0][0] + parts[1][0]).toUpperCase()
       : this.displayName().substring(0, 2).toUpperCase();
-  }
-
-  getInitials(name: string): string {
-    if (!name?.trim()) return '?';
-    const parts = name.trim().split(/\s+/);
-    return parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : name.substring(0, 2).toUpperCase();
   }
 
   getTimeAgo(date: Date | string | null | undefined): string {

@@ -1,11 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, switchMap, of, throwError } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
-
+import {catchError } from 'rxjs/operators';
+import { HttpClient } from '@angular/common/http';
 import { AiControllerService }    from '../../api/api/aiController.service';
 import { ChatRequest }            from '../../api/model/chatRequest';
-import { ChatWithContextRequest } from '../../api/model/chatWithContextRequest';
 import { formatApiError } from './models/api-error.model';
+import { environment } from '../../../environments/environment';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -39,6 +39,8 @@ function toText(res: any): Observable<string> {
 @Injectable({ providedIn: 'root' })
 export class AiFacadeService {
   private readonly ai = inject(AiControllerService);
+  private readonly http = inject(HttpClient);
+  private readonly apiBase = `${environment.apiBaseUrl}/api/ai`;
 
   chat(message: string): Observable<string> {
     const request: ChatRequest = {
@@ -49,6 +51,14 @@ export class AiFacadeService {
     return this.ai.chat(request).pipe(
       switchMap(toText),
       catchError(err => this.handleError(err, 'AI chat failed'))
+    );
+  }
+    improveDescription(description: string): Observable<string> {
+    return this.http.post(`${this.apiBase}/improve-description`, description, {
+      headers: { 'Content-Type': 'text/plain' },
+      responseType: 'text'
+    }).pipe(
+      catchError(err => this.handleError(err, 'Failed to improve description'))
     );
   }
 

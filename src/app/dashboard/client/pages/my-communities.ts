@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommunityService } from '../../../services/community.service';
 import { CommunityFacadeService, CommunityUI } from '../../../api/facades';
-import { CreateCommunityModalComponent } from '../create-community';
+import { CreateCommunityModalComponent } from '../modals/create-community';
 
 @Component({
   selector: 'app-my-created-communities',

@@ -204,11 +204,12 @@ export class UserFacadeService {
     const firstName = dto.firstName ?? '';
     const lastName = dto.lastName ?? '';
     const role = (dto.role ?? 'Client') as 'Admin' | 'Client';
-    const badges = (dto.badges ?? []).map(b => ({
-      id: b.id,
-      type: b.type,
-      userId: b.userId
-    }));
+  const badges = (dto.badges ?? []).map(b => ({
+  id: b.id,
+  type: b.type,
+   userId: dto.id,
+  earnedAt: (b as any).earnedAt
+}));
 
     return {
       id: dto.id ?? 0,

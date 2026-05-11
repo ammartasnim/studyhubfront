@@ -143,6 +143,7 @@ export class CommentFacadeService {
       content: dto.content ?? '',
       postId: dto.postId ?? 0,
       userId: dto.userId ?? 0,
+      authorId: dto.userId ?? 0,
       previewText: (dto.content ?? '').length > 50 ? dto.content!.substring(0, 50) + '...' : (dto.content ?? ''),
       authorUsername: dto.authorUsername,
       authorFullName: fullName,
