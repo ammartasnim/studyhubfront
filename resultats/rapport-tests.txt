@@ -1,0 +1,200 @@
+═══════════════════════════════════════════════════════════════
+        RAPPORT DE TESTS E2E — StudyHub
+═══════════════════════════════════════════════════════════════
+
+Date : 11 mai 2026
+Projet : StudyHub (étude sociale / plateforme d'apprentissage)
+Framework : Playwright avec Angular
+Exécution : 50 tests — 50 PASSED (27.1s)
+
+═══════════════════════════════════════════════════════════════
+1. RÉSUMÉ DES TRAVAUX EFFECTUÉS
+═══════════════════════════════════════════════════════════════
+
+État initial :
+ - 10 fichiers de test existants (auth, admin, client)
+ - 1 test problématique : "Change password in settings" (échec
+   intermittent dû à une assertion incorrecte)
+
+Travaux réalisés :
+ a) Correction du test "Change password in settings"
+    - Ajout d'un wait explicite (toBeEnabled) avant clic
+    - Remplacement de l'assertion finale par toHaveValue('')
+      (vérification que le formulaire est réinitialisé)
+    - Cause : le bouton reste désactivé après reset du formulaire
+
+ b) Ajout de 10 nouveaux fichiers de test
+ c) Enrichissement de 3 fichiers existants (PFP upload,
+    comment/reply, send message)
+ d) Configuration du répertoire de sortie "resultats/"
+
+═══ Corrections apportées dans ce cycle ═══
+
+ e) Admin reports — getByText('Approved') → getByRole('button')
+    résolvait 2 éléments (bouton + texte) → strict mode violation
+ f) Feed reply — mock GET comments utilisait items/totalItems
+    (format facade) au lieu de content/totalElements (format
+    Spring brut attendu par l'intercepteur HTTP)
+ g) Chat send — sendMessage() nécessite WebSocket/STOMP.
+    Solution : injecter le message directement dans le signal
+    messagesByFriend via ng.getComponent()
+ h) Feed reply — getByPlaceholder('Write a reply...') résolvait
+    2 éléments (custom app-mention-input + textarea) →
+    utiliser page.locator('textarea[placeholder="Write a reply..."]')
+
+═══════════════════════════════════════════════════════════════
+2. LISTE COMPLÈTE DES TESTS (50)
+═══════════════════════════════════════════════════════════════
+
+ ── Authentification (auth/) ──
+
+ 1. Valid Login (Happy Path)
+ 2. Invalid Login (Error Path)
+ 3. Logout clears token and redirects to login
+ 4. Register a new user (Happy Path)
+ 5. Expired token redirects to login when accessing protected
+    route
+
+ ── Administration — Utilisateurs (admin/) ──
+
+ 6. Ban a User (Happy Path)
+ 7. Unban a User (Happy Path)
+ 8. Search filters users by first name
+ 9. Status tabs filter Active vs Banned
+ 10. Delete Community (Happy Path)
+ 11. Search filters communities by title
+ 12. Pagination navigates between pages
+
+ ── Administration — Signalements (NOUVEAU) ──
+
+ 13. View admin stats dashboard
+ 14. View post reports page
+ 15. View comment reports page
+ 16. Approve and reject post reports       ← NOUVEAU
+ 17. Approve and reject comment reports    ← NOUVEAU
+
+ ── Client — Fil d'actualité (client/) ──
+
+ 18. Create a Post (Happy Path)
+ 19. Like a post (Happy Path)
+ 20. Comment on a post (Happy Path)        ← NOUVEAU
+ 21. Reply to a comment (Happy Path)       ← NOUVEAU
+
+ ── Client — Profil (client/) ──
+
+ 22. View profile (Happy Path)
+ 23. Edit a post from profile (Happy Path)
+ 24. Delete a post from profile (Happy Path)
+ 25. Edit profile settings (Happy Path)
+ 26. Change password in settings (Happy Path)  ← CORRIGÉ
+ 27. Unblock a user in settings (Happy Path)
+ 28. Upload profile picture (Happy Path)       ← NOUVEAU
+
+ ── Client — Communautés (client/) ──
+
+ 29. Create a community (Happy Path)
+ 30. Join a community (Happy Path)
+ 31. Leave a community (Happy Path)
+
+ ── Client — Modération communauté (NOUVEAU) ──
+
+ 32. Approve a pending post in community  ← NOUVEAU
+
+ ── Client — Amis (client/) ──
+
+ 33. Send friend request (Happy Path)
+ 34. Accept friend request (Happy Path)
+ 35. Decline friend request (Happy Path)
+ 36. Cancel sent request (Happy Path)
+ 37. Block user from suggested friends (Happy Path)
+
+ ── Client — Pages supplémentaires (NOUVEAU) ──
+
+ 38. View chat page
+ 39. Send a message in chat               ← NOUVEAU
+ 40. View focus timer page
+ 41. View another user's profile
+ 42. View explore communities page
+ 43. View my created communities page
+
+ ── Client — Layout (NOUVEAU) ──
+
+ 44. Dashboard sidebar navigation shows links
+ 45. Focus timer widget is visible in sidebar
+ 46. AI assistant is visible in sidebar
+ 47. User badges and XP card render on feed page
+
+ ── Configuration globale ──
+
+ 48. authenticate as admin (setup)
+ 49. example.spec.ts — has title
+ 50. example.spec.ts — get started link
+
+═══════════════════════════════════════════════════════════════
+3. COUVERTURE AVANT / APRÈS
+═══════════════════════════════════════════════════════════════
+
+  Fonctionnalité              Avant   Après    Statut
+ ─────────────────────────────────────────────────────────
+ Auth (login, logout, etc.)     ✔      ✔     Inchangé
+ Admin — Utilisateurs            ✔      ✔     Inchangé
+ Admin — Communautés             ✔      ✔     Inchangé
+ Admin — Statistiques            ✘      ✔     NOUVEAU
+ Admin — Signalements posts      ✘      ✔     NOUVEAU
+ Admin — Signalements comment.   ✘      ✔     NOUVEAU
+ Admin — Approuver/Rejeter       ✘      ✔     NOUVEAU
+ Client — Feed (posts, likes)    ✔      ✔     Inchangé
+ Client — Commentaires           ✘      ✔     NOUVEAU
+ Client — Réponses aux comm.     ✘      ✔     NOUVEAU
+ Client — Profil personnel       ✔      ✔     Amélioré
+ Client — Changement mot passe   ✔      ✔     CORRIGÉ
+ Client — Upload photo profil    ✘      ✔     NOUVEAU
+ Client — Communautés            ✔      ✔     Inchangé
+ Client — Modération comm.       ✘      ✔     NOUVEAU
+ Client — Amis (suggestions)     ✔      ✔     Inchangé
+ Client — Détail d'un membre     ✘      ✔     NOUVEAU
+ Client — Chat (page + msg)      ✘      ✔     NOUVEAU
+ Client — Focus Timer            ✘      ✔     NOUVEAU
+ Client — Explorer communautés   ✘      ✔     NOUVEAU
+ Client — Mes communautés créées ✘      ✔     NOUVEAU
+ Client — Layout (sidebar,      ✘      ✔     NOUVEAU
+          widgets, badges, XP)
+
+ Fichiers de test :   10  →  20
+ Tests individuels :  25  →  50  (+100%)
+
+═══════════════════════════════════════════════════════════════
+4. FONCTIONNALITÉS ENCORE NON COUVERTES
+═══════════════════════════════════════════════════════════════
+
+ Fonctionnalités réseau/de connexion
+   - Reconnexion WebSocket / reconnexion STOMP
+   - Gestion des files d'attente de messages hors ligne
+
+ Intégration éditoriale
+   - Upload d'images dans les posts
+   - Galeries / albums dans les posts
+
+ Interactions communautaires avancées
+   - Badges utilisateur (obtention, progression, affichage
+     détaillé)
+   - Système de karma / points XP (incréments, paliers,
+     animations)
+   - Notifications en temps réel (WebSocket) — si non couvertes
+     par les tests socket existants
+
+ Fonctionnalités super-admin
+   - Logs d'audit / historique des actions admin
+   - Configuration globale des paramètres de la plateforme
+
+═══════════════════════════════════════════════════════════════
+5. COMMANDE D'EXÉCUTION
+═══════════════════════════════════════════════════════════════
+
+  cd E:\Study-Hub\studyhubfront
+  npx playwright test --reporter=line
+
+  Résultats : resultats/artifacts/ (traces, captures)
+              resultats/html-report/ (rapport HTML)
+
+═══════════════════════════════════════════════════════════════

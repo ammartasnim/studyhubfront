@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { corsHeaders, mockClientUser } from '../../mocks/helpers';
+import { corsHeaders, handleOptions, mockClientUser, mockMeAsClient } from '../../mocks/helpers';
 
 test.describe('Client Feed', () => {
 
@@ -117,20 +117,17 @@ test.describe('Client Feed', () => {
   });
 
   test('Comment on a post (Happy Path)', async ({ page }) => {
-    await page.route(/\/api\/clients\/me(\?|$)/, async route => {
-      if (route.request().method() === 'OPTIONS') { return route.fulfill({ status: 204, headers: corsHeaders() }); }
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockClientUser()) });
-    });
+    await mockMeAsClient(page);
 
     await page.goto('/dashboard/client/feed');
 
     await page.route('**/api/friendships/blocked*', async route => {
-      if (route.request().method() === 'OPTIONS') { return route.fulfill({ status: 204, headers: corsHeaders() }); }
+      if (await handleOptions(route)) return;
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [], totalElements: 0 }) });
     });
 
     await page.route('**/api/communities/my*', async route => {
-      if (route.request().method() === 'OPTIONS') { return route.fulfill({ status: 204, headers: corsHeaders() }); }
+      if (await handleOptions(route)) return;
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [], totalElements: 0 }) });
     });
 
@@ -138,7 +135,7 @@ test.describe('Client Feed', () => {
     const commentText = 'Great post!';
 
     await page.route('**/api/posts/feed*', async route => {
-      if (route.request().method() === 'OPTIONS') { return route.fulfill({ status: 204, headers: corsHeaders() }); }
+      if (await handleOptions(route)) return;
       await route.fulfill({
         status: 200, contentType: 'application/json',
         body: JSON.stringify({
@@ -184,5 +181,92 @@ test.describe('Client Feed', () => {
 
     // Verify comment appears
     await expect(page.getByText(commentText)).toBeVisible({ timeout: 5000 });
+  });
+
+  test('Reply to a comment (Happy Path)', async ({ page }) => {
+    await mockMeAsClient(page);
+
+    await page.goto('/dashboard/client/feed');
+
+    await page.route('**/api/friendships/blocked*', async route => {
+      if (await handleOptions(route)) return;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [], totalElements: 0 }) });
+    });
+
+    await page.route('**/api/communities/my*', async route => {
+      if (await handleOptions(route)) return;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [], totalElements: 0 }) });
+    });
+
+    const postId = 201;
+    const commentId = 301;
+    const replyContent = 'I agree with this!';
+
+    await page.route('**/api/posts/feed*', async route => {
+      if (await handleOptions(route)) return;
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({
+          content: [{ id: postId, title: 'Reply Test Post', content: 'Testing replies', likeCount: 2, commentCount: 1, createdAt: new Date().toISOString(), authorId: 3, authorFullName: 'Other User', authorUsername: 'otheruser', status: 'Approved', liked: false, imgs: [], userId: 3 }],
+          totalElements: 1, totalPages: 1, number: 0, size: 10
+        })
+      });
+    });
+
+    // Mock GET comments (one comment that can be replied to)
+    // Must use Spring-style pagination format (content/totalElements), not facade format
+    await page.route(/\/api\/posts\/\d+\/comments/, async route => {
+      const method = route.request().method();
+      if (method === 'OPTIONS') { return route.fulfill({ status: 204, headers: corsHeaders() }); }
+      if (method === 'GET') {
+        return route.fulfill({
+          status: 200, contentType: 'application/json',
+          body: JSON.stringify({
+            content: [{ id: commentId, content: 'Nice post!', postId, userId: 3, authorFullName: 'Other User', authorUsername: 'otheruser', createdAt: new Date().toISOString(), likeCount: 0, isLiked: false }],
+            totalElements: 1, totalPages: 1, size: 5, number: 0
+          })
+        });
+      }
+      return route.fallback();
+    });
+
+    // Mock GET replies (empty)
+    await page.route(/\/api\/comments\/\d+\/replies/, async route => {
+      if (await handleOptions(route)) return;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], totalItems: 0 }) });
+    });
+
+    // Mock POST reply
+    await page.route(/\/api\/comments\/\d+\/reply/, async route => {
+      if (await handleOptions(route)) return;
+      if (route.request().method() === 'POST') {
+        return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({
+          id: 401, content: replyContent, postId, userId: 2,
+          authorFullName: 'Client User', createdAt: new Date().toISOString(), likeCount: 0, isLiked: false
+        })});
+      }
+      return route.fallback();
+    });
+
+    await page.reload();
+
+    // Click comment button (shows count "1")
+    const commentBtn = page.locator('article').filter({ hasText: 'Reply Test Post' }).getByRole('button', { name: '1', exact: true });
+    await expect(commentBtn).toBeVisible({ timeout: 5000 });
+    await commentBtn.click();
+
+    // Wait for the comment to appear
+    await expect(page.getByText('Nice post!')).toBeVisible({ timeout: 5000 });
+
+    // Click "View replies" to expand the reply form
+    await page.getByRole('button', { name: 'View replies' }).click();
+
+    // Fill the reply textarea and submit
+    // Use textarea directly (not the custom app-mention-input wrapper)
+    await page.locator('textarea[placeholder="Write a reply..."]').fill(replyContent);
+    await page.getByRole('button', { name: 'Send' }).click();
+
+    // Verify the reply appears
+    await expect(page.getByText(replyContent)).toBeVisible({ timeout: 5000 });
   });
 });
