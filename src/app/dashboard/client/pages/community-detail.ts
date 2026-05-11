@@ -52,7 +52,7 @@ const ALL_PERMISSIONS = [
 
         <!-- Banner Header -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div class="h-32 bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500"></div>
+          <div class="h-36 mb-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500"></div>
           <div class="px-6 sm:px-8 pb-6">
 
             <!-- Title + Actions Row -->
