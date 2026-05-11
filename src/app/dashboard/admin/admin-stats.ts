@@ -24,7 +24,7 @@ import { CommentFacadeService } from '../../api/facades';
     <p class="text-sm text-slate-400 mt-1">Platform statistics at a glance</p>
   </div>
 
-  <button
+  <button 
     (click)="exportMonthlyReport()"
     [disabled]="loading()"
     class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
