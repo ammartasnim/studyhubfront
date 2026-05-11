@@ -5,11 +5,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 
-import { CommunityFacadeService, CommunityMemberUI, PostFacadeService, CommunityUI, PostUI, CommentFacadeService, CommentUI } from '../../../api/facades';
+import { CommunityFacadeService, CommunityMemberUI, PostFacadeService, CommunityUI, PostUI } from '../../../api/facades';
 import { UserContextService } from '../../../services/user-context.service';
 import { CreatePostModalComponent } from '../modals/create-post';
-import { MentionInputComponent } from '../../../shared/components/mention-input';
-import { MentionTextComponent } from '../../../shared/components/mention-text';
+import { PostCardComponent } from '../modals/posts';
 
 const ALL_PERMISSIONS = [
   'EDIT_COMMUNITY', 'ADD_MODERATOR', 'REMOVE_MODERATOR',
@@ -17,19 +16,10 @@ const ALL_PERMISSIONS = [
   'DELETE_POST', 'DELETE_COMMENT', 'APPROVE_POST'
 ];
 
-const COMMENT_PAGE_SIZE = 5;
-
-interface CommentState {
-  items: CommentUI[];
-  page: number;
-  hasMore: boolean;
-  loading: boolean;
-}
-
 @Component({
   selector: 'app-community-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, CreatePostModalComponent,MentionInputComponent,MentionTextComponent ],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, CreatePostModalComponent, PostCardComponent],
   template: `
     <app-create-post-modal #createPostModal [prefilledCommunityId]="communityId()" (postCreated)="onPostCreated()" />
 
@@ -237,133 +227,16 @@ interface CommentState {
             } @else {
               <div class="divide-y divide-slate-100 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 @for (post of posts(); track post.id) {
-                  <article class="p-6 transition-colors hover:bg-slate-50">
-                    <div class="flex items-start gap-3 mb-3">
-                      <div (click)="navigateToProfile(post.authorId)" class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm select-none flex-shrink-0 cursor-pointer">
-                        {{ getInitials(post.authorFullName) }}
-                      </div>
-                      <div class="flex-1">
-                        <div class="flex justify-between items-start">
-                          <p (click)="navigateToProfile(post.authorId)" class="font-semibold text-slate-900 text-sm cursor-pointer hover:text-indigo-600 transition-colors">{{ post.authorFullName }}</p>
-                          <div class="flex items-center gap-2">
-                            <span class="text-xs text-slate-400">{{ getTimeAgo(post.createdAt) }}</span>
-                            @if (canModeratePost()) {
-                              <button (click)="moderatorDeletePost(post.id)" class="text-red-400 hover:text-red-600 transition-colors" title="Delete post">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            }
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <h3 class="font-bold text-slate-900 mb-2">{{ post.title }}</h3>
-                    <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{{ post.content }}</p>
-                    @if (post.images.length > 0) {
-                      <div class="mt-3 rounded-xl overflow-hidden" [class.grid]="post.images.length > 1" [class.grid-cols-2]="post.images.length > 1" [class.gap-0.5]="post.images.length > 1">
-                        @for (img of post.images.slice(0, 4); track img; let i = $index) {
-                          <div class="relative bg-slate-100 overflow-hidden" [class.aspect-video]="post.images.length === 1" [class.aspect-square]="post.images.length > 1">
-                            <img [src]="'http://localhost:8081/uploads/' + img" [alt]="post.title" class="w-full h-full object-cover" />
-                            @if (i === 3 && post.images.length > 4) {
-                              <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                <span class="text-white text-2xl font-bold">+{{ post.images.length - 4 }}</span>
-                              </div>
-                            }
-                          </div>
-                        }
-                      </div>
-                    }
-                    <div class="mt-4 flex items-center gap-4">
-                      <button (click)="toggleLike(post)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" [class.text-rose-600]="post.isLiked" [class.bg-rose-50]="post.isLiked" [class.text-slate-600]="!post.isLiked">
-                        <svg class="w-4 h-4" [attr.fill]="post.isLiked ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                        </svg>
-                        {{ post.likeCount }}
-                      </button>
-                      <button (click)="toggleComments(post.id)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" [class.text-indigo-600]="expandedPosts().has(post.id)" [class.bg-indigo-50]="expandedPosts().has(post.id)" [class.text-slate-600]="!expandedPosts().has(post.id)">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                        {{ post.commentCount }}
-                      </button>
-                    </div>
-                    @if (expandedPosts().has(post.id)) {
-                      <div class="mt-4 border-t border-slate-100 pt-4">
-                        @if (commentsLoadingFor(post.id)) {
-                          <div class="flex items-center gap-2 text-sm text-slate-500 py-2">
-                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                            </svg>
-                            Loading comments...
-                          </div>
-                        } @else {
-                          @let postComments = getComments(post.id);
-                          @if (postComments.length === 0) {
-                            <p class="text-sm text-slate-400 text-center py-2 mb-3">No comments yet. Be the first!</p>
-                          }
-                          @for (comment of postComments; track comment.id) {
-                            <div class="flex items-start gap-2 mb-3">
-                              @if (comment.authorPfp) {
-                                <img [src]="'http://localhost:8081/uploads/' + comment.authorPfp" class="w-7 h-7 rounded-full object-cover flex-shrink-0" />
-                              } @else {
-                                <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold flex-shrink-0 select-none">
-                                  {{ getInitials(comment.authorFullName ?? '?') }}
-                                </div>
-                              }
-                              <div class="flex-1">
-                                <div class="bg-white rounded-xl px-3 py-2 text-sm border border-slate-100 shadow-sm">
-                                  <div class="flex items-center justify-between gap-2 mb-0.5">
-                                    <p (click)="navigateToProfile(comment.userId)" class="font-semibold text-slate-800 text-xs cursor-pointer hover:text-indigo-600 transition-colors">{{ comment.authorFullName }}</p>
-                                    <div class="flex items-center gap-2">
-                                      @if (comment.createdAt) {
-                                        <span class="text-xs text-slate-400">{{ getTimeAgo(comment.createdAt) }}</span>
-                                      }
-                                      @if (isOwnComment(comment.userId)) {
-                                        <button (click)="deleteComment(post.id, comment.id)" class="text-xs text-red-400 hover:text-red-600 transition-colors" title="Delete comment">
-                                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                          </svg>
-                                        </button>
-                                      } @else if (canModerateComment()) {
-                                        <button (click)="moderatorDeleteComment(post.id, comment.id)" class="text-xs text-orange-400 hover:text-orange-600 transition-colors" title="Moderator delete">
-                                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                          </svg>
-                                        </button>
-                                      }
-                                    </div>
-                                  </div>
-                                  <app-mention-text [text]="comment.content"/>
-                                </div>
-                              </div>
-                            </div>
-                          }
-                          @if (commentHasMore(post.id)) {
-                            <div class="text-center mt-2 mb-3">
-                              <button (click)="loadMoreComments(post.id)" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">Load more comments</button>
-                            </div>
-                          }
-                          <div class="flex items-center gap-2 mt-3">
-                           <app-mention-input
-  [value]="getCommentInput(post.id)"
-  (valueChange)="setCommentInput(post.id,  $any($event))"
-  placeholder="Write a comment..."
-  class="flex-1"/>
-                            <button (click)="submitComment(post.id)" [disabled]="!getCommentInput(post.id).trim() || submittingComments().has(post.id)" class="px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 transition-colors flex items-center justify-center min-w-[52px]">
-                              @if (submittingComments().has(post.id)) {
-                                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                </svg>
-                              } @else { Post }
-                            </button>
-                          </div>
-                        }
-                      </div>
-                    }
-                  </article>
+                  <app-post-card
+                    [post]="post"
+                    [showLike]="true"
+                    [showComments]="true"
+                    [showReport]="true"
+                    [showCommunity]="false"
+                    [canDeletePost]="canModeratePost()"
+                    [canDeleteComment]="canModerateComment()"
+                    (postDeleted)="onPostDeleted($event)"
+                  />
                 }
               </div>
             }
@@ -388,68 +261,16 @@ interface CommentState {
             } @else {
               <div class="divide-y divide-slate-100 bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
                 @for (post of pendingPosts(); track post.id) {
-                  <article class="p-6">
-                    <!-- Post Header -->
-                    <div class="flex items-start gap-3 mb-3">
-                      <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm select-none flex-shrink-0">
-                        {{ getInitials(post.authorFullName) }}
-                      </div>
-                      <div class="flex-1">
-                        <div class="flex justify-between items-start">
-                          <div>
-                            <p class="font-semibold text-slate-900 text-sm">{{ post.authorFullName }}</p>
-                            <p class="text-xs text-slate-400">&#64;{{ post.authorUsername }} · {{ getTimeAgo(post.createdAt) }}</p>
-                          </div>
-                          <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Pending</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Post Content -->
-                    <h3 class="font-bold text-slate-900 mb-2">{{ post.title }}</h3>
-                    <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{{ post.content }}</p>
-
-                    <!-- Post Images -->
-                    @if (post.images.length > 0) {
-                      <div class="mt-3 rounded-xl overflow-hidden" [class.grid]="post.images.length > 1" [class.grid-cols-2]="post.images.length > 1" [class.gap-0.5]="post.images.length > 1">
-                        @for (img of post.images.slice(0, 4); track img; let i = $index) {
-                          <div class="relative bg-slate-100 overflow-hidden" [class.aspect-video]="post.images.length === 1" [class.aspect-square]="post.images.length > 1">
-                            <img [src]="'http://localhost:8081/uploads/' + img" [alt]="post.title" class="w-full h-full object-cover" />
-                            @if (i === 3 && post.images.length > 4) {
-                              <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                <span class="text-white text-2xl font-bold">+{{ post.images.length - 4 }}</span>
-                              </div>
-                            }
-                          </div>
-                        }
-                      </div>
-                    }
-
-                    <!-- Approve / Reject Actions -->
-                    <div class="mt-4 flex items-center gap-3">
-                      <button
-                        (click)="approvePost(post)"
-                        [disabled]="pendingActionIds().has(post.id)"
-                        class="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 disabled:opacity-50 transition-colors"
-                      >
-                        @if (pendingActionIds().has(post.id)) {
-                          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                          </svg>
-                        } @else {
-                          ✓ Approve
-                        }
-                      </button>
-                      <button
-                        (click)="rejectPost(post)"
-                        [disabled]="pendingActionIds().has(post.id)"
-                        class="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 text-sm font-semibold rounded-xl hover:bg-red-100 border border-red-200 disabled:opacity-50 transition-colors"
-                      >
-                        ✕ Reject
-                      </button>
-                    </div>
-                  </article>
+                  <app-post-card
+                    [post]="post"
+                    [showLike]="false"
+                    [showComments]="false"
+                    [showReport]="false"
+                    [showCommunity]="false"
+                    [showApprove]="true"
+                    (postApproved)="onPostApproved($event, post)"
+                    (postRejected)="onPostRejected($event)"
+                  />
                 }
               </div>
             }
@@ -569,10 +390,10 @@ interface CommentState {
                 } @else {
                   <div class="space-y-3">
                     @for (member of members(); track member.userId) {
-                      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
-                        <div class="flex items-center gap-3">
+                      <div (click)="navigateToProfile(member.userId)" class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:bg-indigo-50 transition-colors">
+                        <div  class="flex items-center gap-3">
                           @if (member.pfp) {
-                            <img [src]="'http://localhost:8081/uploads/' + member.pfp" class="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                            <img [src]="'http://localhost:8081/uploads/' + member.pfp" class="w-9 h-9 rounded-full object-cover flex-shrink-0"  />
                           } @else {
                             <div class="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold flex-shrink-0">
                               {{ getInitials(member.fullName) }}
@@ -593,10 +414,10 @@ interface CommentState {
                         </div>
                         <div class="flex items-center gap-2">
                           @if (canWarnMember(member)) {
-                            <button (click)="openWarnModal(member)" class="text-xs px-2 py-1 text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors border border-amber-200">Warn</button>
+                            <button (click)="$event.stopPropagation(); openWarnModal(member)" class="text-xs px-2 py-1 text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors border border-amber-200">Warn</button>
                           }
                           @if (canBanMember(member)) {
-                            <button (click)="openBanModal(member)" class="text-xs px-2 py-1 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors border border-red-200">Ban</button>
+                            <button (click)="$event.stopPropagation(); openBanModal(member)" class="text-xs px-2 py-1 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors border border-red-200">Ban</button>
                           }
                         </div>
                       </div>
@@ -700,7 +521,7 @@ interface CommentState {
                 @for (member of allMembersForModal(); track member.userId) {
                   <div (click)="navigateToProfile(member.userId); showMembersModal.set(false)" class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-indigo-50 transition-colors">
                     @if (member.pfp) {
-                      <img [src]="'http://localhost:8081/uploads/' + member.pfp" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                      <img  [src]="'http://localhost:8081/uploads/' + member.pfp" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                     } @else {
                       <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm select-none flex-shrink-0">
                         {{ getInitials(member.fullName) }}
@@ -833,7 +654,7 @@ interface CommentState {
       </div>
     }
 
-    <!-- Toast notification -->
+    <!-- Toast -->
     @if (toastMessage()) {
       <div class="fixed top-5 right-5 z-[100] px-5 py-3 bg-slate-800 text-white rounded-xl shadow-lg text-sm font-medium animate-[slideDown_0.2s_ease]">
         {{ toastMessage() }}
@@ -844,85 +665,81 @@ interface CommentState {
 export class CommunityDetailComponent implements OnInit {
   @ViewChild('createPostModal') createPostModal!: CreatePostModalComponent;
 
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
+  private readonly route          = inject(ActivatedRoute);
+  private readonly router         = inject(Router);
   private readonly communityFacade = inject(CommunityFacadeService);
-  private readonly postFacade = inject(PostFacadeService);
-  private readonly commentFacade = inject(CommentFacadeService);
-  readonly userContext = inject(UserContextService);
-  private readonly http = inject(HttpClient);
-  private readonly fb = inject(FormBuilder);
+  private readonly postFacade     = inject(PostFacadeService);
+  readonly userContext             = inject(UserContextService);
+  private readonly http           = inject(HttpClient);
+  private readonly fb             = inject(FormBuilder);
 
   // Core state
-  readonly communityId = signal<number>(0);
-  readonly community = signal<CommunityUI | null>(null);
-  readonly loading = signal(true);
-  readonly error = signal<string | null>(null);
-  readonly activeTab = signal<'feed' | 'pending' | 'settings'>('feed');
+  readonly communityId      = signal<number>(0);
+  readonly community        = signal<CommunityUI | null>(null);
+  readonly loading          = signal(true);
+  readonly error            = signal<string | null>(null);
+  readonly activeTab        = signal<'feed' | 'pending' | 'settings'>('feed');
   private readonly _isMember = signal(false);
 
   // Posts
-  readonly posts = signal<PostUI[]>([]);
+  readonly posts        = signal<PostUI[]>([]);
   readonly postsLoading = signal(true);
 
   // Pending Posts
-  readonly pendingPosts = signal<PostUI[]>([]);
-  readonly pendingLoading = signal(false);
-  readonly pendingActionIds = signal<Set<number>>(new Set());
-
-  // Comments
-  private readonly commentStates = signal<Map<number, CommentState>>(new Map());
-  private readonly commentInputs = signal<Map<number, string>>(new Map());
-  readonly expandedPosts = signal<Set<number>>(new Set());
-  readonly submittingComments = signal<Set<number>>(new Set());
+  readonly pendingPosts      = signal<PostUI[]>([]);
+  readonly pendingLoading    = signal(false);
+  readonly pendingActionIds  = signal<Set<number>>(new Set());
 
   // Members
-  readonly members = signal<CommunityMemberUI[]>([]);
+  readonly members        = signal<CommunityMemberUI[]>([]);
   readonly membersLoading = signal(false);
   readonly previewMembers = signal<CommunityMemberUI[]>([]);
-  readonly bannedMembers = signal<CommunityMemberUI[]>([]);
-  readonly bannedLoading = signal(false);
+  readonly bannedMembers  = signal<CommunityMemberUI[]>([]);
+  readonly bannedLoading  = signal(false);
 
   // Members Modal
-  readonly showMembersModal = signal(false);
-  readonly allMembersForModal = signal<CommunityMemberUI[]>([]);
-  readonly allMembersLoading = signal(false);
-  readonly allMembersPage = signal(0);
-  readonly allMembersTotalPages = signal(0);
+  readonly showMembersModal      = signal(false);
+  readonly allMembersForModal    = signal<CommunityMemberUI[]>([]);
+  readonly allMembersLoading     = signal(false);
+  readonly allMembersPage        = signal(0);
+  readonly allMembersTotalPages  = signal(0);
   readonly allMembersLoadingMore = signal(false);
 
   // Moderator Management
-  readonly userSearchResults = signal<any[]>([]);
-  readonly selectedModUser = signal<any | null>(null);
+  readonly userSearchResults  = signal<any[]>([]);
+  readonly selectedModUser    = signal<any | null>(null);
   readonly selectedPermissions = signal<Set<string>>(new Set());
-  readonly addingMod = signal(false);
+  readonly addingMod          = signal(false);
+  readonly removingModId      = signal<number | null>(null);
 
   // Transfer Ownership
   readonly transferSearchResults = signal<any[]>([]);
-  readonly selectedTransferUser = signal<any | null>(null);
+  readonly selectedTransferUser  = signal<any | null>(null);
+  readonly showTransferConfirm   = signal(false);
 
   // Modals
-  readonly showDeleteModal = signal(false);
-  readonly deletingCommunity = signal(false);
-  readonly showBanModal = signal(false);
-  readonly showWarnModal = signal(false);
-  readonly banTarget = signal<CommunityMemberUI | null>(null);
-  readonly warnTarget = signal<CommunityMemberUI | null>(null);
-  readonly actionLoading = signal(false);
-  readonly savingEdit = signal(false);
-  readonly toastMessage = signal<string | null>(null);
+  readonly showDeleteModal    = signal(false);
+  readonly deletingCommunity  = signal(false);
+  readonly showBanModal       = signal(false);
+  readonly showWarnModal      = signal(false);
+  readonly banTarget          = signal<CommunityMemberUI | null>(null);
+  readonly warnTarget         = signal<CommunityMemberUI | null>(null);
+  readonly actionLoading      = signal(false);
+  readonly savingEdit         = signal(false);
+  readonly toastMessage       = signal<string | null>(null);
+  readonly rejectPostConfirm  = signal<PostUI | null>(null);
 
   // Form inputs
-  banReason = '';
-  warnReason = '';
-  modSearchQuery = '';
+  banReason         = '';
+  warnReason        = '';
+  modSearchQuery    = '';
   transferSearchQuery = '';
-  allPermissions = ALL_PERMISSIONS;
+  allPermissions    = ALL_PERMISSIONS;
 
   readonly editForm = this.fb.nonNullable.group({
-    title: ['', [Validators.required, Validators.minLength(3)]],
+    title:       ['', [Validators.required, Validators.minLength(3)]],
     description: ['', [Validators.required, Validators.minLength(10)]],
-    category: ['']
+    category:    ['']
   });
 
   // ==================== COMPUTED ====================
@@ -941,10 +758,10 @@ export class CommunityDetailComponent implements OnInit {
     return (comm.moderators ?? []).some(m => m.userId === user.id);
   });
 
-  readonly isMember = computed(() => this._isMember());
-  readonly canModeratePost = computed(() => this.isOwner() || this.hasPermission('DELETE_POST'));
+  readonly isMember         = computed(() => this._isMember());
+  readonly canModeratePost  = computed(() => this.isOwner() || this.hasPermission('DELETE_POST'));
   readonly canModerateComment = computed(() => this.isOwner() || this.hasPermission('DELETE_COMMENT'));
-  readonly canApprovePosts = computed(() => this.hasPermission('APPROVE_POST'));
+  readonly canApprovePosts  = computed(() => this.hasPermission('APPROVE_POST'));
 
   // ==================== PERMISSION HELPERS ====================
 
@@ -976,33 +793,6 @@ export class CommunityDetailComponent implements OnInit {
     return this.hasPermission('WARN_MEMBER');
   }
 
-  isOwnComment(commentUserId: number | undefined): boolean {
-    const user = this.userContext.user();
-    return !!user && !!commentUserId && user.id === commentUserId;
-  }
-
-  // ==================== COMMENT HELPERS ====================
-
-  getComments(postId: number): CommentUI[] {
-    return this.commentStates().get(postId)?.items ?? [];
-  }
-
-  commentsLoadingFor(postId: number): boolean {
-    return this.commentStates().get(postId)?.loading ?? false;
-  }
-
-  commentHasMore(postId: number): boolean {
-    return this.commentStates().get(postId)?.hasMore ?? false;
-  }
-
-  getCommentInput(postId: number): string {
-    return this.commentInputs().get(postId) ?? '';
-  }
-
-  setCommentInput(postId: number, value: string): void {
-    this.commentInputs.update(m => new Map(m).set(postId, value));
-  }
-
   // ==================== LIFECYCLE ====================
 
   ngOnInit() {
@@ -1026,11 +816,7 @@ export class CommunityDetailComponent implements OnInit {
     try {
       const comm = await firstValueFrom(this.communityFacade.getById(id));
       this.community.set(comm);
-      this.editForm.patchValue({
-        title: comm.title,
-        description: comm.description,
-        category: comm.category ?? ''
-      });
+      this.editForm.patchValue({ title: comm.title, description: comm.description, category: comm.category ?? '' });
       await this.checkMembership(id);
       this.loadPosts(id);
     } catch (err: any) {
@@ -1045,9 +831,7 @@ export class CommunityDetailComponent implements OnInit {
     try {
       const result = await firstValueFrom(this.communityFacade.getMy({ size: 100 }));
       this._isMember.set(result.items.some(c => c.id === communityId));
-    } catch {
-      this._isMember.set(false);
-    }
+    } catch { this._isMember.set(false); }
   }
 
   async loadPosts(id: number) {
@@ -1078,9 +862,7 @@ export class CommunityDetailComponent implements OnInit {
     try {
       const list = await firstValueFrom(this.communityFacade.getMembersPreview(communityId));
       this.previewMembers.set(list);
-    } catch {
-      this.previewMembers.set([]);
-    }
+    } catch { this.previewMembers.set([]); }
   }
 
   async loadSettingsData() {
@@ -1111,26 +893,24 @@ export class CommunityDetailComponent implements OnInit {
     }
   }
 
-  // ==================== PENDING POSTS ACTIONS ====================
+  // ==================== POST CARD EVENTS ====================
 
-  async approvePost(post: PostUI) {
-    this.pendingActionIds.update(s => new Set(s).add(post.id));
-    try {
-      await firstValueFrom(this.postFacade.approve(post.id));
-      this.pendingPosts.update(list => list.filter(p => p.id !== post.id));
-      this.posts.update(list => [{ ...post, status: 'Approved' }, ...list]);
-    } catch (err: any) {
-      this.showToast(err?.message || 'Failed to approve post');
-    } finally {
-      this.pendingActionIds.update(s => { const n = new Set(s); n.delete(post.id); return n; });
-    }
+  onPostDeleted(postId: number): void {
+    this.posts.update(list => list.filter(p => p.id !== postId));
   }
 
-  rejectPostConfirm = signal<PostUI | null>(null);
-
-  async rejectPost(post: PostUI) {
-    this.rejectPostConfirm.set(post);
+  onPostApproved(postId: number, post: PostUI): void {
+    this.pendingPosts.update(list => list.filter(p => p.id !== postId));
+    this.posts.update(list => [{ ...post, status: 'Approved' }, ...list]);
   }
+
+  onPostRejected(postId: number): void {
+    this.pendingPosts.update(list => list.filter(p => p.id !== postId));
+  }
+
+  // ==================== PENDING POSTS ====================
+
+  async rejectPost(post: PostUI) { this.rejectPostConfirm.set(post); }
 
   async confirmRejectPost() {
     const post = this.rejectPostConfirm();
@@ -1180,6 +960,7 @@ export class CommunityDetailComponent implements OnInit {
       this.allMembersLoadingMore.set(false);
     }
   }
+  
 
   // ==================== JOIN / LEAVE ====================
 
@@ -1188,9 +969,7 @@ export class CommunityDetailComponent implements OnInit {
       await firstValueFrom(this.communityFacade.join(this.communityId()));
       this._isMember.set(true);
       this.community.update(c => c ? { ...c, nbrMembers: c.nbrMembers + 1 } : c);
-    } catch (err: any) {
-      this.showToast(err?.message || 'Failed to join community');
-    }
+    } catch (err: any) { this.showToast(err?.message || 'Failed to join community'); }
   }
 
   async leaveCommunity() {
@@ -1198,130 +977,7 @@ export class CommunityDetailComponent implements OnInit {
       await firstValueFrom(this.communityFacade.leave(this.communityId()));
       this._isMember.set(false);
       this.community.update(c => c ? { ...c, nbrMembers: Math.max(0, c.nbrMembers - 1) } : c);
-    } catch (err: any) {
-      this.showToast(err?.message || 'Failed to leave community');
-    }
-  }
-
-  // ==================== COMMENTS ====================
-
-  toggleComments(postId: number): void {
-    this.expandedPosts.update(set => {
-      const next = new Set(set);
-      if (next.has(postId)) {
-        next.delete(postId);
-        this.commentStates.update(m => { const n = new Map(m); n.delete(postId); return n; });
-      } else {
-        next.add(postId);
-        this.loadComments(postId);
-      }
-      return next;
-    });
-  }
-
-  async loadComments(postId: number): Promise<void> {
-    this.commentStates.update(m => new Map(m).set(postId, { items: [], page: 0, hasMore: false, loading: true }));
-    try {
-      const result = await firstValueFrom(this.commentFacade.getByPostPaged(postId, 0, COMMENT_PAGE_SIZE));
-      this.commentStates.update(m => new Map(m).set(postId, {
-        items: result.items,
-        page: 0,
-        hasMore: result.totalItems > result.items.length,
-        loading: false
-      }));
-    } catch (err) {
-      console.error('Failed to load comments:', err);
-      this.commentStates.update(m => new Map(m).set(postId, { items: [], page: 0, hasMore: false, loading: false }));
-    }
-  }
-
-  async loadMoreComments(postId: number): Promise<void> {
-    const state = this.commentStates().get(postId);
-    if (!state || state.loading || !state.hasMore) return;
-    this.commentStates.update(m => new Map(m).set(postId, { ...state, loading: true }));
-    try {
-      const nextPage = state.page + 1;
-      const result = await firstValueFrom(this.commentFacade.getByPostPaged(postId, nextPage, COMMENT_PAGE_SIZE));
-      const existingIds = new Set(state.items.map(c => c.id));
-      const newItems = result.items.filter(c => !existingIds.has(c.id));
-      this.commentStates.update(m => new Map(m).set(postId, {
-        items: [...state.items, ...newItems],
-        page: nextPage,
-        hasMore: state.items.length + newItems.length < result.totalItems,
-        loading: false
-      }));
-    } catch (err) {
-      console.error('Failed to load more comments:', err);
-      this.commentStates.update(m => new Map(m).set(postId, { ...state, loading: false }));
-    }
-  }
-
-  async submitComment(postId: number): Promise<void> {
-    const content = this.getCommentInput(postId).trim();
-    if (!content) return;
-    this.submittingComments.update(s => new Set(s).add(postId));
-    try {
-      const comment = await firstValueFrom(this.commentFacade.create({ content, postId }));
-      const state = this.commentStates().get(postId);
-      this.commentStates.update(m => new Map(m).set(postId, {
-        ...(state ?? { page: 0, hasMore: false, loading: false }),
-        items: [...(state?.items ?? []), comment]
-      }));
-      this.posts.update(list => list.map(p => p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p));
-      this.commentInputs.update(m => { const n = new Map(m); n.delete(postId); return n; });
-    } catch (err) {
-      console.error('Failed to submit comment:', err);
-    } finally {
-      this.submittingComments.update(s => { const n = new Set(s); n.delete(postId); return n; });
-    }
-  }
-
-  async deleteComment(postId: number, commentId: number): Promise<void> {
-    try {
-      await firstValueFrom(this.commentFacade.delete(commentId));
-      const state = this.commentStates().get(postId);
-      if (state) {
-        this.commentStates.update(m => new Map(m).set(postId, { ...state, items: state.items.filter(c => c.id !== commentId) }));
-      }
-      this.posts.update(list => list.map(p => p.id === postId ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p));
-    } catch (err) {
-      console.error('Failed to delete comment:', err);
-    }
-  }
-
-  async moderatorDeleteComment(postId: number, commentId: number): Promise<void> {
-    try {
-      await firstValueFrom(this.http.delete(`http://localhost:8081/api/comments/${commentId}/moderate`));
-      const state = this.commentStates().get(postId);
-      if (state) {
-        this.commentStates.update(m => new Map(m).set(postId, { ...state, items: state.items.filter(c => c.id !== commentId) }));
-      }
-      this.posts.update(list => list.map(p => p.id === postId ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p));
-    } catch (err: any) {
-      this.showToast(err?.message || 'Failed to delete comment');
-    }
-  }
-
-  // ==================== POSTS ====================
-
-  async toggleLike(post: PostUI) {
-    try {
-      await firstValueFrom(this.postFacade.toggleLike(post.id));
-      post.isLiked = !post.isLiked;
-      post.likeCount += post.isLiked ? 1 : -1;
-      this.posts.set([...this.posts()]);
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  async moderatorDeletePost(postId: number) {
-    try {
-      await firstValueFrom(this.http.delete(`http://localhost:8081/api/posts/${postId}/moderate`));
-      this.posts.update(list => list.filter(p => p.id !== postId));
-    } catch (err: any) {
-      this.showToast(err?.message || 'Failed to delete post');
-    }
+    } catch (err: any) { this.showToast(err?.message || 'Failed to leave community'); }
   }
 
   // ==================== SETTINGS ====================
@@ -1332,9 +988,7 @@ export class CommunityDetailComponent implements OnInit {
     try {
       const vals = this.editForm.getRawValue();
       const updated = await firstValueFrom(this.communityFacade.update(this.communityId(), {
-        title: vals.title,
-        description: vals.description,
-        category: vals.category ?? ''
+        title: vals.title, description: vals.description, category: vals.category ?? ''
       }));
       this.community.set(updated);
     } catch (err: any) {
@@ -1396,8 +1050,6 @@ export class CommunityDetailComponent implements OnInit {
     }
   }
 
-  removingModId = signal<number | null>(null);
-
   async removeModerator(userId: number | undefined) {
     if (!userId) return;
     this.removingModId.set(userId);
@@ -1410,9 +1062,7 @@ export class CommunityDetailComponent implements OnInit {
     try {
       await firstValueFrom(this.communityFacade.removeModerator(this.communityId(), userId));
       await this.loadData(this.communityId());
-    } catch (err: any) {
-      this.showToast(err?.message || 'Failed to remove moderator');
-    }
+    } catch (err: any) { this.showToast(err?.message || 'Failed to remove moderator'); }
   }
 
   // ==================== TRANSFER OWNERSHIP ====================
@@ -1431,11 +1081,8 @@ export class CommunityDetailComponent implements OnInit {
     this.transferSearchQuery = user.username;
   }
 
-  showTransferConfirm = signal(false);
-
   async transferOwnership() {
-    const target = this.selectedTransferUser();
-    if (!target) return;
+    if (!this.selectedTransferUser()) return;
     this.showTransferConfirm.set(true);
   }
 
@@ -1448,9 +1095,7 @@ export class CommunityDetailComponent implements OnInit {
       await this.loadData(this.communityId());
       this.selectedTransferUser.set(null);
       this.transferSearchQuery = '';
-    } catch (err: any) {
-      this.showToast(err?.message || 'Failed to transfer ownership');
-    }
+    } catch (err: any) { this.showToast(err?.message || 'Failed to transfer ownership'); }
   }
 
   // ==================== BAN / WARN ====================
@@ -1487,17 +1132,12 @@ export class CommunityDetailComponent implements OnInit {
         try {
           await firstValueFrom(this.communityFacade.banMember(this.communityId(), target.userId, 'Auto-banned after 3 warnings'));
           this.members.update(list => list.filter(m => m.userId !== target.userId));
-          const banned = { ...target, warningCount: newWarningCount };
-          this.bannedMembers.update(list => [banned, ...list]);
-          this.toastMessage.set('Member auto-banned after 3 warnings');
-          setTimeout(() => this.toastMessage.set(null), 4000);
-        } catch (banErr: any) {
-          console.error('Auto-ban failed:', banErr);
-        }
+          this.bannedMembers.update(list => [{ ...target, warningCount: newWarningCount }, ...list]);
+          this.showToast('Member auto-banned after 3 warnings');
+        } catch (banErr: any) { console.error('Auto-ban failed:', banErr); }
       }
     } catch (err: any) {
-      this.toastMessage.set(err?.message || 'Failed to warn member');
-      setTimeout(() => this.toastMessage.set(null), 4000);
+      this.showToast(err?.message || 'Failed to warn member');
     } finally {
       this.actionLoading.set(false);
     }
@@ -1507,14 +1147,12 @@ export class CommunityDetailComponent implements OnInit {
     try {
       await firstValueFrom(this.communityFacade.unbanMember(this.communityId(), userId));
       this.bannedMembers.update(list => list.filter(m => m.userId !== userId));
-    } catch (err: any) {
-      this.showToast(err?.message || 'Failed to unban member');
-    }
+    } catch (err: any) { this.showToast(err?.message || 'Failed to unban member'); }
   }
 
   // ==================== DELETE COMMUNITY ====================
 
-  confirmDelete() { this.showDeleteModal.set(true); }
+  confirmDelete()  { this.showDeleteModal.set(true); }
   closeDeleteModal() { this.showDeleteModal.set(false); }
 
   async executeDelete() {
@@ -1534,7 +1172,16 @@ export class CommunityDetailComponent implements OnInit {
   goBack() { this.router.navigate(['/dashboard/client/communities']); }
   openCreatePost() { this.createPostModal.open(); }
   onPostCreated() { this.loadPosts(this.communityId()); }
-  navigateToProfile(userId?: number): void { if (userId) this.router.navigate(['/dashboard/client/profile', userId]); }
+
+  navigateToProfile(userId?: number): void {
+    if (!userId) return;
+    const currentUser = this.userContext.user();
+    if (currentUser && userId == currentUser.id) {
+      this.router.navigate(['/dashboard/client/profile']);
+    } else {
+      this.router.navigate(['/dashboard/client/profile', userId]);
+    }
+  }
 
   showToast(msg: string): void {
     this.toastMessage.set(msg);

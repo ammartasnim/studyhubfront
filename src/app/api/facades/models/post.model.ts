@@ -3,12 +3,12 @@ export interface PostUI {
   title: string;
   content: string;
   images: string[];
-  authorId?: number;
+  authorId: number;
   authorUsername: string;
   authorFirstName: string;
   authorLastName: string;
   authorPfp?: string;
-  communityId?: number;
+  communityId: number;
   communityTitle: string;
   authorFullName: string;
   previewText: string;

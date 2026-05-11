@@ -454,15 +454,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
   openNotification(notif: NotificationUI): void {
     if (!notif.isRead) this.markAsRead(notif);
     this.isNotifOpen = false;
+
+    const type = (notif.type ?? '').toUpperCase();
+    const targetType = (notif.targetType ?? '').toUpperCase();
+
     if (notif.link) {
       this.router.navigateByUrl(notif.link).catch(() => undefined);
       return;
     }
-    const type = (notif.type ?? '').toUpperCase();
-    if ((type === 'POST' || type === 'COMMENT' || type === 'MENTION') && notif.refId) {
-      this.router.navigate(['/dashboard/client/community', notif.refId]);
-    } else if (type === 'FRIEND') {
+
+    if (type === 'FRIEND') {
       this.router.navigateByUrl('/dashboard/client/suggestedFriends');
+      return;
+    }
+
+    if (type === 'WARN' || type === 'BAN') {
+      this.router.navigateByUrl('/dashboard/client/communities');
+      return;
+    }
+
+    if (notif.refId && (type === 'COMMENT' || type === 'LIKE' || type === 'MENTION')) {
+      const elementId = targetType === 'COMMENT' ? `comment-${notif.refId}` : `post-${notif.refId}`;
+      this.router.navigateByUrl('/dashboard/client/feed').then(() => {
+        setTimeout(() => {
+          const el = document.getElementById(elementId);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('highlight-flash');
+            setTimeout(() => el.classList.remove('highlight-flash'), 1500);
+          }
+        }, 300);
+      });
     }
   }
 

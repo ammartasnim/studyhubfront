@@ -223,7 +223,7 @@ export class FriendshipFacadeService {
       })
       .pipe(
         map(response => {
-          this.responseHandler.logResponse('getBlockedUsers', 'GET', response);
+          // this.responseHandler.logResponse('getBlockedUsers', 'GET', response);
           return this.mapUserSummaryPage(response);
         }),
         catchError(err => this.responseHandler.handleError(err, 'Failed to fetch blocked users'))

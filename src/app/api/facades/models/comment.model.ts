@@ -3,6 +3,7 @@ export interface CommentUI {
   content: string;
   postId: number;
   userId: number;
+  authorId: number;
   previewText: string;
   authorUsername?: string;
   authorFullName?: string;

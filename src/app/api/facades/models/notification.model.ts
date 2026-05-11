@@ -5,6 +5,7 @@ export interface NotificationUI {
   description?: string;
   link?: string;
   refId?: number;
+  targetType?: 'POST' | 'COMMENT';
   isRead: boolean;
   createdAt: Date | null;
 }

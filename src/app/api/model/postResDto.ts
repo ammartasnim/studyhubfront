@@ -5,10 +5,12 @@ export interface PostResDto {
     title?: string;
     content?: string;
     imgs?: Array<string>;
+    userId?: number;
     userUsername?: string;
     userFirstName?: string;
     userLastName?: string;
     userPfp?: string;
+    communityId?: number;
     communityTitle?: string;
     status?: PostResDto.StatusEnum;
     likeCount?: number;

@@ -75,6 +75,7 @@
           "options": {
             "tsConfig": "tsconfig.spec.json",
             "polyfills": [
+              "src/setup-tests.ts",
               "zone.js",
               "zone.js/testing"
             ],

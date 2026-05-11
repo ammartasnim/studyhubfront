@@ -13,6 +13,7 @@ export interface BadgeResDto {
     id?: number;
     userId?: number;
     type?: BadgeResDto.TypeEnum;
+     earnedAt?: string;
 }
 export namespace BadgeResDto {
     export const TypeEnum = {

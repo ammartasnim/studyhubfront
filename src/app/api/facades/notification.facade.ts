@@ -176,6 +176,7 @@ export class NotificationFacadeService {
       description: dto?.description ?? undefined,
       link: dto?.link ?? undefined,
       refId: dto?.refId ?? undefined,
+      targetType: dto?.targetType ?? undefined,
       isRead: dto?.isRead ?? false,
       createdAt: dto?.createdAt ? new Date(dto.createdAt) : null
     };
