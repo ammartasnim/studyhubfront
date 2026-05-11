@@ -836,7 +836,7 @@ isOwnComment(userId: number | undefined): boolean {
       this.localPost.update(p => ({ ...p, commentCount: p.commentCount + 1 }));
       this.commentInput.set('');
     } catch (err: any) {
-      this.commentError.set(err?.message || 'Failed to add comment');
+      this.commentError.set(err?.error.message || 'Failed to add comment');
     } finally {
       this.submittingComment.set(false);
     }

@@ -211,6 +211,7 @@ export class CreateCommunityModalComponent {
       this.close();
     } catch (error: any) {
       console.error('[CreateCommunityModal] Error creating community:', error.error);
+      
       const errorMessage = 
     error.error?.message ||          
     error.error ||                  

@@ -5,6 +5,8 @@ import { UserService } from '../services/user.service';
 import { UserUI } from '../api/facades';
 
 const AUTH_TOKEN_KEY = 'token';
+const BANNED_FLAG_KEY = 'banned_user';
+const BANNED_ERROR_MESSAGE = 'Your account has been banned. Please contact support for assistance.';
 
 @Injectable({ providedIn: 'root' })
 export class UserContextService {
@@ -12,6 +14,22 @@ export class UserContextService {
 
   readonly user = signal<UserUI | null>(null);
   readonly isLoading = signal(false);
+
+  static getBannedErrorMessage(): string {
+    return BANNED_ERROR_MESSAGE;
+  }
+
+  static setBannedFlag(): void {
+    localStorage.setItem(BANNED_FLAG_KEY, 'true');
+  }
+
+  static checkAndClearBannedFlag(): boolean {
+    const wasBanned = localStorage.getItem(BANNED_FLAG_KEY) === 'true';
+    if (wasBanned) {
+      localStorage.removeItem(BANNED_FLAG_KEY);
+    }
+    return wasBanned;
+  }
 
   // ─── LIFECYCLE ───────────────────────────────────────────────────────────
 
@@ -31,6 +49,15 @@ export class UserContextService {
     try {
       const response = await firstValueFrom(this.userService.getMe());
       const user = await this.normalizeResponse(response);
+
+      if (user?.banned) {
+        console.warn('[UserContext] User is banned, rejecting access');
+        this.user.set(null);
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        UserContextService.setBannedFlag();
+        return null;
+      }
+
       this.user.set(user);
       return user;
     } catch (error) {

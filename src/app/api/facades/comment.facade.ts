@@ -26,7 +26,7 @@ export class CommentFacadeService {
     }
     return this.commentController.createCommentForPost(data.postId, { content: data.content.trim(), postId: data.postId }).pipe(
       map(dto => this.mapToUI(dto)),
-      catchError(err => this.handleError(err, 'Failed to create comment'))
+      // catchError(err => this.handleError(err, 'Failed to create comment'))
     );
   }
 
@@ -123,9 +123,9 @@ export class CommentFacadeService {
       .replyToComment(commentId, { content: data.content.trim(), postId: 0 })
       .pipe(
         map(dto => this.mapToUI(dto)),
-        catchError(err =>
-          this.handleError(err, `Failed to create reply for comment ${commentId}`)
-        )
+        // catchError(err =>
+        //   this.handleError(err, `Failed to create reply for comment ${commentId}`)
+        // )
       );
   }
 

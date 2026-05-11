@@ -57,7 +57,7 @@ export class AuthFacadeService {
         }
         return this.mapToUI(dto);
       }),
-      catchError(err => this.handleError(err, 'Login failed'))
+     
     );
   }
 
@@ -87,7 +87,7 @@ export class AuthFacadeService {
         this.storeToken(dto?.token);
       }),
       map(dto => this.mapToUI(dto)),
-      catchError(err => this.handleError(err, 'Registration failed'))
+      
     );
   }
 

@@ -5,7 +5,7 @@ import { Configuration } from './api/configuration';
 import { CustomConfiguration } from './api/custom-configuration';
 
 import { authTokenInterceptor } from './core/interceptors/auth-token.interceptor';
-import { responseHandlerInterceptor } from './core/interceptors/response-handler.interceptor';
+// import { responseHandlerInterceptor } from './core/interceptors/response-handler.interceptor';
 import { routes } from './app.routes';
 
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
@@ -17,7 +17,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(
       withInterceptors([
-        responseHandlerInterceptor,
+        // responseHandlerInterceptor,
         authTokenInterceptor
       ])
     ),
