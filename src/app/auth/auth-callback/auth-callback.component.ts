@@ -50,6 +50,8 @@ export class AuthCallbackComponent implements OnInit {
 
       localStorage.setItem('token', response.token);
 
+      await this.supabase.signOut();
+
       const user = await this.userContext.loadMe();
 
       console.log('[AuthCallback] loadMe result:', user);
@@ -65,6 +67,7 @@ export class AuthCallbackComponent implements OnInit {
       console.error('[AuthCallback] Error:', err);
       localStorage.removeItem('token');
       this.userContext.clear();
+      await this.supabase.signOut();
       await this.router.navigate(['/auth/login']);
     }
   }

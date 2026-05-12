@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { UserContextService } from '../../services/user-context.service';
+import { SupabaseService } from '../../services/supabase.service';
 
 const NAV_ITEMS = [
   { label: 'Statistics',    path: 'stats',       icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
@@ -71,6 +72,7 @@ const NAV_ITEMS = [
 })
 export class AdminShell {
   private readonly userContext = inject(UserContextService);
+  private readonly supabase = inject(SupabaseService);
   private readonly router = inject(Router);
 
   readonly navItems = NAV_ITEMS;
@@ -80,6 +82,7 @@ export class AdminShell {
   async logout() {
     localStorage.removeItem('token');
     this.userContext.clear();
+    await this.supabase.signOut();
     await this.router.navigateByUrl('/auth/login');
   }
 }

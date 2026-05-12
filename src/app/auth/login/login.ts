@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthFacadeService } from '../../api/facades';
@@ -14,7 +14,7 @@ import { SupabaseService } from '../../services/supabase.service';
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './login.html'
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private readonly supabase = inject(SupabaseService);
 
   // ... existing methods ...
@@ -67,6 +67,12 @@ export class LoginComponent {
 
   readonly canSubmit = computed(() => this.form.valid && !this.isSubmitting());
 
+  ngOnInit(): void {
+    if (UserContextService.checkAndClearBannedFlag()) {
+      this.submitError.set(UserContextService.getBannedErrorMessage());
+    }
+  }
+
   onSubmit(): void {
     this.submitted.set(true);
     this.submitError.set(null);
@@ -89,7 +95,7 @@ export class LoginComponent {
         this.handleAuthSuccess(response),
       error: (err: any) => {
         this.isSubmitting.set(false);
-        this.handleLoginError(err);
+        this.handleLoginError(err.error.message);
       }
     });
   }
@@ -101,22 +107,22 @@ export class LoginComponent {
 
   private async finalizeAuthSuccess(response: any): Promise<void> {
     let token = response?.token?.trim();
-    
+
     if (!token) {
-      
+
       token = localStorage.getItem('token') || '';
       if (!token) {
-      
+
         localStorage.removeItem('token');
         this.userContext.clear();
         this.submitError.set('Login failed. Missing authentication token.');
         this.isSubmitting.set(false);
         return;
       }
-     
+
     }
     localStorage.setItem('token', token);
-    
+
     if (response.user?.id !== undefined && response.user?.email && response.user?.role) {
       this.userContext.setUser({
         id: response.user.id,
@@ -127,7 +133,13 @@ export class LoginComponent {
     console.log('[Login] Loading full user profile from API');
     const user = await this.userContext.loadMe();
     console.log('[Login] Full user profile loaded:', user);
-    
+
+    if (UserContextService.checkAndClearBannedFlag()) {
+      this.submitError.set(UserContextService.getBannedErrorMessage());
+      this.isSubmitting.set(false);
+      return;
+    }
+
     const targetRoute = this.userContext.getDefaultRouteByRole();
     console.log('[Login] Navigation to:', targetRoute);
     this.isSubmitting.set(false);

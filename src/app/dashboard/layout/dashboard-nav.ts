@@ -8,6 +8,7 @@ import { DashboardSidebarComponent } from './dashboard-sidebar';
 import { DashboardRightSidebarComponent } from './pomodoro-sidebar';
 import { AiAssistant } from './ai-assistant';
 import { UserContextService } from '../../services/user-context.service';
+import { SupabaseService } from '../../services/supabase.service';
 import { environment } from '../../../environments/environment';
 import { NotificationFacadeService, NotificationUI, PostFacadeService } from '../../api/facades';
 import { PostUI } from '../../api/facades/models/post.model';
@@ -407,11 +408,16 @@ const AUTH_TOKEN_KEY = 'token';
   `
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  private readonly userContext        = inject(UserContextService);
-  private readonly router             = inject(Router);
-  private readonly notificationFacade = inject(NotificationFacadeService);
+
+  // ─── DEPENDENCIES ─────────────────────────────────────────────────────────
+
+  private readonly userContext         = inject(UserContextService);
+  private readonly router              = inject(Router);
+  private readonly notificationFacade  = inject(NotificationFacadeService);
+  private readonly supabase            = inject(SupabaseService);
+  private readonly cdr                 = inject(ChangeDetectorRef);
   private readonly postFacade         = inject(PostFacadeService);
-  private readonly cdr                = inject(ChangeDetectorRef);
+
   private socketSubscription?: Subscription;
 
   readonly user   = this.userContext.user;
@@ -466,10 +472,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.router.url.includes('/focus-room');
   }
 
-  handleLogout(): void {
+  async handleLogout(): Promise<void> {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     this.userContext.clear();
-    this.router.navigateByUrl('/auth/login');
+    await this.supabase.signOut();
+    await this.router.navigateByUrl('/auth/login');
   }
 
   handleSidebarNavigation(section: string): void {

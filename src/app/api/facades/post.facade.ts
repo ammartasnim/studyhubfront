@@ -128,8 +128,10 @@ export class PostFacadeService {
       data.communityId != null ? String(data.communityId) : undefined
     ).pipe(
       map(dto => this.mapToUI(dto)),
-      catchError(err => this.handleError(err, 'Failed to create post'))
+      // catchError(err => this.handleError(err, 'Failed to create post'))
+      
     );
+    
   }
 
   update(id: number, data: { title: string; content: string; imgs?: File[] }): Observable<PostUI> {

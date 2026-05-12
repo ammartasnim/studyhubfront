@@ -1,6 +1,7 @@
 import { Component, inject, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { UserContextService } from '../../services/user-context.service';
+import { SupabaseService } from '../../services/supabase.service';
 import { Router } from '@angular/router';
 
 @Component({
@@ -157,6 +158,7 @@ export class DashboardSidebarComponent {
   // ─── DEPENDENCIES ─────────────────────────────────────────────────────────
 
   userContext = inject(UserContextService);
+  supabase = inject(SupabaseService);
   router = inject(Router);
 
   // ─── COMPUTED ─────────────────────────────────────────────────────────────
@@ -179,9 +181,10 @@ export class DashboardSidebarComponent {
     this.navigate.emit(section);
   }
 
-  handleLogout(): void {
+  async handleLogout(): Promise<void> {
     localStorage.removeItem('token');
     this.userContext.clear();
-    this.router.navigateByUrl('/auth/login');
+    await this.supabase.signOut();
+    await this.router.navigateByUrl('/auth/login');
   }
 }

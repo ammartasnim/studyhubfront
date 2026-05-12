@@ -295,7 +295,7 @@ export class CreatePostModalComponent {
       this.postCreated.emit();
       this.close();
     } catch (error: any) {
-      this.submitError.set(error.message || 'Failed to create post. Please try again.');
+      this.submitError.set(error.error?.message || 'Failed to create post. Please try again.');
     } finally {
       this.isSubmitting.set(false);
     }

@@ -70,7 +70,7 @@
         <input id="password" type="password" formControlName="password" placeholder="••••••••" class="w-full rounded-xl border border-slate-300 bg-slate-100 px-11 py-3 text-base text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-3 focus:ring-indigo-100" />
       </div>
       @if ((form.controls.password.touched || submitted()) && form.controls.password.invalid) {
-        <p class="text-xs text-rose-700">Password is required and must be at least 6 characters.</p>
+        <p class="text-xs text-rose-700">Password is required and must be at least 8 characters.</p>
       }
 
       <label class="mt-1 text-sm font-semibold text-slate-800" for="confirmPassword">Confirm Password</label>
